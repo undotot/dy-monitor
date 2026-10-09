@@ -1,0 +1,21 @@
+{
+  "name": "douyu-monitor",
+  "version": "1.0.0",
+  "description": "监控室 · 源码工程（构建产物为 Tampermonkey 单文件脚本）",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "node --check dist/douyu-monitor.user.js",
+    "smoke": "node test/integration.smoke.js",
+    "release": "node scripts/release.mjs"
+  },
+  "dependencies": {
+    "mpegts.js": "1.7.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "happy-dom": "16.8.1"
+  }
+}
