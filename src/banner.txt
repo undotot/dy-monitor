@@ -18,7 +18,7 @@
 // @connect      fastly.jsdelivr.net
 // @connect      cdn.jsdelivr.net
 // @connect      raw.githubusercontent.com
-// @updateURL    https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js
-// @downloadURL  https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js
+// @updateURL    https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js
 // ==/UserScript==
 "use strict";

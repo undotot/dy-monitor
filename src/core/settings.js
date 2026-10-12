@@ -65,12 +65,12 @@ export const API_BASE = "https://www.douyu.com";
 
 export const DEFAULT_DID = "10000000000000000000000000001501";
 
-export const UPDATE_META_URL = "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js";
+export const UPDATE_META_URL = "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js";
 
 export const UPDATE_META_FALLBACK_URLS = [
-  "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js",
   "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js",
-  "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js"
+  "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js",
+  "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"
 ];
 
-export const DOWNLOAD_USER_URL = "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js";
+export const DOWNLOAD_USER_URL = "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js";
