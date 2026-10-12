@@ -122,7 +122,7 @@ export function normalizeGroupMembers(detail) {
       isLeader,
       isCaptain,
       liveStatus: null,
-      category: detail.name || "团播"
+      category: `${detail.name || "团播"} · ${roleText}`
     });
   }
 
@@ -137,7 +137,7 @@ export function normalizeGroupMembers(detail) {
         isLeader: true,
         isCaptain: false,
         liveStatus: null,
-        category: detail.name || "团播"
+        category: `${detail.name || "团播"} · 团长`
       });
     }
   }

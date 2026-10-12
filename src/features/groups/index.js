@@ -14,12 +14,35 @@ export function mountGroupsFeature(ctx) {
   const els = ctx.els;
   const addState = ctx.addState;
 
-  // 1. 动态注入专属样式（若不存在）
-  if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
+  // 1. 动态注入专属样式（严格支持 Shadow DOM 隔离与标准文档环境）
+  const getRoot = () => {
+    if (wrapper && typeof wrapper.getRootNode === "function") {
+      const root = wrapper.getRootNode();
+      if (root) return root;
+    }
+    return typeof document !== "undefined" ? document : null;
+  };
+
+  const rootNode = getRoot();
+  const findStyle = () => {
+    return (rootNode?.querySelector ? rootNode.querySelector(`#${STYLE_ID}`) : null)
+      || (wrapper?.querySelector ? wrapper.querySelector(`#${STYLE_ID}`) : null)
+      || (typeof document !== "undefined" ? document.getElementById(STYLE_ID) : null);
+  };
+
+  if (!findStyle()) {
     const styleEl = document.createElement("style");
     styleEl.id = STYLE_ID;
     styleEl.textContent = groupsCss;
-    (document.head || wrapper).appendChild(styleEl);
+    if (rootNode && (rootNode.nodeType === 11 || (typeof ShadowRoot !== "undefined" && rootNode instanceof ShadowRoot))) {
+      // 在 ShadowRoot 环境中，直接挂载至 ShadowRoot 顶层
+      rootNode.appendChild(styleEl);
+    } else if (wrapper) {
+      // 挂载至 wrapper 顶层，确保作用域完全穿透
+      wrapper.prepend(styleEl);
+    } else if (typeof document !== "undefined" && document.head) {
+      document.head.appendChild(styleEl);
+    }
   }
 
   // 2. 动态在 segctl 追加「团播」选项卡
@@ -312,7 +335,10 @@ export function mountGroupsFeature(ctx) {
       wrapper.querySelector('label[for="at-groups"]')?.remove();
       groupsBox?.remove();
       selectLiveBtn?.remove();
-      document.getElementById(STYLE_ID)?.remove();
+      findStyle()?.remove();
+      rootNode?.querySelector?.(`#${STYLE_ID}`)?.remove();
+      wrapper?.querySelector?.(`#${STYLE_ID}`)?.remove();
+      document?.getElementById?.(STYLE_ID)?.remove();
     }
   };
 }
