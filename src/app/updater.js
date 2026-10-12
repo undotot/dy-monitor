@@ -1,4 +1,4 @@
-import { SCRIPT_VERSION, UPDATE_META_URL, UPDATE_META_FALLBACK_URLS, DOWNLOAD_USER_URL } from "../core/settings.js";
+import { SCRIPT_VERSION, UPDATE_META_URL, UPDATE_META_FALLBACK_URLS, DOWNLOAD_USER_URL, getDownloadUrl } from "../core/settings.js";
 
 /**
  * 严格比对两个语义化版本号，判断 remote 是否大于 local
@@ -57,6 +57,31 @@ export function extractVersionFromMeta(metaText) {
 }
 
 /**
+ * 从响应文本中提取版本号，支持 jsDelivr 官方数据 API (JSON) 与 Userscript 元数据头 (meta.js)
+ * @param {string} text
+ * @param {string} [url]
+ * @returns {string|null}
+ */
+export function extractVersionFromResponse(text, url = "") {
+  if (!text || typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (url.includes("data.jsdelivr.com") || trimmed.startsWith("{")) {
+    try {
+      const data = JSON.parse(trimmed);
+      if (data?.tags?.latest) return String(data.tags.latest).trim();
+      if (Array.isArray(data?.versions) && data.versions.length > 0) {
+        const vers = data.versions
+          .map((item) => (typeof item === "string" ? item : item?.version))
+          .filter(Boolean);
+        const top = findHighestVersion(vers);
+        if (top) return top;
+      }
+    } catch {}
+  }
+  return extractVersionFromMeta(trimmed);
+}
+
+/**
  * 请求单个 URL 获取元数据版本号
  * @param {string} metaUrl
  * @returns {Promise<string|null>}
@@ -74,7 +99,7 @@ async function fetchSingleVersion(metaUrl) {
           timeout: 4000,
           onload: (res) => {
             if (res.status >= 200 && res.status < 300) {
-              resolve(extractVersionFromMeta(res.responseText));
+              resolve(extractVersionFromResponse(res.responseText, metaUrl));
             } else {
               resolve(null);
             }
@@ -100,7 +125,7 @@ async function fetchSingleVersion(metaUrl) {
       if (timer) clearTimeout(timer);
       if (!res.ok) return null;
       const text = await res.text();
-      return extractVersionFromMeta(text);
+      return extractVersionFromResponse(text, metaUrl);
     } catch {
       return null;
     }
@@ -148,18 +173,28 @@ export function initUpdater(ctx) {
   if (!badge) return;
 
   const applyUpdateFound = (remoteVersion) => {
+    const downloadUrl = getDownloadUrl(remoteVersion);
     badge.classList.add("has-update");
     badge.setAttribute("title", `发现新版本 v${remoteVersion}，点击打开油猴更新`);
+    if (badge.tagName && badge.tagName.toLowerCase() === "a") {
+      badge.setAttribute("href", downloadUrl);
+    }
     if (dot) dot.hidden = false;
     if (tag) tag.hidden = false;
-    if (tooltip) tooltip.hidden = false;
+    if (tooltip) {
+      tooltip.hidden = false;
+      const upgradeBtn = tooltip.querySelector("a, [data-upgrade-btn], .btn-upgrade");
+      if (upgradeBtn) {
+        upgradeBtn.setAttribute("href", downloadUrl);
+      }
+    }
     if (remoteVerEl) remoteVerEl.textContent = `v${remoteVersion}`;
   };
 
   // 点击事件：如果发现新版本，允许直接触发油猴安装链接
   badge.addEventListener("click", (e) => {
     if (badge.classList.contains("has-update")) {
-      // 允许默认链接行为跳转到 DOWNLOAD_USER_URL
+      // 允许默认链接行为跳转到精准版本下载直链
       return;
     }
     // 未发现新版本时阻止默认空跳转

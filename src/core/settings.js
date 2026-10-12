@@ -65,12 +65,26 @@ export const API_BASE = "https://www.douyu.com";
 
 export const DEFAULT_DID = "10000000000000000000000000001501";
 
-export const UPDATE_META_URL = "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js";
+export const UPDATE_META_URL = "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js";
+
+export const UPDATE_API_URL = "https://data.jsdelivr.com/v1/packages/gh/undotot/monitor-js";
 
 export const UPDATE_META_FALLBACK_URLS = [
-  "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js",
+  "https://data.jsdelivr.com/v1/packages/gh/undotot/monitor-js",
   "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js",
+  "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js",
   "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"
 ];
 
-export const DOWNLOAD_USER_URL = "https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js";
+export const DOWNLOAD_USER_URL = "https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js";
+
+/**
+ * 根据最新版本号构造 jsDelivr 精准 Tag 下载直链
+ * @param {string} [ver]
+ * @returns {string}
+ */
+export const getDownloadUrl = (ver) => {
+  if (!ver) return DOWNLOAD_USER_URL;
+  const clean = String(ver).trim().replace(/^v/i, "");
+  return `https://cdn.jsdelivr.net/gh/undotot/monitor-js@${clean}/douyu-monitor.user.js`;
+};

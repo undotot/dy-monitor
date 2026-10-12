@@ -119,7 +119,7 @@ try {
     console.warn(`⚠ 拷贝交付物至上层目录警告: ${err.message}`);
   }
   
-  const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **GitHub Raw 实时直链（推荐，无缓存延迟）**：[douyu-monitor.user.js](https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js)\n- **jsDelivr CDN 直链**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
+  const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **jsDelivr CDN 直链（推荐）**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **jsDelivr 精准 Tag 直链（免缓存）**：[douyu-monitor.user.js (v${version})](https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
   writeFileSync(join(deployTmpDir, "README.md"), distReadme, "utf8");
 
   // 初始化并推送到 monitor-js 仓库 main 分支与版本 tag
