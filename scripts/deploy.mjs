@@ -119,16 +119,18 @@ try {
     console.warn(`⚠ 拷贝交付物至上层目录警告: ${err.message}`);
   }
   
-  const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **脚本下载安装**：[douyu-monitor.user.js](https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
+  const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **脚本下载安装**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
   writeFileSync(join(deployTmpDir, "README.md"), distReadme, "utf8");
 
-  // 初始化并推送到 monitor-js 仓库 main 分支
+  // 初始化并推送到 monitor-js 仓库 main 分支与版本 tag
   run("git", ["init"], "初始化产物仓库", deployTmpDir);
   run("git", ["branch", "-M", "main"], "切换 main 分支", deployTmpDir);
   run("git", ["add", "-A"], "暂存 JS 产物", deployTmpDir);
   run("git", ["commit", "-m", `"release: v${version} (build artifact)"`], "提交编译产物", deployTmpDir);
+  run("git", ["tag", "-f", `v${version}`], `创建产物版本标签 v${version}`, deployTmpDir);
   
-  const pushSuccess = run("git", ["push", "-f", DIST_REPO_URL, "main"], "强制同步至 monitor-js 仓库", deployTmpDir);
+  const pushSuccess = run("git", ["push", "-f", DIST_REPO_URL, "main"], "强制同步至 monitor-js 仓库 main", deployTmpDir);
+  run("git", ["push", "-f", DIST_REPO_URL, `v${version}`], `同步 tag v${version} 至 monitor-js 仓库`, deployTmpDir);
   if (!pushSuccess) {
     console.warn(`⚠ 推送至 monitor-js 失败，请检查网络或 GitHub 认证。`);
   } else {
@@ -145,6 +147,8 @@ console.log(`\n» 正在刷新 jsDelivr CDN 缓存节点...`);
 try {
   run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"`], "刷新 CDN 元数据缓存");
   run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js"`], "刷新 CDN 脚本缓存");
+  run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.meta.js"`], "刷新 CDN tag 元数据缓存");
+  run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js"`], "刷新 CDN tag 脚本缓存");
   console.log(`✓ jsDelivr CDN 缓存刷新请求已送达。`);
 } catch {}
 
@@ -156,7 +160,9 @@ console.log(`========================================`);
 run("git", ["remote", "set-url", "origin", SOURCE_REPO_URL], "关联源码仓库 origin");
 run("git", ["add", "-A"], "Git 暂存源码变更");
 run("git", ["commit", "-m", `"release: v${version} - ${customMsg}"`], "提交源码更新");
+run("git", ["tag", "-f", `v${version}`], `创建源码版本标签 v${version}`);
 const pushSourceSuccess = run("git", ["push", "origin", "main"], "推送到源码仓库 dy-monitor");
+run("git", ["push", "-f", "origin", `v${version}`], "推送源码 tag 到 dy-monitor");
 
 if (pushSourceSuccess) {
   console.log(`✓ 源码仓库 dy-monitor 同步成功！`);
@@ -169,7 +175,11 @@ console.log(`🎉 发布完成！`);
 console.log(`📦 纯分发仓库 (JS): https://github.com/undotot/monitor-js`);
 console.log(`🛠️ 源码开发仓库:   https://github.com/undotot/dy-monitor`);
 console.log(`🚀 jsDelivr CDN 直链 (油猴一键安装):`);
-console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js`);
+console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js (精准 Tag 直链，无分支缓存延迟)`);
+console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js (主分支滚动版)`);
+console.log(`⚡ GitHub Raw 实时直链 (100% 零缓存直连):`);
+console.log(`👉 https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js`);
 console.log(`🔍 jsDelivr 元数据直链 (自动检查更新):`);
+console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.meta.js`);
 console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js`);
 console.log(`======================================================\n`);
