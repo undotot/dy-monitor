@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import { normalizeGroups, normalizeGroupMembers, BEAR_PAW_CODES } from "../src/features/groups/api.js";
+import { groupCardMarkup } from "../src/features/groups/markup.js";
 import { mountGroupsFeature } from "../src/features/groups/index.js";
 
 test("normalizeGroups 正确区分熊掌团播与其他团播", () => {
@@ -121,3 +122,41 @@ test("mountGroupsFeature 动态挂载、Tab切换联动与干净卸载", async (
     win.close();
   }
 });
+
+test("groupCardMarkup 正确生成暗色滑轨卡片（头像、熊掌微标、赛季标与在播类名）", () => {
+  const cardBear = groupCardMarkup({
+    code: "Can",
+    name: "灿团",
+    kind: "大团",
+    leaderName: "苏阿灿",
+    leaderAvatarUrl: "https://avatar/can.jpg",
+    isBearPaw: true,
+    seasonName: "S7",
+    isActive: true
+  }, true);
+
+  assert.ok(cardBear.includes("groups-card"), "包含卡片基础类");
+  assert.ok(cardBear.includes("is-active"), "当前选中应有 is-active");
+  assert.ok(cardBear.includes("is-bear"), "熊掌团应有 is-bear 类");
+  assert.ok(cardBear.includes("🐾"), "包含熊掌专属微标");
+  assert.ok(cardBear.includes("[S7]"), "包含赛季标签");
+  assert.ok(cardBear.includes("is-live"), "进行中应有 is-live");
+  assert.ok(cardBear.includes("https://avatar/can.jpg"), "包含团长头像");
+
+  const cardOther = groupCardMarkup({
+    code: "12580",
+    name: "12580团播",
+    kind: "小团",
+    leaderName: "叶子",
+    leaderAvatarUrl: "",
+    isBearPaw: false,
+    seasonName: "S5.1",
+    isActive: false
+  }, false);
+
+  assert.ok(!cardOther.includes("is-active"), "非选中不包含 is-active");
+  assert.ok(!cardOther.includes("is-bear"), "其他团不包含 is-bear");
+  assert.ok(cardOther.includes("groups-card-avatar-empty"), "缺头像时使用首字占位");
+  assert.ok(cardOther.includes("is-ended"), "已结营应有 is-ended");
+});
+

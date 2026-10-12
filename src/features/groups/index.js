@@ -1,8 +1,8 @@
-// [插件独立模块] 团播选择器核心控制器：负责动态挂载 Tab、胶囊筛选条、拉取团播成员及全选在播。
+// [插件独立模块] 团播选择器核心控制器（方案 A：电竞暗色横向滑轨卡片）
 // 设计原则：高内聚、低耦合，方便随时开启或整块拆卸。
 
 import { fetchGroups, fetchGroupMembers } from "./api.js";
-import { groupsTabMarkup, groupsFilterMarkup, groupCapsuleMarkup, groupsSelectLiveButtonMarkup, escapeHtml } from "./markup.js";
+import { groupsTabMarkup, groupsFilterMarkup, groupCardMarkup, groupsSelectLiveButtonMarkup, escapeHtml } from "./markup.js";
 import { groupsCss } from "./styles.js";
 
 const STYLE_ID = "groups-feature-style";
@@ -67,10 +67,36 @@ export function mountGroupsFeature(ctx) {
     disposed: false
   };
 
-  // 渲染胶囊列表
-  function renderCapsules() {
-    const capsuleContainer = wrapper.querySelector("[data-groups-capsules]");
-    if (!capsuleContainer) return;
+  // 更新顶部分类数字与当前选中的团播摘要
+  function updateHeaderSummary(membersCount) {
+    const allCount = state.groups.length;
+    const bearCount = state.groups.filter((g) => g.isBearPaw).length;
+    const otherCount = allCount - bearCount;
+
+    const countAllEl = wrapper.querySelector('[data-cat-count="all"]');
+    const countBearEl = wrapper.querySelector('[data-cat-count="bear"]');
+    const countOtherEl = wrapper.querySelector('[data-cat-count="other"]');
+    if (countAllEl) countAllEl.textContent = allCount || "0";
+    if (countBearEl) countBearEl.textContent = bearCount || "0";
+    if (countOtherEl) countOtherEl.textContent = otherCount || "0";
+
+    const infoEl = wrapper.querySelector("[data-groups-current-info]");
+    if (infoEl) {
+      const current = state.groups.find((g) => g.code === state.selectedCode);
+      if (current) {
+        const seasonPart = current.seasonName ? ` · ${current.seasonName}` : "";
+        const countPart = membersCount !== undefined ? ` · ${membersCount}人` : "";
+        infoEl.textContent = `${current.name}${seasonPart}${countPart}`;
+      } else {
+        infoEl.textContent = "选择团播";
+      }
+    }
+  }
+
+  // 渲染横向卡片列表
+  function renderCards() {
+    const scroller = wrapper.querySelector("[data-groups-capsules]");
+    if (!scroller) return;
 
     const filtered = state.groups.filter((g) => {
       if (state.category === "bear") return g.isBearPaw;
@@ -79,13 +105,15 @@ export function mountGroupsFeature(ctx) {
     });
 
     if (!filtered.length) {
-      capsuleContainer.innerHTML = `<div class="groups-loading">该分类下暂无团播</div>`;
+      scroller.innerHTML = `<div class="groups-loading">该分类下暂无团播</div>`;
       return;
     }
 
-    capsuleContainer.innerHTML = filtered
-      .map((g) => groupCapsuleMarkup(g, g.code === state.selectedCode))
+    scroller.innerHTML = filtered
+      .map((g) => groupCardMarkup(g, g.code === state.selectedCode))
       .join("");
+
+    updateHeaderSummary();
   }
 
   // 激活并加载某个团播的成员房间
@@ -93,7 +121,11 @@ export function mountGroupsFeature(ctx) {
     const target = state.groups.find((g) => g.code === code);
     if (!target) return;
     state.selectedCode = code;
-    renderCapsules();
+    renderCards();
+
+    // 顺滑滚动激活卡片到可视区域
+    const activeCard = wrapper.querySelector(`[data-group-code="${CSS.escape ? CSS.escape(code) : code}"]`);
+    activeCard?.scrollIntoView?.({ behavior: "smooth", inline: "nearest", block: "nearest" });
 
     addState.rooms = [];
     ctx.renderAddList?.();
@@ -111,6 +143,7 @@ export function mountGroupsFeature(ctx) {
       if (generation !== addState.generation || state.disposed) return;
 
       addState.rooms = members;
+      updateHeaderSummary(members.length);
       ctx.renderAddList?.();
       if (els.addStatus) {
         els.addStatus.textContent = `【${target.name}】共 ${members.length} 人，直播状态探测中…`;
@@ -133,7 +166,7 @@ export function mountGroupsFeature(ctx) {
   // 加载团播列表
   async function loadGroupsData() {
     if (state.groups.length) {
-      renderCapsules();
+      renderCards();
       if (state.selectedCode) {
         void selectGroup(state.selectedCode);
       } else if (state.groups[0]) {
@@ -143,16 +176,16 @@ export function mountGroupsFeature(ctx) {
     }
 
     state.loading = true;
-    const capsuleContainer = wrapper.querySelector("[data-groups-capsules]");
-    if (capsuleContainer) {
-      capsuleContainer.innerHTML = `<div class="groups-loading">正在拉取团播数据…</div>`;
+    const scroller = wrapper.querySelector("[data-groups-capsules]");
+    if (scroller) {
+      scroller.innerHTML = `<div class="groups-loading">正在拉取团播数据…</div>`;
     }
 
     try {
       const list = await fetchGroups();
       if (state.disposed) return;
       state.groups = list;
-      renderCapsules();
+      renderCards();
 
       // 默认选中第一个团播（若有灿团则优先选中灿团）
       const defaultGroup = list.find((g) => g.code === "Can") || list[0];
@@ -161,8 +194,8 @@ export function mountGroupsFeature(ctx) {
       }
     } catch (err) {
       if (state.disposed) return;
-      if (capsuleContainer) {
-        capsuleContainer.innerHTML = `<div class="groups-loading" style="color:#ef4444">团播数据拉取失败: ${escapeHtml(err.message)}</div>`;
+      if (scroller) {
+        scroller.innerHTML = `<div class="groups-loading" style="color:#ef4444">团播数据拉取失败: ${escapeHtml(err.message)}</div>`;
       }
     } finally {
       state.loading = false;
@@ -181,7 +214,7 @@ export function mountGroupsFeature(ctx) {
     }
   }
 
-  // 劫持或挂钩 ctx.loadAddTab
+  // 挂钩 ctx.loadAddTab
   const origLoadAddTab = ctx.loadAddTab;
   ctx.loadAddTab = async (tab) => {
     onTabChange(tab);
@@ -208,8 +241,7 @@ export function mountGroupsFeature(ctx) {
       for (const b of catsBox.querySelectorAll("[data-group-cat]")) {
         b.classList.toggle("is-active", b === btn);
       }
-      renderCapsules();
-      // 切换分类后自动选中当前分类下的首个团播
+      renderCards();
       const visible = state.groups.filter((g) => {
         if (cat === "bear") return g.isBearPaw;
         if (cat === "other") return !g.isBearPaw;
@@ -221,16 +253,24 @@ export function mountGroupsFeature(ctx) {
     });
   }
 
-  // 8. 绑定各团播胶囊点击
-  const capsuleRow = wrapper.querySelector("[data-groups-capsules]");
-  if (capsuleRow) {
-    capsuleRow.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-group-code]");
-      if (!btn) return;
-      const code = btn.dataset.groupCode;
+  // 8. 绑定横向卡片点击与鼠标滚轮横向滑动
+  const scroller = wrapper.querySelector("[data-groups-capsules]");
+  if (scroller) {
+    scroller.addEventListener("click", (e) => {
+      const card = e.target.closest("[data-group-code]");
+      if (!card) return;
+      const code = card.dataset.groupCode;
       if (code === state.selectedCode) return;
       void selectGroup(code);
     });
+
+    // 鼠标滚轮转为横向平移，提升 PC 端操作舒适度
+    scroller.addEventListener("wheel", (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        scroller.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
   }
 
   // 9. 绑定「全选在播」按钮
@@ -238,8 +278,8 @@ export function mountGroupsFeature(ctx) {
     selectLiveBtn.addEventListener("click", () => {
       if (addState.tab !== "groups") return;
       const liveRooms = addState.rooms.filter((room) => {
-        const state = ctx.roomStateFor?.(room) || {};
-        return !state.disabled && room.liveStatus === "live";
+        const roomState = ctx.roomStateFor?.(room) || {};
+        return !roomState.disabled && room.liveStatus === "live";
       });
 
       if (!liveRooms.length) {
@@ -256,14 +296,14 @@ export function mountGroupsFeature(ctx) {
     });
   }
 
-  // 10. 绑定 Tab 单选框 change 事件（原生 segctl 监听）
+  // 10. 绑定 Tab 单选框 change 事件
   if (tabRadio) {
     tabRadio.addEventListener("change", () => {
       if (tabRadio.checked) void ctx.loadAddTab("groups");
     });
   }
 
-  // 返回卸载函数（方便随时彻底拆卸）
+  // 返回卸载函数
   return {
     unmount() {
       state.disposed = true;
