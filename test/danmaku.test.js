@@ -1,14 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDanmaku } from "../src/core/danmaku-render.js";
+import { normalizeDanmaku, truncateSender, DanmakuRenderer } from "../src/core/danmaku-render.js";
 import { PacketReader, encodePacket, parseFields } from "../src/core/danmaku-protocol.js";
 
 test("normalizeDanmaku 默认值", () => {
   const d = normalizeDanmaku({});
   assert.equal(d.enabled, false);
+  assert.equal(d.showSender, true, "默认开启显示发送者");
   assert.equal(d.size, 20);
   assert.equal(d.speed, 1);
   assert.equal(d.area, 1);
+});
+
+test("truncateSender 昵称智能截断", () => {
+  assert.equal(truncateSender(""), "");
+  assert.equal(truncateSender(null), "");
+  assert.equal(truncateSender("普通昵称"), "普通昵称");
+  assert.equal(truncateSender("八位刚好昵称字"), "八位刚好昵称字");
+  assert.equal(truncateSender("这是一个超过八位长度的超长昵称"), "这是一个超过八位…");
+  assert.equal(truncateSender("  带空白的昵称  "), "带空白的昵称");
 });
 
 test("normalizeDanmaku 越界夹取与屏蔽词清洗", () => {
@@ -79,4 +89,38 @@ test("encodePacket 生成合法 689 包头", () => {
   const view = new DataView(buffer);
   assert.equal(view.getUint16(8, true), 689);
   assert.equal(view.getUint32(0, true), buffer.byteLength - 4);
+});
+
+test("DanmakuRenderer 支持解析并渲染发送者昵称", () => {
+  const mockCanvas = {
+    clientWidth: 800,
+    clientHeight: 600,
+    width: 0,
+    height: 0,
+    getContext: () => ({
+      measureText: (text) => ({ width: text.length * 10 }),
+      clearRect: () => {},
+      strokeText: () => {},
+      fillText: () => {}
+    })
+  };
+  const renderer = new DanmakuRenderer(mockCanvas, normalizeDanmaku({ enabled: true, showSender: true }));
+  renderer.start();
+  renderer.add({ nn: "用户张三", txt: "这是一条测试弹幕" });
+
+  assert.equal(renderer.items.length, 1);
+  assert.equal(renderer.items[0].sender, "用户张三: ");
+  assert.equal(renderer.items[0].text, "这是一条测试弹幕");
+  assert.ok(renderer.items[0].senderWidth > 0);
+  assert.equal(renderer.items[0].width, renderer.items[0].senderWidth + renderer.items[0].textWidth);
+  renderer.stop();
+
+  // 关闭 showSender 时不渲染昵称
+  const rendererNoSender = new DanmakuRenderer(mockCanvas, normalizeDanmaku({ enabled: true, showSender: false }));
+  rendererNoSender.start();
+  rendererNoSender.add({ nn: "用户张三", txt: "这是一条测试弹幕" });
+  assert.equal(rendererNoSender.items.length, 1);
+  assert.equal(rendererNoSender.items[0].sender, "");
+  assert.equal(rendererNoSender.items[0].senderWidth, 0);
+  rendererNoSender.stop();
 });

@@ -7,6 +7,9 @@ export function syncDanmakuFields(ctx, tile) {
   find("[data-dm-opacity]").value = String(tile.danmaku.opacity);
   ctx.paintSlider(find("[data-dm-opacity]"));
   find("[data-dm-area]").value = String(tile.danmaku.area);
+  if (find("[data-dm-sender]")) {
+    find("[data-dm-sender]").checked = tile.danmaku.showSender !== false;
+  }
   find("[data-dm-blocked]").value = tile.danmaku.blockedWords.join("\n");
 }
 
@@ -20,6 +23,7 @@ export function readDanmakuFields(tile) {
   tile.dmStatus.textContent = "";
   return normalizeDanmaku({
     enabled: tile.danmaku.enabled,
+    showSender: find("[data-dm-sender]") ? find("[data-dm-sender]").checked : true,
     size: Number(find("[data-dm-size]").value),
     speed: Number(find("[data-dm-speed]").value),
     opacity: Number(find("[data-dm-opacity]").value),
@@ -50,6 +54,7 @@ export function bindTileDanmaku(ctx, tile) {
   for (const selector of ["[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) {
     find(selector).addEventListener("change", handleDanmakuOptions);
   }
+  find("[data-dm-sender]")?.addEventListener("change", handleDanmakuOptions);
   find("[data-dm-opacity]").addEventListener("input", handleDanmakuOptions);
   find("[data-dm-blocked]").addEventListener("change", handleDanmakuOptions);
 

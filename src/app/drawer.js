@@ -42,15 +42,23 @@ export function initDrawer(ctx) {
     query("[data-dm-opacity]").value = String(ctx.danmakuDefaults.opacity);
     ctx.paintSlider(query("[data-dm-opacity]"));
     query("[data-dm-area]").value = String(ctx.danmakuDefaults.area);
+    if (query("[data-dm-defaults-sender]")) {
+      query("[data-dm-defaults-sender]").checked = ctx.danmakuDefaults.showSender !== false;
+    }
     query("[data-dm-blocked]").value = ctx.danmakuDefaults.blockedWords.join("\n");
   };
   const readDrawerDanmaku = () => normalizeDanmaku({
     enabled: true,
+    showSender: query("[data-dm-defaults-sender]") ? query("[data-dm-defaults-sender]").checked : true,
     size: Number(query("[data-dm-size]").value),
     speed: Number(query("[data-dm-speed]").value),
     opacity: Number(query("[data-dm-opacity]").value),
     area: Number(query("[data-dm-area]").value),
     blockedWords: query("[data-dm-blocked]").value.split(/[\n,，]/).map((word) => word.trim()).filter(Boolean)
+  });
+  query("[data-dm-defaults-sender]")?.addEventListener("change", () => {
+    ctx.danmakuDefaults = readDrawerDanmaku();
+    ctx.save();
   });
   for (const selector of ["[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) query(selector).addEventListener("change", () => {
     ctx.danmakuDefaults = readDrawerDanmaku();

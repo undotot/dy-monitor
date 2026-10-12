@@ -80,6 +80,7 @@ export function shellMarkup() {
                   <label class="fitem">透明度 <input data-dm-opacity type="range" min="0.1" max="1" step="0.1" class="slider" style="width:96px"></label>
                   <label class="fitem">区域 <select data-dm-area class="sel sel-sm">${areaOptions}</select></label>
                 </div>
+                <label class="switchrow" style="margin-top:7px"><span>显示发送者昵称</span><span class="switch"><input data-dm-defaults-sender type="checkbox" checked><i></i></span></label>
                 <textarea data-dm-blocked class="p-textarea" maxlength="2048" rows="2" placeholder="屏蔽词，每行一个，或用逗号分隔" style="margin-top:9px"></textarea>
                 <div class="frow" style="margin-top:9px"><button data-dm-defaults-save class="btn mini">保存为默认</button><button data-dm-apply-all class="btn mini">应用到全部房间</button></div>
               </section>

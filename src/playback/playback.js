@@ -13,7 +13,9 @@ export function initPlayback(ctx) {
     tile.danmakuClient = null;
     tile.renderer?.stop();
     tile.video.onplaying = null;
+    tile.video.onwaiting = null;
     tile.video.onerror = null;
+    if (tile.loadingEl) tile.loadingEl.hidden = true;
     clearInterval(tile.watch);
     clearTimeout(tile.retryTimer);
     clearTimeout(tile.stableTimer);
@@ -165,6 +167,12 @@ export function initPlayback(ctx) {
         if (!tile.stableTimer) tile.stableTimer = setTimeout(() => {
           if (current()) tile.attempt = 0;
         }, 3e4);
+      };
+      tile.video.onwaiting = () => {
+        if (!current()) return;
+        if (tile.state === "playing") {
+          ctx.setStatus(tile, "buffering", "正在缓冲…");
+        }
       };
       tile.video.onerror = () => {
         if (current()) handleFailure(new Error("④ 浏览器解码失败，请尝试关闭 H.265"));

@@ -6,6 +6,7 @@ import { roomDisplayName } from "../core/room-name.js";
 // 直播中=绿、轮播中=琥珀、未开播=灰；取流排队等瞬态用蓝点，不与三态混淆；异常=红。
 const stateMeta = {
   playing: { dot: "g", label: "直播中" },
+  buffering: { dot: "w", label: "缓冲中" },
   reconnecting: { dot: "w", label: "重连中" },
   signing: { dot: "w", label: "正在取流" },
   connecting: { dot: "w", label: "连接中" },
@@ -32,6 +33,13 @@ export function initStatus(ctx) {
     tile.noteEl.textContent = tile.noteEl.hidden ? "" : message;
     tile.noteEl.classList.toggle("is-failed", state === "failed");
     tile.retryEl.hidden = !(state === "reconnecting" && tile.retryAt);
+    const isLoading = ["queued", "probing", "signing", "connecting", "reconnecting", "buffering"].includes(state);
+    if (tile.loadingEl) {
+      tile.loadingEl.hidden = !isLoading;
+      if (isLoading && tile.loadingText) {
+        tile.loadingText.textContent = message || (state === "reconnecting" ? "重试连接中…" : state === "buffering" ? "正在缓冲…" : "正在连接…");
+      }
+    }
     ctx.updateCount();
   };
 

@@ -13,6 +13,7 @@ export const tileMarkup = () => `
 </div>
 <video muted playsinline class="tile-video" aria-label="直播画面"></video>
 <canvas aria-hidden="true" class="tile-dm"></canvas>
+<div class="tile-loading" data-loading hidden aria-label="正在加载直播"><div class="tile-spinner"></div><span class="tile-loading-text" data-loading-text>正在连接…</span></div>
 <div class="tile-retry" data-retry hidden><span data-retry-text></span><button data-t-retry-now type="button" class="btn mini">立即重试</button></div>
 <div class="tile-feedback" data-note role="status" hidden></div>
 <div class="tile-overlay">
@@ -39,6 +40,7 @@ export const tileMarkup = () => `
       <label>速度 <select data-dm-speed class="sel sel-sm"></select></label>
       <label>透明度 <input data-dm-opacity type="range" min="0.1" max="1" step="0.1" class="slider" style="width:110px"></label>
       <label>显示区域 <select data-dm-area class="sel sel-sm"></select></label>
+      <label class="switchrow" style="margin-top:2px"><span>显示发送者昵称</span><span class="switch"><input data-dm-sender type="checkbox" checked><i></i></span></label>
       <label style="flex-direction:column;align-items:stretch;gap:6px">屏蔽词<textarea data-dm-blocked class="p-textarea" maxlength="2048" placeholder="每行一个，或用逗号分隔"></textarea></label>
       <p data-dm-status class="p-alert" role="status"></p>
       <div class="frow"><button data-dm-reset type="button" class="btn mini">恢复弹幕默认</button><button data-dm-apply-all type="button" class="btn mini">应用到全部</button></div>

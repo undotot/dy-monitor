@@ -84,6 +84,7 @@ export function initTile(ctx) {
       retrying: false, retryAt: 0, retryTimer: null, watch: null, stableTimer: null, lastProbe: 0,
       dotEl: find("[data-dot]"), nameEl: find("[data-name]"),
       noteEl: find("[data-note]"), retryEl: find("[data-retry]"), retryText: find("[data-retry-text]"),
+      loadingEl: find("[data-loading]"), loadingText: find("[data-loading-text]"),
       muteBtn: find("[data-t-mute]"), volSlider: find("[data-t-vol]"), audioCorner: find("[data-audio-corner]"),
       resumeBtn: find("[data-t-resume]"), soloBtn: find("[data-t-solo]"), danmakuBtn: find("[data-t-danmaku]"),
       rateSel: find("[data-t-rate]"), pipButton: find("[data-t-pip]"), settingsBtn: find("[data-t-settings]"),

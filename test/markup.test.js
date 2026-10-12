@@ -10,7 +10,8 @@ test("tileMarkup 关键节点齐全", () => {
   const m = tileMarkup();
   for (const token of [
     "data-drag", "data-dot", "data-t-vol", "data-t-solo", "data-t-danmaku",
-    "data-t-pip", "data-t-retry-now", "data-dm-apply-all", "data-tile-settings"
+    "data-t-pip", "data-t-retry-now", "data-dm-apply-all", "data-tile-settings",
+    "data-loading", "data-loading-text", "data-dm-sender"
   ]) assert.ok(m.includes(token), `缺少 ${token}`);
 });
 
@@ -24,7 +25,8 @@ test("shellMarkup 三层架构与恢复提示钩子齐全", () => {
   for (const token of [
     "data-entry", "data-dialog", "data-wall", "data-drawer",
     "data-add-panel", "data-ctx", "data-toast", "data-resume-prompt",
-    "data-resume-title", "data-resume-yes", "data-resume-no"
+    "data-resume-title", "data-resume-yes", "data-resume-no",
+    "data-dm-defaults-sender"
   ]) assert.ok(m.includes(token), `缺少 ${token}`);
 });
 
