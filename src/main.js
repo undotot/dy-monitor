@@ -21,6 +21,7 @@ import { initKeyboard } from "./app/keyboard.js";
 import { initTopbar } from "./app/topbar.js";
 import { initShell } from "./app/shell.js";
 import { initLiveWatcher } from "./app/live-watcher.js";
+import { initUpdater } from "./app/updater.js";
 
 const bootstrap = () => {
   if (window.top !== window.self || location.origin !== API_BASE) return;
@@ -89,6 +90,7 @@ const bootstrap = () => {
   initTopbar(ctx);
   initShell(ctx);
   initLiveWatcher(ctx);
+  initUpdater(ctx);
 
   ctx.restoreWorkspace();
 };

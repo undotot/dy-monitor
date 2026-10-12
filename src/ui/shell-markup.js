@@ -1,4 +1,4 @@
-import { SCRIPT_VERSION } from "../core/settings.js";
+import { SCRIPT_VERSION, DOWNLOAD_USER_URL } from "../core/settings.js";
 import { iconMarkup } from "./icons.js";
 import { rateOptions, sizeOptions, speedOptions, areaOptions, capacityOptions } from "./options.js";
 
@@ -12,7 +12,25 @@ export function shellMarkup() {
           <div class="topbar-clip">
         <header class="topbar" id="douyu-monitor-topbar" data-topbar>
           <div class="tb-left">
-            <span class="logo">斗</span><span class="brand">监控室</span><span class="ver">MONITOR / ${SCRIPT_VERSION}</span>
+            <span class="logo">斗</span><span class="brand">监控室</span>
+            <div class="ver-badge-wrap" data-update-wrap>
+              <a href="${DOWNLOAD_USER_URL}" target="_blank" rel="noopener noreferrer" class="ver" data-ver-badge title="当前版本 v${SCRIPT_VERSION}">
+                <span class="ver-pulse-dot" data-ver-dot hidden></span>
+                <span class="ver-text">MONITOR / ${SCRIPT_VERSION}</span>
+                <span class="ver-new-tag" data-ver-tag hidden>NEW</span>
+              </a>
+              <div class="update-tooltip" data-update-tooltip hidden>
+                <div class="tooltip-header">
+                  <span class="tooltip-title">✨ 发现新版本</span>
+                  <span class="tooltip-version" data-remote-version>v...</span>
+                </div>
+                <div class="tooltip-body">
+                  <p>新版本已发布至 CDN 极速镜像。</p>
+                  <p>点击下方按钮即可调起油猴覆盖安装更新。</p>
+                </div>
+                <a href="${DOWNLOAD_USER_URL}" target="_blank" rel="noopener noreferrer" class="btn-upgrade">立即升级 (打开油猴安装)</a>
+              </div>
+            </div>
             <span class="meta" data-count></span><span class="meta-health ok" data-health></span>
           </div>
           <div class="tb-mid">

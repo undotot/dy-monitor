@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>监控室更新设计方案预览 · 三种设计方案对比</title>
+  <style>
+    :root {
+      --bg: #07080c;
+      --wall: #0a0c11;
+      --panel: rgba(15, 18, 26, 0.96);
+      --card: rgba(255, 255, 255, 0.045);
+      --card-hover: rgba(255, 255, 255, 0.09);
+      --line: rgba(255, 255, 255, 0.08);
+      --line2: rgba(255, 255, 255, 0.16);
+      --text: #eceef4;
+      --dim: #a3adc2;
+      --faint: #626c80;
+      --accent: #fb7299;
+      --accent2: #ff9d6b;
+      --grad: linear-gradient(135deg, #fb7299, #ff9d6b);
+      --green: #34d399;
+      --green-glow: rgba(52, 211, 153, 0.35);
+      --blue: #38bdf8;
+      --amber: #fbbf24;
+      --red: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .preview-header {
+      max-width: 1200px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .preview-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .preview-title p {
+      font-size: 13px;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+
+    .sim-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line2);
+    }
+    .sim-controls span {
+      font-size: 12px;
+      color: var(--dim);
+    }
+    .btn-sim {
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line2);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-sim:hover { background: rgba(255, 255, 255, 0.16); }
+    .btn-sim.active {
+      background: var(--green);
+      color: #000;
+      font-weight: 600;
+      border-color: var(--green);
+      box-shadow: 0 0 12px var(--green-glow);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .section-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    /* ===== 公共仿监控室顶部栏 ===== */
+    .mock-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(13, 16, 24, 0.98);
+      border: 1px solid var(--line2);
+      border-radius: 10px;
+      padding: 8px 16px;
+      position: relative;
+    }
+
+    .tb-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .mock-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--grad);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(251, 113, 153, 0.3);
+    }
+    .mock-brand {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .mock-meta {
+      font-size: 12px;
+      color: var(--dim);
+      margin-left: 8px;
+    }
+
+    .tb-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mock-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .mock-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ======================================================== */
+    /* 方案 A: 顶栏版本徽标呼吸灯 + Hover 浮动卡片 */
+    /* ======================================================== */
+    .ver-badge-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .ver-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--dim);
+      border: 1px solid var(--line2);
+      border-radius: 999px;
+      padding: 2px 10px;
+      letter-spacing: 0.05em;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-decoration: none;
+    }
+    .ver-badge:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* 发现新版本状态 */
+    .ver-badge.has-update {
+      border-color: var(--green);
+      color: #fff;
+      background: rgba(52, 211, 153, 0.1);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.2);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      position: relative;
+    }
+    .ver-badge.has-update .pulse-dot::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: var(--green);
+      opacity: 0.7;
+      animation: pulse 1.6s infinite ease-out;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    .new-tag {
+      font-size: 9px;
+      font-weight: 800;
+      color: #000;
+      background: var(--green);
+      padding: 0 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      line-height: 14px;
+    }
+
+    /* 悬停浮层卡片 */
+    .update-tooltip {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 250px;
+      background: rgba(18, 22, 32, 0.98);
+      border: 1px solid var(--line2);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(12px);
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .ver-badge-wrap:hover .update-tooltip {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .tooltip-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .tooltip-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tooltip-body {
+      font-size: 12px;
+      color: var(--dim);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .tooltip-body li {
+      margin-left: 16px;
+      margin-top: 3px;
+    }
+    .btn-upgrade {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 6px 0;
+      background: var(--green);
+      color: #061e14;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 0;
+      cursor: pointer;
+      text-decoration: none;
+      transition: filter 0.2s;
+    }
+    .btn-upgrade:hover { filter: brightness(1.1); }
+
+    /* ======================================================== */
+    /* 方案 B: 设置抽屉底部「关于与更新」卡片 */
+    /* ======================================================== */
+    .mock-drawer-container {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .mock-drawer {
+      width: 320px;
+      background: rgba(14, 18, 26, 0.98);
+      border: 1px solid var(--line2);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .drawer-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mock-fake-section {
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--faint);
+      border: 1px dashed var(--line);
+      text-align: center;
+    }
+
+    .about-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--line2);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .about-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .about-info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--dim);
+    }
+    .about-info-row b { color: var(--text); }
+
+    .check-btn-wrap {
+      margin-top: 12px;
+    }
+    .btn-check-update {
+      width: 100%;
+      padding: 8px 0;
+      border-radius: 6px;
+      border: 1px solid var(--line2);
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-check-update:hover { background: rgba(255, 255, 255, 0.12); }
+    .btn-check-update.has-new {
+      background: var(--green);
+      border-color: var(--green);
+      color: #061e14;
+      box-shadow: 0 0 14px var(--green-glow);
+    }
+
+    .check-status-text {
+      font-size: 11px;
+      text-align: center;
+      margin-top: 6px;
+      color: var(--dim);
+    }
+
+    /* ======================================================== */
+    /* 方案 C: 右下角轻量浮层 Toast 通知条 */
+    /* ======================================================== */
+    .mock-wall-preview {
+      height: 220px;
+      background: #040508;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--faint);
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    .update-toast {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: 320px;
+      background: rgba(16, 20, 30, 0.95);
+      border: 1px solid var(--line2);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .toast-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toast-badge {
+      background: var(--green);
+      color: #000;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .toast-close {
+      background: transparent;
+      border: 0;
+      color: var(--dim);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .toast-desc {
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.4;
+    }
+    .toast-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-toast {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-toast.secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--dim);
+    }
+    .btn-toast.primary {
+      background: var(--green);
+      border: 1px solid var(--green);
+      color: #061e14;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="preview-header">
+    <div class="preview-title">
+      <h1>斗鱼监控室 · 自动更新交互方案预览</h1>
+      <p>对比三种设计方案在视觉侵入度、交互路径与体验上的差异</p>
+    </div>
+    <div class="sim-controls">
+      <span>演示控制：</span>
+      <button class="btn-sim active" id="btn-toggle-update">模拟检测到新版本 (v1.2.21)</button>
+      <button class="btn-sim" id="btn-reset">重置为最新版状态</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- 方案 A: 顶栏版本徽标呼吸灯 -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>🥇 方案 A：左上角版本徽标（静默呼吸灯 + 悬停气泡卡片）</span>
+      </div>
+      <div class="section-desc">
+        <b>推荐理由：</b>平时完全不侵占黄金视线；检测到新版时点亮柔和的绿灯与微光，鼠标移上去即可查看变更要点并一键升级，沉浸感最好。
+      </div>
+
+      <div class="mock-topbar">
+        <div class="tb-left">
+          <div class="mock-logo">斗</div>
+          <span class="mock-brand">监控室</span>
+
+          <!-- 方案 A 核心组件 -->
+          <div class="ver-badge-wrap">
+            <a href="https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js" target="_blank" class="ver-badge has-update" id="badge-a">
+              <span class="pulse-dot" id="dot-a"></span>
+              <span id="ver-text-a">MONITOR / v1.2.20</span>
+              <span class="new-tag" id="tag-a">NEW</span>
+            </a>
+
+            <!-- 悬停弹出的更新卡片 -->
+            <div class="update-tooltip" id="tooltip-a">
+              <div class="tooltip-header">
+                <span class="tooltip-title">✨ 发现新版本</span>
+                <span style="font-size: 11px; color: var(--dim)">v1.2.21</span>
+              </div>
+              <ul class="tooltip-body">
+                <li>优化团播成员开播动态置顶排序</li>
+                <li>修复右上角音量胶囊微调交互</li>
+                <li>代码瘦身与加载速度提升</li>
+              </ul>
+              <a href="https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js" target="_blank" class="btn-upgrade">立即升级 (打开油猴安装)</a>
+            </div>
+          </div>
+
+          <span class="mock-meta">共 6 间 · 🟢 运行中</span>
+        </div>
+
+        <div class="tb-actions">
+          <button class="mock-btn">全部播放</button>
+          <button class="mock-btn primary">添加房间</button>
+          <button class="mock-btn">设置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 方案 B: 设置抽屉「关于与更新」卡片 -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>🥈 方案 B：设置抽屉（Drawer）底部「关于与更新」卡片</span>
+      </div>
+      <div class="section-desc">
+        <b>推荐理由：</b>符合工具类软件的操作直觉（用户主动去“设置”中检查更新），提供手动点击与状态反馈，最适合作为兜底手段。
+      </div>
+
+      <div class="mock-drawer-container">
+        <div class="mock-drawer">
+          <div class="drawer-title">
+            <span>设置</span>
+            <span style="color:var(--faint); font-size:12px">×</span>
+          </div>
+
+          <div class="mock-fake-section">播放与并发设置（模拟区域）</div>
+          <div class="mock-fake-section">弹幕与过滤屏蔽词（模拟区域）</div>
+
+          <!-- 方案 B 核心组件 -->
+          <div class="about-card">
+            <div class="about-card-title">
+              <span>ℹ️ 关于与更新</span>
+            </div>
+            <div class="about-info-row">
+              <span>当前版本</span>
+              <b id="drawer-ver">v1.2.20</b>
+            </div>
+            <div class="about-info-row">
+              <span>分发渠道</span>
+              <span>jsDelivr CDN (极速)</span>
+            </div>
+
+            <div class="check-btn-wrap">
+              <button class="btn-check-update has-new" id="btn-check-drawer">
+                <span id="btn-check-icon">🚀</span>
+                <span id="btn-check-text">发现新版本 v1.2.21 (点击更新)</span>
+              </button>
+              <div class="check-status-text" id="check-status-tip">点击将拉取油猴脚本覆盖升级</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; padding:20px; font-size:13px; color:var(--dim); line-height:1.7">
+          <h4 style="color:#fff; margin-bottom:8px">方案 B 特性解析：</h4>
+          <p>• <b>主动权完全在用户手中</b>：不产生任何悬停弹出物或红点，强迫症用户友好；</p>
+          <p>• <b>状态自解释明确</b>：点击后可模拟「检查中... → 已经是最新版 / 发现新版」的不同状态；</p>
+          <p>• <b>建议搭配</b>：强烈建议与方案 A 组合使用（平时通过左上角微光感知，进入设置面板时同样能查验）。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 方案 C: 右下角轻量浮层 Toast 通知条 -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>🥉 方案 C：右下角轻量 Toast 浮动通知条</span>
+      </div>
+      <div class="section-desc">
+        <b>推荐理由：</b>新版本发布后进入监控室时仅轻弹一次（3 秒后自动淡出或手动关闭），信息呈现最完整直白。
+      </div>
+
+      <div class="mock-wall-preview">
+        <span>多路监看画格区域（模拟监控画面）</span>
+
+        <!-- 方案 C 核心组件 -->
+        <div class="update-toast" id="toast-c">
+          <div class="toast-top">
+            <span class="toast-title">
+              <span>监控室有新版本</span>
+              <span class="toast-badge">v1.2.21</span>
+            </span>
+            <button class="toast-close" onclick="document.getElementById('toast-c').style.display='none'">✕</button>
+          </div>
+          <div class="toast-desc">
+            新版本已发布：优化团播排序与音量滑块微调，推荐立即更新。
+          </div>
+          <div class="toast-actions">
+            <button class="btn-toast secondary" onclick="document.getElementById('toast-c').style.display='none'">稍后提醒</button>
+            <a href="https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js" target="_blank" class="btn-toast primary" style="text-decoration:none">立即更新</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const btnToggle = document.getElementById('btn-toggle-update');
+    const btnReset = document.getElementById('btn-reset');
+
+    const badgeA = document.getElementById('badge-a');
+    const dotA = document.getElementById('dot-a');
+    const tagA = document.getElementById('tag-a');
+    const tooltipA = document.getElementById('tooltip-a');
+
+    const btnCheckDrawer = document.getElementById('btn-check-drawer');
+    const btnCheckText = document.getElementById('btn-check-text');
+    const btnCheckIcon = document.getElementById('btn-check-icon');
+    const checkStatusTip = document.getElementById('check-status-tip');
+
+    const toastC = document.getElementById('toast-c');
+
+    let hasUpdate = true;
+
+    function applyState() {
+      if (hasUpdate) {
+        btnToggle.classList.add('active');
+        btnReset.classList.remove('active');
+
+        // 方案 A 有更新
+        badgeA.classList.add('has-update');
+        dotA.style.display = 'inline-block';
+        tagA.style.display = 'inline-block';
+        tooltipA.style.display = 'block';
+
+        // 方案 B 有更新
+        btnCheckDrawer.classList.add('has-new');
+        btnCheckIcon.textContent = '🚀';
+        btnCheckText.textContent = '发现新版本 v1.2.21 (点击更新)';
+        checkStatusTip.textContent = '点击将拉取油猴脚本覆盖升级';
+
+        // 方案 C 显示
+        toastC.style.display = 'flex';
+      } else {
+        btnToggle.classList.remove('active');
+        btnReset.classList.add('active');
+
+        // 方案 A 无更新
+        badgeA.classList.remove('has-update');
+        dotA.style.display = 'none';
+        tagA.style.display = 'none';
+        tooltipA.style.display = 'none';
+
+        // 方案 B 无更新
+        btnCheckDrawer.classList.remove('has-new');
+        btnCheckIcon.textContent = '🔍';
+        btnCheckText.textContent = '检查更新';
+        checkStatusTip.textContent = '当前已是最新版本 (v1.2.20)';
+
+        // 方案 C 隐藏
+        toastC.style.display = 'none';
+      }
+    }
+
+    btnToggle.addEventListener('click', () => {
+      hasUpdate = true;
+      applyState();
+    });
+
+    btnReset.addEventListener('click', () => {
+      hasUpdate = false;
+      applyState();
+    });
+
+    // 抽屉模拟检查逻辑
+    btnCheckDrawer.addEventListener('click', () => {
+      if (!hasUpdate) {
+        btnCheckText.textContent = '正在连接 CDN 检查...';
+        setTimeout(() => {
+          btnCheckText.textContent = '✅ 当前已是最新版本';
+          setTimeout(() => {
+            btnCheckText.textContent = '检查更新';
+          }, 2000);
+        }, 600);
+      } else {
+        window.open('https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js', '_blank');
+      }
+    });
+
+    applyState();
+  </script>
+</body>
+</html>

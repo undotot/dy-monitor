@@ -64,3 +64,7 @@ export const safeMessage = (error) => String(error?.message || error).replace(/h
 export const API_BASE = "https://www.douyu.com";
 
 export const DEFAULT_DID = "10000000000000000000000000001501";
+
+export const UPDATE_META_URL = "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js";
+
+export const DOWNLOAD_USER_URL = "https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js";

@@ -108,6 +108,16 @@ try {
   // 仅复制打包后的两份核心 JS 产物与一份简短 README
   copyFileSync(join(root, "dist", "douyu-monitor.user.js"), join(deployTmpDir, "douyu-monitor.user.js"));
   copyFileSync(join(root, "dist", "douyu-monitor.meta.js"), join(deployTmpDir, "douyu-monitor.meta.js"));
+
+  // 同步输出发版交付物至 D:/PROJECT/mom/ 根目录
+  try {
+    const momRoot = join(root, "..");
+    copyFileSync(join(root, "dist", "douyu-monitor.user.js"), join(momRoot, "监控室.user.js"));
+    copyFileSync(join(root, "dist", "douyu-monitor.user.js"), join(momRoot, `监控室-${version}.txt`));
+    console.log(`✓ 已同步输出交付物至: D:/PROJECT/mom/监控室.user.js 和 监控室-${version}.txt`);
+  } catch (err) {
+    console.warn(`⚠ 拷贝交付物至上层目录警告: ${err.message}`);
+  }
   
   const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **脚本下载安装**：[douyu-monitor.user.js](https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
   writeFileSync(join(deployTmpDir, "README.md"), distReadme, "utf8");
