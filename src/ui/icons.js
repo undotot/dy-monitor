@@ -18,6 +18,8 @@ export const paths = {
   chatOff: '<path d="m3 3 18 18M3 7v14l6-4h5M8 3h10a3 3 0 0 1 3 3v8M10 8h7"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  chevup: '<path d="m5 15 7-7 7 7"/>',
+  chevdown: '<path d="m5 9 7 7 7-7"/>',
   chevr: '<path d="m15 5-7 7 7 7"/>',
   chevrr: '<path d="m9 5 7 7-7 7"/>',
   external: '<path d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>',

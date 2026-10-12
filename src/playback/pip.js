@@ -1,6 +1,8 @@
 import MONITOR_CSS from "../ui/styles.css";
 import { setIconButton } from "../ui/icons.js";
 import { safeMessage } from "../core/settings.js";
+import { clearTileGeometry } from "../ui/tile-geometry.js";
+import { roomDisplayName } from "../core/room-name.js";
 
 // Document Picture-in-Picture：画格迁入独立窗口播放，网页原位留占位。
 export function initPip(ctx) {
@@ -49,7 +51,7 @@ export function initPip(ctx) {
       const pipStyle = pipDocument.createElement("style");
       pipStyle.textContent = MONITOR_CSS;
       pipDocument.head.append(pipStyle);
-      pipDocument.title = `斗鱼 · ${tile.rid}`;
+      pipDocument.title = `斗鱼 · ${roomDisplayName(tile)}`;
       pipDocument.body.className = "pip-body";
       const container = pipDocument.createElement("div");
       container.className = "pip-container";
@@ -57,15 +59,17 @@ export function initPip(ctx) {
       placeholder.className = tile.root.className;
       const marker = document.createElement("span");
       marker.className = "pip-marker";
-      marker.textContent = `${tile.rid} · 画中画播放中`;
+      marker.textContent = `${roomDisplayName(tile)} · 画中画播放中`;
       placeholder.append(marker);
       tile.renderer.stop();
       tile.root.replaceWith(placeholder);
       tile.root.className = "tile-shell";
+      clearTileGeometry(tile.root);
       container.append(tile.root);
       pipDocument.body.append(container);
       const session = { tile, window: pipWindow, placeholder };
       ctx.pipSession = session;
+      ctx.handleLayout();
       setIconButton(tile.pipButton, "return", "返回网页");
       pipWindow.addEventListener("pagehide", () => ctx.handleRestorePip(session), { once: true });
       if (tile.danmaku.enabled) tile.renderer.start();

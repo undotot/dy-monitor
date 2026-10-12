@@ -1,6 +1,6 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { loadHistory, recordHistory } from "../src/api/history.js";
+import { loadHistory, recordHistory, clearHistory } from "../src/api/history.js";
 
 const store = new Map();
 globalThis.GM_getValue = (key, fallback) => (store.has(key) ? store.get(key) : fallback);
@@ -24,6 +24,14 @@ test("loadHistory 过滤非法房号", () => {
   assert.equal(list[0].rid, "12345");
 });
 
+test("只更新房号不覆盖已获取的用户名和头像", () => {
+  recordHistory("7788", "主播甲", "https://x/avatar.png");
+  recordHistory("7788");
+  const [entry] = loadHistory();
+  assert.equal(entry.name, "主播甲");
+  assert.equal(entry.ava, "https://x/avatar.png");
+});
+
 test("存储不可用时 loadHistory 返回空数组", () => {
   const get = globalThis.GM_getValue;
   globalThis.GM_getValue = () => { throw new Error("denied"); };
@@ -34,3 +42,11 @@ test("存储不可用时 loadHistory 返回空数组", () => {
     globalThis.GM_getValue = get;
   }
 });
+
+test("clearHistory 成功清空本地历史房号", () => {
+  recordHistory("123", "测试主播");
+  assert.equal(loadHistory().length, 1);
+  assert.equal(clearHistory(), true);
+  assert.equal(loadHistory().length, 0);
+});
+

@@ -39,11 +39,15 @@ export const Scheduler = class {
   }
   sign(task, signal) {
     if (signal.aborted) return Promise.reject(new DOMException("\u5DF2\u53D6\u6D88", "AbortError"));
+    let executed = false;
     const result = this.tail.then(() => {
       if (signal.aborted) throw new DOMException("\u5DF2\u53D6\u6D88", "AbortError");
+      executed = true;
       return task();
     });
-    this.tail = result.catch(() => void 0).then(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    this.tail = result.catch(() => void 0).then(() => {
+      if (executed) return new Promise((resolve) => setTimeout(resolve, 500));
+    });
     return new Promise((resolve, reject) => {
       const handleAbort = () => reject(new DOMException("\u5DF2\u53D6\u6D88", "AbortError"));
       signal.addEventListener("abort", handleAbort, { once: true });

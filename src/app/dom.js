@@ -1,3 +1,5 @@
+import { roomDisplayName } from "../core/room-name.js";
+
 // 基础工具：滑杆着色、诊断日志、提示条、提示音。
 export function initDom(ctx) {
   const { els } = ctx;
@@ -7,7 +9,8 @@ export function initDom(ctx) {
   };
 
   ctx.log = (rid, message) => {
-    ctx.logs.push(`${new Date().toLocaleTimeString()} ${rid ? `[${rid}] ` : ""}${message}`);
+    const tile = [...ctx.tiles.values()].find((entry) => entry.rid === String(rid));
+    ctx.logs.push(`${new Date().toLocaleTimeString()} ${rid ? `[${tile ? roomDisplayName(tile) : "直播间"}] ` : ""}${message}`);
     if (ctx.logs.length > 150) ctx.logs.shift();
     els.logs.textContent = ctx.logs.join("\n");
     els.logCount.textContent = String(ctx.logs.length);

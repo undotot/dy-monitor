@@ -53,7 +53,7 @@ const bootstrap = () => {
   const query = (selector) => wrapper.querySelector(selector);
   const dialog = query("[data-dialog]"), wall = query("[data-wall]"), appShell = query(".app-shell");
   const els = {
-    wall, wallResize: query("[data-wall-resize]"),
+    wall,
     count: query("[data-count]"), health: query("[data-health]"),
     drawer: query("[data-drawer]"), controlsButton: query("[data-controls-toggle]"),
     addPanel: query("[data-add-panel]"), addList: query("[data-add-list]"), addStatus: query("[data-add-status]"),

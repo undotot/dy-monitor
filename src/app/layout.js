@@ -1,114 +1,167 @@
-// 选择与焦点 + 布局计算。
-// 平铺：布局模式 1–4 列或 auto（√n 夹取 1..4）；放大：主格 + 侧栏（默认 280px），主格跨全部行。
-// 放大时主格与侧栏的分界线可拖动调宽，无图标，只靠 col-resize 光标示意。
-
-// 侧栏宽度夹取：自由调整；唯一约束是主格不得窄于缩小的侧栏（侧栏 ≤ 墙宽一半），
-// 另留 120px 可用性下限，避免侧栏拖到不可用。
-export const clampSidebarWidth = (wallWidth, desired) => {
-  const min = 120;
-  const max = Math.max(min, Math.floor(wallWidth / 2));
-  return Math.round(Math.min(max, Math.max(min, desired)));
-};
+import { calculateFocusLayout } from "../core/focus-layout.js";
+import { clearTileGeometry } from "../ui/tile-geometry.js";
 
 export function initLayout(ctx) {
-  ctx.sidebarWidth = 280; // 会话内记住，不写入存档
-  ctx.wallResize = ctx.els?.wallResize || null;
+  const doc = ctx.wall.ownerDocument;
+  const clock = doc.defaultView;
+  const regions = {};
+  for (const [name, label] of [["right", "右侧小直播间"], ["bottom", "底部小直播间"]]) {
+    const region = doc.createElement("section");
+    region.className = "focus-region";
+    region.dataset.focusRegion = name;
+    region.setAttribute("aria-label", label);
+    region.tabIndex = 0;
+    region.hidden = true;
+    const content = doc.createElement("div");
+    content.className = "focus-content";
+    region.append(content);
+    ctx.wall.append(region);
+    regions[name] = { root: region, content };
+  }
+  const hint = doc.createElement("span");
+  hint.className = "focus-size-hint";
+  hint.dataset.focusHint = "";
+  hint.setAttribute("role", "status");
+  hint.textContent = "窗口较小：画面已统一缩放，所有房间保持同屏";
+  hint.hidden = true;
+  ctx.wall.append(hint);
+
+  const gridRootOf = (tile) => ctx.pipSession?.tile === tile ? ctx.pipSession.placeholder : tile.root;
+  const moveRoot = (parent, root, reorder = false) => {
+    if (root.parentElement === parent && !reorder) return;
+    const video = root.querySelector("video");
+    const wasPlaying = video && !video.paused;
+    // 支持 moveBefore 的浏览器保留媒体播放状态，旧浏览器复用节点并恢复播放。
+    if (parent.moveBefore && parent.isConnected && root.isConnected && parent.ownerDocument === root.ownerDocument) parent.moveBefore(root, null);
+    else parent.append(root);
+    if (wasPlaying && video.paused) void video.play().catch(() => ctx.log?.("", "布局调整后视频未能自动继续，请点击播放"));
+  };
 
   ctx.select = (tileOrId) => {
     const id = typeof tileOrId === "string" ? tileOrId : tileOrId?.id ?? null;
     ctx.selectedId = id && ctx.tiles.has(id) ? id : null;
-    for (const tile of ctx.tiles.values()) tile.root.classList.toggle("is-selected", tile.id === ctx.selectedId);
+    for (const tile of ctx.tiles.values()) {
+      const selected = tile.id === ctx.selectedId;
+      tile.root.classList.toggle("is-selected", selected);
+      if (selected) tile.root.setAttribute("aria-current", "true");
+      else tile.root.removeAttribute("aria-current");
+    }
     ctx.applyAudioAll();
   };
-
   ctx.setFocus = (id) => {
     ctx.focused = id && ctx.tiles.has(id) ? id : null;
     ctx.handleLayout();
     ctx.applyAudioAll();
   };
-
   ctx.toggleFocus = (tile) => ctx.setFocus(ctx.focused === tile.id ? null : tile.id);
-
   ctx.syncLayoutRadios = () => {
-    for (const input of ctx.wrapper.querySelectorAll("[name=layout-preset]")) {
-      input.checked = String(input.value) === String(ctx.layoutMode);
-    }
+    for (const input of ctx.wrapper.querySelectorAll("[name=layout-preset]")) input.checked = String(input.value) === String(ctx.layoutMode);
   };
 
   ctx.handleLayout = () => {
     const list = [...ctx.tiles.values()];
-    const n = list.length;
-    const focusedMode = Boolean(ctx.focused && ctx.tiles.has(ctx.focused) && n > 1);
+    const focusedMode = Boolean(ctx.focused && ctx.tiles.has(ctx.focused) && list.length > 1);
     ctx.wall.classList.toggle("is-focused", focusedMode);
-    const gridRootOf = (tile) => (ctx.pipSession?.tile === tile ? ctx.pipSession.placeholder : tile.root);
+    hint.hidden = true;
     if (!focusedMode) {
-      const columns = ctx.layoutMode === "auto"
-        ? Math.max(1, Math.min(4, Math.ceil(Math.sqrt(Math.max(1, n)))))
-        : Math.max(1, Math.min(Number(ctx.layoutMode), Math.max(1, n)));
-      const rows = Math.max(1, Math.ceil(n / columns));
+      ctx.focusLayout = null;
+      ctx.wall.style.gap = "";
+      regions.right.root.hidden = true;
+      regions.bottom.root.hidden = true;
+      const total = Math.max(1, list.length);
+      let columns, rows;
+      if (ctx.layoutMode === "auto") {
+        // 平铺格子尽量 16:9：枚举行列组合取格子比例最接近 16:9 者；
+        // 空格子按面积占比加权惩罚，避免为凑比例空掉大片墙。
+        columns = Math.max(1, Math.min(4, Math.ceil(Math.sqrt(total))));
+        rows = Math.max(1, Math.ceil(total / columns));
+        const rect = ctx.wall.getBoundingClientRect();
+        const width = rect.width || ctx.wall.clientWidth;
+        const height = rect.height || ctx.wall.clientHeight;
+        if (width > 0 && height > 0) {
+          let bestScore = Infinity;
+          for (let cols = 1; cols <= total; cols++) {
+            for (let rowst = Math.ceil(total / cols); rowst <= total; rowst++) {
+              const cellRatio = (width / cols) / (height / rowst);
+              const score = Math.abs(cellRatio / (16 / 9) - 1) + 2 * ((cols * rowst - total) / (cols * rowst));
+              if (score < bestScore) { bestScore = score; columns = cols; rows = rowst; }
+            }
+          }
+        }
+      } else {
+        columns = Math.max(1, Math.min(Number(ctx.layoutMode), total));
+        rows = Math.max(1, Math.ceil(total / columns));
+      }
       ctx.wall.style.gridTemplateColumns = `repeat(${columns}, minmax(0,1fr))`;
       ctx.wall.style.gridTemplateRows = `repeat(${rows}, minmax(0,1fr))`;
       for (const tile of list) {
-        gridRootOf(tile).style.gridColumn = "";
-        gridRootOf(tile).style.gridRow = "";
+        const root = gridRootOf(tile);
+        moveRoot(ctx.wall, root);
+        clearTileGeometry(root);
         tile.root.classList.remove("is-focused");
       }
-    } else {
-      // 量不到墙宽时退回记录值；量得到则按当前墙宽夹取（窗口缩放不至于挤爆）
-      const wallW = ctx.wall.clientWidth;
-      const sideW = wallW > 0 ? clampSidebarWidth(wallW, ctx.sidebarWidth) : ctx.sidebarWidth;
-      const secondaries = list.filter((tile) => tile.id !== ctx.focused);
-      ctx.wall.style.gridTemplateColumns = `minmax(0,1fr) ${sideW}px`;
-      ctx.wall.style.gridTemplateRows = `repeat(${Math.max(1, secondaries.length)}, minmax(110px, 1fr))`;
-      for (const tile of list) {
-        const gridRoot = gridRootOf(tile);
-        if (tile.id === ctx.focused) {
-          gridRoot.style.gridColumn = "1";
-          gridRoot.style.gridRow = "1 / -1";
-          tile.root.classList.add("is-focused");
-        } else {
-          gridRoot.style.gridColumn = "2";
-          gridRoot.style.gridRow = String(secondaries.indexOf(tile) + 1);
-          tile.root.classList.remove("is-focused");
-        }
+      // 平铺依赖 DOM 顺序；只有顺序变化时移动节点。
+      const roots = list.map(gridRootOf);
+      const current = [...ctx.wall.children].filter((root) => roots.includes(root));
+      if (current.some((root, index) => root !== roots[index])) {
+        for (const root of roots) moveRoot(ctx.wall, root, true);
       }
-      // 拖拽条实测吸附到主格右缘与侧栏左缘的中缝上，不吃 gap/padding/滚动条的误差
-      const mainRoot = gridRootOf(list.find((tile) => tile.id === ctx.focused));
-      const anchor = secondaries[0] && gridRootOf(secondaries[0]);
-      if (ctx.wallResize && mainRoot && anchor) {
-        const wallRect = ctx.wall.getBoundingClientRect();
-        const mainRect = mainRoot.getBoundingClientRect();
-        const anchorRect = anchor.getBoundingClientRect();
-        if (wallRect.width > 0 && anchorRect.width > 0) {
-          ctx.wallResize.style.right = `${wallRect.right - (mainRect.right + anchorRect.left) / 2 - 7}px`;
-        }
+      ctx.syncLayoutRadios();
+      return;
+    }
+    const rect = ctx.wall.getBoundingClientRect();
+    // clientWidth/Height 会取整；保留小数像素，避免底部画格被裁掉半个像素。
+    const width = rect.width || ctx.wall.clientWidth;
+    const height = rect.height || ctx.wall.clientHeight;
+    // 关闭的 dialog 无尺寸，等待打开后的 ResizeObserver，避免用虚构屏幕尺寸计算。
+    if (!width || !height) return;
+    const mainTile = ctx.tiles.get(ctx.focused);
+    const secondaries = list.filter((tile) => tile.id !== ctx.focused);
+    const ratioOf = (tile) => tile.video.videoWidth && tile.video.videoHeight ? tile.video.videoWidth / tile.video.videoHeight : 16 / 9;
+    const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf), previous: ctx.focusLayout?.signature });
+    if (!plan) return;
+    ctx.focusLayout = plan;
+    ctx.wall.style.gap = `${plan.gap}px`;
+    ctx.wall.style.gridTemplateColumns = plan.rightWidth ? `minmax(0,1fr) ${plan.rightWidth}px` : "minmax(0,1fr)";
+    ctx.wall.style.gridTemplateRows = plan.bottomHeight ? `${plan.topHeight}px ${plan.bottomHeight}px` : "minmax(0,1fr)";
+    const mainRoot = gridRootOf(mainTile);
+    moveRoot(ctx.wall, mainRoot);
+    clearTileGeometry(mainRoot);
+    Object.assign(mainRoot.style, { gridColumn: "1", gridRow: "1", width: `${plan.main.width}px`, height: `${plan.main.height}px`, justifySelf: "start", alignSelf: "start" });
+    for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
+    regions.right.root.hidden = !plan.rightWidth;
+    regions.bottom.root.hidden = !plan.bottomHeight;
+    // A 型右列通高跨两行、底行只占主窗宽；其余结构右列占顶行、底行通宽。
+    Object.assign(regions.right.root.style, { gridColumn: "2", gridRow: plan.family === "A" ? "1 / -1" : "1" });
+    Object.assign(regions.bottom.root.style, { gridColumn: plan.family === "A" ? "1" : "1 / -1", gridRow: "2" });
+    regions.right.content.style.height = `${plan.rightContentHeight}px`;
+    regions.bottom.content.style.height = `${plan.bottomContentHeight}px`;
+    for (const placement of plan.placements) {
+      const root = gridRootOf(secondaries[placement.index]);
+      moveRoot(regions[placement.region].content, root);
+      clearTileGeometry(root);
+      Object.assign(root.style, { position: "absolute", left: `${placement.x}px`, top: `${placement.y}px`, width: `${placement.width}px`, height: `${placement.height}px` });
+    }
+    // 键盘和屏幕阅读器的访问顺序与画面中的房间顺序一致。
+    for (const name of ["right", "bottom"]) {
+      const roots = plan.placements.filter((placement) => placement.region === name).map((placement) => gridRootOf(secondaries[placement.index]));
+      const parent = regions[name].content;
+      if ([...parent.children].some((root, index) => root !== roots[index])) {
+        for (const root of roots) moveRoot(parent, root, true);
       }
     }
+    hint.hidden = !plan.constrained || plan.quality >= 0.98;
     ctx.syncLayoutRadios();
   };
 
-  /* --- 放大模式：拖主格/侧栏分界线调宽 --- */
-  const resizeEl = ctx.wallResize;
-  if (resizeEl) {
-    let dragging = false;
-    const stop = () => { dragging = false; };
-    resizeEl.addEventListener("pointerdown", (event) => {
-      if (!ctx.focused) return;
-      dragging = true;
-      try { resizeEl.setPointerCapture?.(event.pointerId); } catch {}
-      event.preventDefault();
-      event.stopPropagation();
-    });
-    resizeEl.addEventListener("pointermove", (event) => {
-      if (!dragging) return;
-      const rect = ctx.wall.getBoundingClientRect();
-      // 指针对齐侧栏左缘：缝隙画在主格侧，侧栏宽 = 指针到墙右缘的距离
-      if (rect.width > 0) ctx.sidebarWidth = clampSidebarWidth(rect.width, rect.width - (event.clientX - rect.left));
-      ctx.handleLayout();
-    });
-    resizeEl.addEventListener("pointerup", stop);
-    resizeEl.addEventListener("pointercancel", stop);
-    // 墙纵向滚动时把分界条拉回视野
-    ctx.wall.addEventListener("scroll", () => { resizeEl.style.top = `${ctx.wall.scrollTop}px`; });
-  }
+  let frame = null;
+  ctx.scheduleLayout = () => {
+    if (frame !== null) return;
+    frame = clock.requestAnimationFrame(() => { frame = null; ctx.handleLayout(); });
+  };
+  const observer = clock.ResizeObserver ? new clock.ResizeObserver(ctx.scheduleLayout) : null;
+  observer?.observe(ctx.wall);
+  clock.addEventListener("resize", ctx.scheduleLayout);
+  clock.addEventListener("pagehide", () => { observer?.disconnect(); if (frame !== null) clock.cancelAnimationFrame(frame); }, { once: true });
+
 }

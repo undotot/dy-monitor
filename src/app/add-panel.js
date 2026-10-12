@@ -2,9 +2,10 @@ import { MAX_TILES, safeMessage } from "../core/settings.js";
 import { parseRoom } from "../core/room.js";
 import { fetchProbe } from "../api/probe.js";
 import { searchRooms } from "../api/search.js";
-import { fetchFollowRooms } from "../api/follow.js";
+import { fetchFollowRooms, isExcludedFollowRoom } from "../api/follow.js";
 import { loadHistory, recordHistory } from "../api/history.js";
 import { addRowMarkup } from "../ui/tile-markup.js";
+import { normalizeRoomName, roomDisplayName } from "../core/room-name.js";
 
 // 添加房间面板：关注 / 历史 / 搜索 / 手动四个标签页，批量勾选与状态探测。
 export function initAddPanel(ctx) {
@@ -26,12 +27,15 @@ export function initAddPanel(ctx) {
   // 页脚两枚批量按钮的数量与可用态。勾选只走这里，不整表重建——
   // 重建会在勾选瞬间换掉被点的节点，真实指针时序下会错点到别的行或“添加”按钮。
   const updateAddFooter = () => {
-    const chosen = [...addState.selected].filter((rid) => !ctx.hasRoom(rid)).length;
+    const chosen = [...addState.selected.keys()].filter((rid) => !ctx.hasRoom(rid)).length;
     query("[data-add-selected]").textContent = `添加选中（${chosen}）`;
     query("[data-add-selected]").disabled = chosen === 0;
-    const liveCount = addState.rooms.filter((room) => room.liveStatus === "live" && !ctx.hasRoom(room.rid)).length;
-    query("[data-add-live-all]").disabled = liveCount === 0;
-    query("[data-add-live-all]").textContent = liveCount ? `一键添加全部直播中（${liveCount}）` : "一键添加全部直播中";
+    const available = addState.rooms.filter((room) => !ctx.roomStateFor(room).disabled);
+    const allSelected = available.length > 0 && available.every((room) => addState.selected.has(room.rid));
+    const selectAll = query("[data-add-select-all]");
+    selectAll.disabled = available.length === 0 || addState.mode === "manual";
+    selectAll.textContent = allSelected ? "取消全选当前列表" : `全选当前列表（${available.length}）`;
+    selectAll.setAttribute("aria-pressed", String(allSelected));
   };
 
   ctx.renderAddList = () => {
@@ -53,7 +57,7 @@ export function initAddPanel(ctx) {
             failed++;
             continue;
           }
-          if (ctx.addRoomFromPanel({ rid, name: line }, true)) added++;
+          if (ctx.addRoomFromPanel({ rid, name: "" }, true)) added++;
           else failed++;
         }
         if (added) {
@@ -66,9 +70,9 @@ export function initAddPanel(ctx) {
       updateAddFooter();
       return;
     }
-    // 列表换血时剪掉已不在列表里的残留勾选，计数与批量只反映眼前这些行。
-    for (const rid of [...addState.selected]) {
-      if (!addState.rooms.some((entry) => String(entry.rid) === String(rid))) addState.selected.delete(rid);
+    // 跨标签保存房间对象；当前页的探测结果同步给已选项，保持名称和状态最新。
+    for (const room of addState.rooms) {
+      if (addState.selected.has(room.rid)) addState.selected.set(room.rid, room);
     }
     for (const room of addState.rooms) {
       const wrap = document.createElement("div");
@@ -98,10 +102,18 @@ export function initAddPanel(ctx) {
         const room = targets[index++];
         try {
           const probe = await fetchProbe(room.rid, signal);
+          if (addState.tab === "all" && isExcludedFollowRoom(probe.name)) {
+            addState.rooms = addState.rooms.filter((entry) => entry.rid !== room.rid);
+            addState.selected.delete(room.rid);
+            onUpdate?.();
+            continue;
+          }
           room.liveStatus = probe.liveStatus;
           room.name = probe.name || room.name;
           room.avatar = probe.avatar || room.avatar || "";
+          room.nameStatus = normalizeRoomName(room.name, room.rid) ? "ready" : "error";
         } catch {
+          room.nameStatus = "error";
           if (!room.liveStatus) room.liveStatus = "offline";
         }
         done++;
@@ -115,12 +127,13 @@ export function initAddPanel(ctx) {
     addState.tab = tab;
     // manual 是标签页语义不是 mode 语义：mode 只区分“标签页 / 搜索”。
     addState.mode = tab === "manual" ? "manual" : "tab";
-    addState.selected.clear();
     const generation = ++addState.generation;
     addState.controller?.abort();
     addState.controller = null;
     if (addState.probeController) addState.probeController.abort();
     els.addSearch.value = "";
+    addState.rooms = [];
+    ctx.renderAddList();
     if (tab === "manual") {
       addState.rooms = [];
       ctx.renderAddList();
@@ -128,7 +141,7 @@ export function initAddPanel(ctx) {
       return;
     }
     if (tab === "history") {
-      addState.rooms = loadHistory().slice(0, 50).map((entry) => ({ rid: entry.rid, name: entry.name || entry.rid, avatar: entry.ava || "" }));
+      addState.rooms = loadHistory().slice(0, 50).map((entry) => ({ rid: String(entry.rid), name: normalizeRoomName(entry.name, entry.rid), avatar: entry.ava || "" }));
       ctx.renderAddList();
       els.addStatus.textContent = addState.rooms.length ? `添加历史 ${addState.rooms.length} 个，状态检查中` : "暂无添加历史";
       ctx.probeRoomsStatus(addState.rooms, () => {
@@ -143,7 +156,14 @@ export function initAddPanel(ctx) {
       if (!rooms) {
         // 挂到 addState.controller：切页 / 搜索会 abort 它，迟到的响应作废。
         addState.controller = new AbortController();
-        rooms = await fetchFollowRooms(addState.controller.signal);
+        rooms = await fetchFollowRooms(addState.controller.signal, {
+          onProgress: ({ page, count, isFinal }) => {
+            if (generation !== addState.generation) return;
+            if (page > 1 && !isFinal) {
+              els.addStatus.textContent = `正在获取关注列表（已加载 ${count} 个）…`;
+            }
+          }
+        });
         if (generation !== addState.generation) return;
         addState.followRooms = rooms;
       }
@@ -166,14 +186,13 @@ export function initAddPanel(ctx) {
   // 返回是否真的进了墙；失败（重复 / 已满）时错误写进状态栏并返回 false，调用方据此计数。
   ctx.addRoomFromPanel = (room, silent = false) => {
     try {
-      const tile = ctx.addTile(room.rid, Number(els.defaultRate.value ?? 1), true);
-      tile.name = room.name || room.rid;
+      const tile = ctx.addTile(room.rid, Number(els.defaultRate.value ?? 1), true, null, null, room.name);
       tile.liveStatus = room.liveStatus;
       ctx.updateTileChrome(tile);
       recordHistory(room.rid, room.name, room.avatar || "");
       addState.selected.delete(room.rid);
       if (!silent) {
-        els.addStatus.textContent = `${room.name || room.rid} 已添加并开始播放`;
+        els.addStatus.textContent = `${tile.name ? roomDisplayName(tile) : "直播间"} 已添加并开始播放`;
         ctx.renderAddList();
       }
       return true;
@@ -191,10 +210,10 @@ export function initAddPanel(ctx) {
 
   ctx.closeAdd = () => {
     els.addPanel.hidden = true;
+    addState.selected.clear();
+    addState.generation++;
     addState.controller?.abort();
     if (addState.probeController) addState.probeController.abort();
-    addState.selected.clear();
-    clearTimeout(ctx.searchTimer);
   };
 
   ctx.runAddSearch = async () => {
@@ -204,7 +223,6 @@ export function initAddPanel(ctx) {
     addState.controller = null;
     // 搜索期间停掉标签页的状态探测：它的回调会整体重渲染甚至换掉 rooms，把搜索结果盖掉。
     if (addState.probeController) addState.probeController.abort();
-    addState.selected.clear();
     if (!text) {
       void ctx.loadAddTab(addState.tab);
       return;
@@ -212,6 +230,8 @@ export function initAddPanel(ctx) {
     const generation = addState.generation;
     addState.mode = "search";
     addState.controller = new AbortController();
+    addState.rooms = [];
+    ctx.renderAddList();
     els.addStatus.textContent = "正在搜索…";
     try {
       const rooms = await searchRooms(text, addState.controller.signal, fetchProbe);
@@ -219,6 +239,9 @@ export function initAddPanel(ctx) {
       addState.rooms = rooms;
       ctx.renderAddList();
       els.addStatus.textContent = `找到 ${rooms.length} 个直播间，勾选后批量添加，或点击“添加”`;
+      ctx.probeRoomsStatus(rooms.filter((room) => !normalizeRoomName(room.name, room.rid)), () => {
+        if (generation === addState.generation) ctx.renderAddList();
+      });
     } catch (error) {
       if (generation !== addState.generation) return;
       els.addStatus.textContent = `搜索失败：${safeMessage(error)}`;
@@ -232,7 +255,7 @@ export function initAddPanel(ctx) {
     const room = addState.rooms.find((entry) => String(entry.rid) === row.dataset.rid);
     if (!room) return;
     if (event.target.matches("[data-chk]")) {
-      if (event.target.checked) addState.selected.add(room.rid);
+      if (event.target.checked) addState.selected.set(room.rid, room);
       else addState.selected.delete(room.rid);
       updateAddFooter();
       return;
@@ -240,21 +263,15 @@ export function initAddPanel(ctx) {
     if (event.target.closest("[data-add-one]")) ctx.addRoomFromPanel(room);
   });
 
-  els.addSearch.addEventListener("input", () => {
-    clearTimeout(ctx.searchTimer);
-    if (!els.addSearch.value.trim()) {
-      void ctx.loadAddTab(addState.tab);
-      return;
-    }
-    ctx.searchTimer = setTimeout(() => void ctx.runAddSearch(), 300);
-  });
-  els.addSearch.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
+  // 回车才发起搜索，输入过程不搜；空输入回车与清空输入都回到当前标签页列表。
+  // 输入法的回车键只负责把中文上屏：此前拦截上屏回车会打断输入法提交，中文永远
+  // 到不了搜索框，只有未转换的拼音能搜到。上屏完成后再沿用同一次回车意图搜一次。
+  let searchAfterCompose = false;
+  const submitSearch = () => {
     const text = els.addSearch.value.trim();
     if (/^\d+$/.test(text) || /^https?:/i.test(text)) {
       try {
-        ctx.addRoomFromPanel({ rid: parseRoom(text), name: text });
+        ctx.addRoomFromPanel({ rid: parseRoom(text), name: "" });
         els.addSearch.value = "";
       } catch (error) {
         els.addStatus.textContent = safeMessage(error);
@@ -262,6 +279,24 @@ export function initAddPanel(ctx) {
       return;
     }
     void ctx.runAddSearch();
+  };
+  els.addSearch.addEventListener("input", () => {
+    if (!els.addSearch.value.trim()) void ctx.loadAddTab(addState.tab);
+  });
+  els.addSearch.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    if (event.isComposing || event.keyCode === 229) {
+      searchAfterCompose = true;
+      return;
+    }
+    event.preventDefault();
+    searchAfterCompose = false;
+    submitSearch();
+  });
+  els.addSearch.addEventListener("compositionend", () => {
+    if (!searchAfterCompose) return;
+    searchAfterCompose = false;
+    submitSearch();
   });
   for (const input of ctx.wrapper.querySelectorAll("[name=add-tab]")) input.addEventListener("change", () => void ctx.loadAddTab(input.value));
   query("[data-add-open]").addEventListener("click", ctx.openAdd);
@@ -271,36 +306,23 @@ export function initAddPanel(ctx) {
   });
   query("[data-add-selected]").addEventListener("click", () => {
     let added = 0, failed = 0;
-    for (const rid of [...addState.selected]) {
-      const room = addState.rooms.find((entry) => String(entry.rid) === rid);
+    for (const [rid, room] of [...addState.selected]) {
       if (!room || ctx.hasRoom(rid)) continue;
       if (ctx.addRoomFromPanel(room, true)) added++;
       else failed++;
     }
-    addState.selected.clear();
     ctx.renderAddList();
     if (added) els.addStatus.textContent = `已添加 ${added} 个房间${failed ? `，${failed} 个跳过` : ""}`;
     else if (!failed) els.addStatus.textContent = "没有可添加的房间";
   });
-  query("[data-add-live-all]").addEventListener("click", () => {
-    const count = addState.rooms.filter((room) => room.liveStatus === "live" && !ctx.hasRoom(room.rid)).length;
-    if (!count) return;
-    // 这个动作与勾选无关、体量大，必须显式确认，避免点错就把整页直播中的房间全部加进墙。
-    ctx.showToast(`将添加全部 ${count} 个直播中的房间（与勾选无关，已添加的会跳过）？`, [
-      {
-        label: "添加全部", primary: true, onClick: () => {
-          let added = 0, failed = 0;
-          for (const room of addState.rooms) {
-            if (room.liveStatus !== "live" || ctx.hasRoom(room.rid) || ctx.tiles.size >= MAX_TILES) continue;
-            if (ctx.addRoomFromPanel(room, true)) added++;
-            else failed++;
-          }
-          ctx.renderAddList();
-          if (added) els.addStatus.textContent = `已添加 ${added} 个直播中的房间${failed ? `，${failed} 个跳过` : ""}`;
-          else if (!failed) els.addStatus.textContent = "没有可添加的直播中房间";
-        }
-      },
-      { label: "取消" }
-    ], 12e3);
-  });
+  const handleSelectAll = () => {
+    const available = addState.rooms.filter((room) => !ctx.roomStateFor(room).disabled);
+    const allSelected = available.length > 0 && available.every((room) => addState.selected.has(room.rid));
+    for (const room of available) {
+      if (allSelected) addState.selected.delete(room.rid);
+      else addState.selected.set(room.rid, room);
+    }
+    ctx.renderAddList();
+  };
+  query("[data-add-select-all]").addEventListener("click", handleSelectAll);
 }

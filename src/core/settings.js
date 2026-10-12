@@ -6,6 +6,24 @@ export const PRESET_KEY = "douyu-monitor.presets.v1";
 
 export const HISTORY_KEY = "douyu-monitor.history.v1";
 
+export const THEME_KEY = "douyu-monitor.theme.v1";
+
+export const DEFAULT_THEME = "studio";
+
+export const THEMES = ["studio", "titanium", "stealth"];
+
+const LEGACY_THEME_MAP = {
+  cyber: "studio",
+  glass: "titanium"
+};
+
+export const normalizeTheme = (theme) => {
+  const mapped = LEGACY_THEME_MAP[theme] || theme;
+  return THEMES.includes(mapped) ? mapped : DEFAULT_THEME;
+};
+
+export const CLIENT_DID_KEY = "douyu-monitor.client-did.v1";
+
 export const HOST_ID = "douyu-monitor-userscript";
 
 export const SCRIPT_VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "1.7.0-dev";
@@ -14,7 +32,27 @@ export const MAX_TILES = 16;
 
 export const CAPACITIES = [4, 6, 8, 12, 16];
 
-export const RATES = [[1, "流畅 · rate 1"], [2, "高清 · rate 2"], [3, "超清 · rate 3"], [0, "原画"], [4, "rate 4"], [8, "rate 8"]];
+export const RATES = [
+  [0, "原画"],
+  [8, "蓝光 8M"],
+  [4, "蓝光 4M"],
+  [3, "超清"],
+  [2, "高清"],
+  [1, "流畅"]
+];
+
+export function parseMultirates(rawList) {
+  if (!Array.isArray(rawList) || rawList.length === 0) return null;
+  const list = [];
+  for (const item of rawList) {
+    if (!item) continue;
+    const type = item.type != null ? Number(item.type) : (item.rate != null ? Number(item.rate) : null);
+    if (type == null || !Number.isFinite(type)) continue;
+    const name = String(item.name || "").trim() || (RATES.find(([r]) => r === type)?.[1] ?? `清晰度 ${type}`);
+    list.push({ rate: type, name });
+  }
+  return list.length > 0 ? list : null;
+}
 
 export const AUDIO_MODES = ["mix", "solo", "mute"];
 

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>监控室 · 统一短边完整原画</title>
+  <link rel="stylesheet" href="./focus-replan.tw.css">
+</head>
+<body data-layout-algorithm="short-side" data-start-mode="B" class="min-h-screen bg-[#f3f1e9] font-['Segoe_UI','Microsoft_YaHei',sans-serif] text-[#202923] selection:bg-[#df743f]/25">
+  <main class="mx-auto max-w-[1480px] px-4 pb-10 pt-6 sm:px-7">
+    <header class="mb-5 border-b border-[#bbc4b5] pb-5">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-[#667363]"><p class="tracking-[0.15em]">监控室 / 统一短边 · 完整原画</p><p class="border border-[#d26939] px-2 py-1 text-[#a4522f]">设计预览 · 选择后再接入</p></div>
+      <h1 class="font-['Georgia','SimSun',serif] text-3xl leading-tight tracking-tight sm:text-4xl">小窗短边相同，每一路画面完整。</h1>
+      <p class="mt-3 max-w-4xl text-xs leading-6 text-[#637066]">按你确认的要求：只统一小窗短边，长边按原比例变化。全部小视频保留完整画面，不裁切、不拉伸、无黑边。主窗在左上，允许主界面黑底；选择方案后才接入正式代码。</p>
+    </header>
+
+    <section aria-label="预览条件" class="mb-5 grid gap-4 border border-[#cbd0c3] bg-[#fbfaf6] p-4">
+      <fieldset class="min-w-0"><legend class="mb-2 text-[11px] font-semibold text-[#667363]">房间数量 · 含主窗 <span class="ml-2 font-normal">重点查看 3、4 格</span></legend><div id="counts" class="flex flex-wrap gap-1.5"></div></fieldset>
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_auto]">
+        <label class="grid content-start gap-2 text-[11px] font-semibold text-[#667363]">小窗的视频比例
+          <select id="profile" class="h-9 border border-[#cbd0c3] bg-transparent px-3 text-xs font-normal text-[#202923] focus-visible:outline-2 focus-visible:outline-[#d26939]"><option value="landscape">全横屏 16:9</option><option value="mixed">横竖混合</option><option value="varied">多种比例</option><option value="portrait">全竖屏 9:16</option></select>
+        </label>
+        <label class="grid content-start gap-2 text-[11px] font-semibold text-[#667363]">墙面尺寸
+          <select id="size" class="h-9 border border-[#cbd0c3] bg-transparent px-3 font-mono text-xs font-normal text-[#202923] focus-visible:outline-2 focus-visible:outline-[#d26939]"><option value="1280,720">1280×720</option><option value="1920,1080">1920×1080</option><option value="1024,768">1024×768</option><option value="375,600">375×600</option><option value="custom">自定义尺寸</option></select>
+        </label>
+        <label class="grid content-start gap-2 text-[11px] font-semibold text-[#667363]">主视频比例
+          <select id="main-ratio" class="h-9 border border-[#cbd0c3] bg-transparent px-3 font-mono text-xs font-normal text-[#202923] focus-visible:outline-2 focus-visible:outline-[#d26939]"><option value="1.7777777777777777">16:9</option><option value="0.5625">9:16</option><option value="1.3333333333333333">4:3</option><option value="2.3333333333333335">21:9</option></select>
+        </label>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[#e1e4da] pt-3 text-[11px] text-[#6b7666]">
+        <label class="flex cursor-pointer items-center gap-2"><input id="vacancies" type="checkbox" class="h-3.5 w-3.5 accent-[#d26939]">用斜线标出窗外背景</label>
+        <details id="custom-settings" class="w-full sm:w-auto"><summary class="w-fit cursor-pointer focus-visible:outline-2 focus-visible:outline-[#d26939]">自定义尺寸与间隔</summary>
+          <form id="custom-form" class="mt-3 flex flex-wrap items-end gap-2" novalidate>
+            <label class="grid gap-1">宽度 / px<input id="width" type="number" min="100" max="7680" value="1280" required class="w-24 border border-[#cbd0c3] bg-white px-2 py-2 font-mono focus-visible:outline-2 focus-visible:outline-[#d26939]"></label>
+            <label class="grid gap-1">高度 / px<input id="height" type="number" min="100" max="4320" value="720" required class="w-24 border border-[#cbd0c3] bg-white px-2 py-2 font-mono focus-visible:outline-2 focus-visible:outline-[#d26939]"></label>
+            <label class="grid gap-1">间隔 / px<input id="gap" type="number" min="0" max="8" step="0.5" value="1" required class="w-20 border border-[#cbd0c3] bg-white px-2 py-2 font-mono focus-visible:outline-2 focus-visible:outline-[#d26939]"></label>
+            <button id="apply" type="submit" class="bg-[#202923] px-3 py-2 text-white hover:bg-[#425448] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d26939] disabled:opacity-50">应用</button>
+            <p id="form-message" role="status" class="basis-full text-[#a34927]"></p>
+          </form>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="designs-title" class="mb-5">
+      <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2"><h2 id="designs-title" class="text-sm font-semibold">三个新方案 · 点击查看与当前算法的对照</h2><p class="text-[11px] text-[#72806e]">选择卡片只切换预览</p></div>
+      <div id="designs" class="grid gap-3 sm:grid-cols-3"></div>
+    </section>
+
+    <section id="comparison" aria-labelledby="comparison-title" class="mb-5 border border-[#bbc4b5] bg-[#fbfaf6] p-4 sm:p-5">
+      <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2"><h2 id="comparison-title" class="font-semibold"></h2><p id="condition" class="font-mono text-[11px] text-[#72806e]"></p></div>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <figure class="min-w-0"><figcaption class="mb-2 flex justify-between gap-2 text-xs"><span class="font-semibold">当前算法</span><span class="text-[#72806e]">原样调用项目源码</span></figcaption><canvas id="before" role="img" width="1280" height="720" class="block h-auto w-full bg-black"></canvas><dl id="before-metrics" class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 lg:grid-cols-3"></dl></figure>
+        <figure class="min-w-0"><figcaption class="mb-2 flex justify-between gap-2 text-xs"><span id="selected" class="font-semibold text-[#a4522f]" aria-live="polite"></span><span class="text-[#72806e]">同房间 / 同画面 / 同墙面</span></figcaption><canvas id="after" role="img" width="1280" height="720" class="block h-auto w-full bg-black"></canvas><dl id="after-metrics" class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 lg:grid-cols-3"></dl></figure>
+      </div>
+      <p id="geometry-note" role="status" class="mt-4 border-t border-[#d9ded0] pt-3 text-xs leading-6 text-[#586657]"></p>
+      <p id="boundary-note" class="mt-2 border-l-2 border-[#d26939] pl-3 text-xs leading-6 text-[#a4522f]"></p>
+      <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#6e7969]"><span>绿色 = 主视频</span><span>其他颜色 = 小视频</span><span>黑色 = 黑底或分隔线</span><span>原画保留 = 100%</span><span>斜线 = 窗外背景（开启后显示）</span></div>
+    </section>
+
+    <section aria-labelledby="atlas-title">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 id="atlas-title" class="font-['Georgia','SimSun',serif] text-2xl">每一种数量，都保留当前算法对照。</h2><p id="validation" role="status" class="text-[11px] text-[#627960]"></p></div>
+      <div id="atlas" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+    </section>
+
+    <details class="mt-5 border-y border-[#c4ccbc] py-4 text-xs text-[#5b6a58]"><summary class="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-[#d26939]">新算法与指标说明</summary>
+      <div class="mt-3 grid gap-3 leading-6 lg:grid-cols-2">
+        <p>共同短边 s：横屏 w=s×源比例、h=s；竖屏 w=s、h=s÷源比例。所有房间完整显示、原画保留 100%，尾行也不能单独放大。</p>
+        <p>F 紧凑铺排：主视频至少保留整墙单窗最大视频面积的 45%，保证小窗观看尺寸后优先窗口覆盖率，再比较实际视频占用。观看门槛随墙面缩放，不通过极小小窗假报铺满。</p>
+        <p>B 均衡观看：主视频至少保留单窗最大视频面积的 52%，小窗短边至少达到最佳候选的 85%。优先实际可见视频总面积。</p>
+        <p>M 大主画面：沿用原 Q 的策略，主视频至少保留单窗最大视频面积的 60%，优先最大小窗共同短边。以上百分比在窄屏时不等于墙面占比。</p>
+        <p>三种方案均要求主视频实际面积至少为最大小视频的 2.5 倍。3–4 格可使用单侧或双侧，5–16 格右侧与底部都有小窗。窗外背景与主窗黑底分别统计，不把黑底算成视频占用。</p>
+        <p>U/V/W 的同宽同高裁切设计已被本页取代。此次仅修改开发预览，正式接入等待你选择 F、B 或 M。伪代码与数据流见 docs/focus-short-side.md；无 HTTP 接口、后端或数据库变更。</p>
+      </div></details>
+    <footer class="mt-4 flex flex-wrap justify-between gap-2 font-mono text-[10px] text-[#84907b]"><span>SHARED SHORT SIDE / F · B · M</span><span id="render-status" role="status">准备预览…</span></footer>
+    <noscript><p class="my-5 border border-[#b66437] bg-white p-4 text-sm">请启用 JavaScript，以查看动态方案与对照。</p></noscript>
+  </main>
+  <script src="./focus-replan.bundle.js"></script>
+</body>
+</html>

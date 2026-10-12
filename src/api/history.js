@@ -1,5 +1,6 @@
 import { HISTORY_KEY } from "../core/settings.js";
 import { storage } from "../platform/storage.js";
+import { normalizeRoomName } from "../core/room-name.js";
 
 export const loadHistory = () => {
   try {
@@ -12,9 +13,21 @@ export const loadHistory = () => {
 
 export const recordHistory = (rid, name = "", avatar = "") => {
   try {
-    const list = loadHistory().filter((entry) => entry.rid !== String(rid));
-    list.unshift({ rid: String(rid), name: String(name || "").slice(0, 80), ava: String(avatar || "").slice(0, 500), ts: Date.now() });
+    const previous = loadHistory();
+    const cached = previous.find((entry) => String(entry.rid) === String(rid));
+    const list = previous.filter((entry) => String(entry.rid) !== String(rid));
+    list.unshift({ rid: String(rid), name: normalizeRoomName(name, rid) || normalizeRoomName(cached?.name, rid), ava: String(avatar || cached?.ava || "").slice(0, 500), ts: Date.now() });
     storage.set(HISTORY_KEY, list.slice(0, 100));
   } catch {
   }
 };
+
+export const clearHistory = () => {
+  try {
+    storage.set(HISTORY_KEY, []);
+    return true;
+  } catch {
+    return false;
+  }
+};
+

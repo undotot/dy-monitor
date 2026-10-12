@@ -1,3 +1,5 @@
+import { Window } from "happy-dom";
+import { initStatus } from "../src/app/status.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { tileMarkup, addRowMarkup } from "../src/ui/tile-markup.js";
@@ -39,4 +41,27 @@ test("iconMarkup 未知图标回退 sliders", () => {
   assert.ok(iconMarkup("nope").includes(paths.sliders.slice(0, 20)));
   assert.ok(iconMarkup("grid").includes(paths.grid.slice(0, 20)));
   assert.ok(!iconMarkup("grid").includes(paths.sliders.slice(0, 20)));
+});
+
+test("正常播放不显示常驻文字，异常与重试仍有反馈", () => {
+  const win = new Window();
+  try {
+    const root = win.document.createElement("article");
+    root.innerHTML = tileMarkup();
+    const tile = { dotEl: root.querySelector("[data-dot]"), noteEl: root.querySelector("[data-note]"), retryEl: root.querySelector("[data-retry]") };
+    const ctx = {};
+    initStatus(ctx);
+    ctx.updateCount = () => {};
+    ctx.setStatus(tile, "playing", "播放中");
+    assert.equal(tile.noteEl.hidden, true);
+    assert.equal(tile.noteEl.textContent, "");
+    assert.equal(root.querySelector("[data-clock]"), null);
+    ctx.setStatus(tile, "failed", "网络连接失败");
+    assert.equal(tile.noteEl.hidden, false);
+    assert.equal(tile.noteEl.textContent, "网络连接失败");
+    tile.retryAt = 123;
+    ctx.setStatus(tile, "reconnecting", "重试中");
+    assert.equal(tile.noteEl.hidden, true);
+    assert.equal(tile.retryEl.hidden, false);
+  } finally { win.close(); }
 });

@@ -19,13 +19,14 @@ export function createContext() {
     restoring: false, titleBeforeMonitor: null, dragSourceId: null,
     audio: { mode: "mix", master: 0.5, followFocus: false, autoMute: true },
     layoutMode: 2,
-    hevc: false, pauseOfficialEnabled: true, clockEnabled: true, resumeMode: "ask",
+    hevc: false, pauseOfficialEnabled: true, resumeMode: "ask",
     liveAlerts: true, liveAlertSound: false, liveAutoPlay: true,
     danmakuDefaults: normalizeDanmaku({}),
-    drawerPreference: true,
-    cooldownUntil: 0, pipSession: null, pipOpening: false, toastTimer: 0, searchTimer: 0,
+    theme: "studio",
+    drawerPreference: true, topbarCollapsed: false,
+    cooldownUntil: 0, pipSession: null, pipOpening: false, toastTimer: 0,
     addState: {
-      tab: "live", mode: "tab", query: "", rooms: [], selected: new Set(),
+      tab: "all", mode: "tab", query: "", rooms: [], selected: new Map(),
       generation: 0, controller: null, followRooms: null, probeController: null
     },
   };

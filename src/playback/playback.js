@@ -3,6 +3,7 @@ import { safeMessage } from "../core/settings.js";
 import { fetchProbe } from "../api/probe.js";
 import { DanmakuClient } from "../api/danmaku-client.js";
 import { recordHistory } from "../api/history.js";
+import { normalizeRoomName } from "../core/room-name.js";
 
 // 播放管线：代次（generation）取消 + 指数退避重试 + 看门狗。
 // resetPlayback 只清资源不改状态（避免闪烁）；状态由 handleStart 显式设置。
@@ -74,6 +75,7 @@ export function initPlayback(ctx) {
     const active = () => ctx.opened && ctx.tiles.get(tile.id) === tile && tile.generation === generation && !controller.signal.aborted;
     const handleFailure = (error, retryAllowed = false) => {
       if (!active() || tile.retrying) return;
+      if (!tile.name) { tile.nameStatus = "error"; ctx.updateTileChrome(tile); }
       const message = safeMessage(error);
       ctx.log(tile.rid, message);
       const throttled = /429|403|频繁|限流|冷却/.test(message);
@@ -107,7 +109,8 @@ export function initPlayback(ctx) {
       if (!active()) return;
       if ([...ctx.tiles.values()].some((other) => other !== tile && other.rid === probe.rid)) throw new Error("真实房号与其他格重复");
       tile.rid = probe.rid;
-      tile.name = probe.name || tile.name;
+      tile.name = normalizeRoomName(probe.name, probe.rid) || tile.name;
+      tile.nameStatus = tile.name ? "ready" : "error";
       tile.liveStatus = probe.liveStatus;
       tile.lastProbe = Date.now();
       ctx.updateTileChrome(tile);
@@ -121,8 +124,14 @@ export function initPlayback(ctx) {
         return;
       }
       ctx.setStatus(tile, "queued", probe.liveStatus === "carousel" ? "轮播中，等待签名取流…" : "已开播，等待签名取流…");
-      const url = await ctx.getStream(tile, controller.signal);
+      const streamResult = await ctx.getStream(tile, controller.signal);
       if (!active()) return;
+      const url = typeof streamResult === "string" ? streamResult : streamResult.url;
+      const multirates = typeof streamResult === "object" ? streamResult.multirates : null;
+      const activeRate = typeof streamResult === "object" ? streamResult.rate : tile.rate;
+      if (typeof ctx.updateTileRates === "function") {
+        ctx.updateTileRates(tile, multirates, activeRate);
+      }
       if (!mpegts.getFeatureList().mseLivePlayback) throw new Error("当前浏览器不支持 MSE 直播播放");
       ctx.setStatus(tile, "connecting", "④ 地址已获取，连接视频流…");
       ctx.log(tile.rid, "签名与地址请求成功，开始读取 CDN");
@@ -133,8 +142,8 @@ export function initPlayback(ctx) {
         liveBufferLatencyMaxLatency: 3,
         liveBufferLatencyMinRemain: 1,
         autoCleanupSourceBuffer: true,
-        autoCleanupMaxBackwardDuration: 20,
-        autoCleanupMinBackwardDuration: 10
+        autoCleanupMaxBackwardDuration: 10,
+        autoCleanupMinBackwardDuration: 5
       });
       tile.player = player;
       ctx.handleDanmaku(tile);
@@ -161,14 +170,31 @@ export function initPlayback(ctx) {
         if (current()) handleFailure(new Error("④ 浏览器解码失败，请尝试关闭 H.265"));
       };
       player.attachMediaElement(tile.video);
+      ctx.applyAudio(tile);
       player.load();
       let lastTime = -1, lastEnd = -1, lastProgress = Date.now(), connectedAt = Date.now();
+      let wasHidden = false;
       tile.watch = setInterval(() => {
         if (!current()) return;
         if (document.hidden) {
+          wasHidden = true;
           lastProgress = Date.now();
           connectedAt = Date.now();
           return;
+        }
+        if (wasHidden) {
+          wasHidden = false;
+          lastProgress = Date.now();
+          connectedAt = Date.now();
+          const b = tile.video.buffered;
+          if (b.length > 0) {
+            const liveEnd = b.end(b.length - 1);
+            if (liveEnd - tile.video.currentTime > 3.5) {
+              try {
+                tile.video.currentTime = Math.max(0, liveEnd - 1);
+              } catch {}
+            }
+          }
         }
         const end = tile.video.buffered.length ? tile.video.buffered.end(tile.video.buffered.length - 1) : 0;
         if (tile.video.currentTime > lastTime || end > lastEnd) {

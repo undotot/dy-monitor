@@ -1,6 +1,7 @@
 import { normalizeDanmaku } from "../core/danmaku-render.js";
 import { PRESET_KEY, SCRIPT_VERSION } from "../core/settings.js";
 import { storage } from "../platform/storage.js";
+import { clearHistory } from "../api/history.js";
 import { setIconButton } from "../ui/icons.js";
 
 // 设置抽屉：开合与边缘唤起、播放/弹幕/声音/预设/诊断各区块的绑定。
@@ -118,8 +119,15 @@ export function initDrawer(ctx) {
     ctx.liveAlerts = query("[data-live-alerts]").checked;
     if (ctx.liveAlerts) {
       try {
-        const pageWindow = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
-        if (pageWindow.Notification && Notification.permission === "default") void Notification.requestPermission();
+        if (typeof GM_notification !== "function") {
+          const pageWindow = typeof unsafeWindow !== "undefined" && unsafeWindow?.Notification
+            ? unsafeWindow
+            : (typeof window !== "undefined" ? window : globalThis);
+          const Notif = pageWindow?.Notification;
+          if (Notif && Notif.permission === "default" && typeof Notif.requestPermission === "function") {
+            void Notif.requestPermission();
+          }
+        }
       } catch {
       }
     }
@@ -134,12 +142,6 @@ export function initDrawer(ctx) {
     ctx.liveAutoPlay = query("[data-live-autoplay]").checked;
     ctx.save();
   });
-  query("[data-clock-toggle]").addEventListener("change", () => {
-    ctx.clockEnabled = query("[data-clock-toggle]").checked;
-    for (const tile of ctx.tiles.values()) ctx.updateTileChrome(tile);
-    ctx.save();
-  });
-
   /* --- 工作区预设 --- */
   const loadPresets = () => {
     try {
@@ -192,6 +194,21 @@ export function initDrawer(ctx) {
     storage.set(PRESET_KEY, loadPresets().filter((preset) => preset.name !== name));
     refreshPresetSelect();
     ctx.showToast(`预设「${name}」已删除`, [], 4e3);
+  });
+
+  /* --- 数据管理 --- */
+  query("[data-clear-history]")?.addEventListener("click", () => {
+    ctx.showToast("确定清空全部历史房号记录吗？", [
+      {
+        label: "确定清空",
+        primary: true,
+        onClick: () => {
+          clearHistory();
+          ctx.showToast("历史房号已清空", [], 3e3);
+        }
+      },
+      { label: "取消" }
+    ], 8e3);
   });
 
   /* --- 诊断 --- */

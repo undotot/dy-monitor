@@ -1,7 +1,19 @@
+import { THEMES, DEFAULT_THEME, normalizeTheme } from "../core/settings.js";
+
 // 打开 / 关闭生命周期：官方播放器暂停与恢复、继续播放提示、入口按钮定位、页面事件与菜单命令。
 export function initShell(ctx) {
   const els = ctx.els;
   const query = (selector) => ctx.wrapper.querySelector(selector);
+
+  ctx.setTheme = (theme) => {
+    const valid = normalizeTheme(theme);
+    ctx.theme = valid;
+    ctx.dialog?.setAttribute("data-theme", valid);
+    ctx.wrapper?.setAttribute("data-theme", valid);
+    for (const el of ctx.wrapper?.querySelectorAll("[name=theme-choice]") || []) {
+      el.checked = el.value === valid;
+    }
+  };
 
   ctx.pauseOfficial = () => {
     if (ctx.pausedVideo || !ctx.pauseOfficialEnabled) return;

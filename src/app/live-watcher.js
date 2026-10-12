@@ -1,13 +1,31 @@
 import { fetchProbe } from "../api/probe.js";
+import { normalizeRoomName, roomDisplayName } from "../core/room-name.js";
 
-// 时钟与开播感知：每秒刷新画格时钟与重试倒计时；每 30 秒探测未开播房间，开播时提醒。
+export function showNotification(title, body) {
+  try {
+    if (typeof GM_notification === "function") {
+      GM_notification({ title, text: body });
+      return;
+    }
+  } catch {}
+  try {
+    const pageWindow = typeof unsafeWindow !== "undefined" && unsafeWindow?.Notification
+      ? unsafeWindow
+      : (typeof window !== "undefined" ? window : globalThis);
+    const Notif = pageWindow?.Notification;
+    if (Notif && Notif.permission === "granted") {
+      new Notif(title, { body });
+    }
+  } catch {}
+}
+
+// 重试与状态感知：每秒刷新重试倒计时；每 30 秒对空闲房间重新获取直播状态
+// （直播中/轮播中/未开播），转入开播时提醒。
 export function initLiveWatcher(ctx) {
   setInterval(() => {
     if (!ctx.opened) return;
     const now = Date.now();
-    const timeText = new Date().toLocaleTimeString("zh-CN", { hour12: false });
     for (const tile of ctx.tiles.values()) {
-      if (tile.clockEl && !tile.clockEl.hidden) tile.clockEl.textContent = timeText;
       if (tile.state === "reconnecting" && tile.retryAt) {
         tile.retryEl.hidden = false;
         tile.retryText.textContent = `${Math.max(0, Math.ceil((tile.retryAt - now) / 1000))} 秒后自动重试（${tile.attempt}/5）`;
@@ -20,29 +38,29 @@ export function initLiveWatcher(ctx) {
   setInterval(() => {
     if (!ctx.opened) return;
     const now = Date.now();
-    const due = [...ctx.tiles.values()].filter((tile) => tile.liveStatus !== "live" && !tile.request && !["playing", "connecting", "signing", "queued", "probing", "reconnecting"].includes(tile.state) && now - (tile.lastProbe || 0) > 6e4);
+    // 重新获取状态要覆盖所有空闲房间（含曾判定开播的）：只查非直播会让徽章冻结在
+    // 最后一次探测，主播下播或转轮播后永远停在“直播中”。
+    const due = [...ctx.tiles.values()].filter((tile) => !tile.request && !["playing", "connecting", "signing", "queued", "probing", "reconnecting"].includes(tile.state) && now - (tile.lastProbe || 0) > 6e4);
     for (const tile of due.slice(0, 3)) {
       tile.lastProbe = now;
       void (async () => {
         try {
           const probe = await fetchProbe(tile.rid, new AbortController().signal);
           if (!ctx.tiles.has(tile.id)) return;
+          const wasLive = tile.liveStatus === "live";
           tile.liveStatus = probe.liveStatus;
-          tile.name = probe.name || tile.name;
+          tile.name = normalizeRoomName(probe.name, probe.rid) || tile.name;
+          tile.nameStatus = tile.name ? "ready" : "error";
           tile.lastProbe = Date.now();
           ctx.updateTileChrome(tile);
-          if (probe.liveStatus === "live" && !["playing", "connecting", "signing", "queued", "probing", "reconnecting"].includes(tile.state)) {
+          if (probe.liveStatus === "live" && !wasLive && !["playing", "connecting", "signing", "queued", "probing", "reconnecting"].includes(tile.state)) {
             if (ctx.liveAlerts) {
-              ctx.showToast(`${tile.name || tile.rid} 开播了`, [
+              ctx.showToast(`${roomDisplayName(tile)} 开播了`, [
                 { label: "立即播放", primary: true, onClick: () => void ctx.handleStart(tile) },
                 { label: "忽略" }
               ], 12e3);
               if (ctx.liveAlertSound) ctx.beep();
-              try {
-                const pageWindow = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
-                if (pageWindow.Notification && Notification.permission === "granted") new Notification("监控室", { body: `${tile.name || tile.rid} 开播了` });
-              } catch {
-              }
+              showNotification("监控室", `${roomDisplayName(tile)} 开播了`);
               tile.root.classList.add("is-live-alert");
               setTimeout(() => tile.root.classList.remove("is-live-alert"), 1e4);
             }

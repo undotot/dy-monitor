@@ -1,48 +1,61 @@
 import { setIconButton } from "../ui/icons.js";
 import { MAX_TILES } from "../core/settings.js";
+import { roomDisplayName } from "../core/room-name.js";
 
-// 状态与外观：状态点/徽章/备注、画格控件外观、全局计数与健康度。
+// 状态点承载直播状态，文字说明通过悬停与无障碍标签提供。三态语义固定配色：
+// 直播中=绿、轮播中=琥珀、未开播=灰；取流排队等瞬态用蓝点，不与三态混淆；异常=红。
 const stateMeta = {
-  playing: { dot: "g", badge: "LIVE", badgeClass: "badge live" },
-  reconnecting: { dot: "a", badge: "重连", badgeClass: "badge wait" },
-  signing: { dot: "a", badge: "取流", badgeClass: "badge wait" },
-  connecting: { dot: "a", badge: "连接", badgeClass: "badge wait" },
-  queued: { dot: "a", badge: "排队", badgeClass: "badge wait" },
-  probing: { dot: "a", badge: "检查", badgeClass: "badge wait" },
-  blocked: { dot: "a", badge: "待播放", badgeClass: "badge wait" },
-  waiting: { dot: "a", badge: "未开播", badgeClass: "badge wait" },
-  failed: { dot: "r", badge: "ERR", badgeClass: "badge err" },
-  stopped: { dot: "gr", badge: "OFF", badgeClass: "badge off" }
+  playing: { dot: "g", label: "直播中" },
+  reconnecting: { dot: "w", label: "重连中" },
+  signing: { dot: "w", label: "正在取流" },
+  connecting: { dot: "w", label: "连接中" },
+  queued: { dot: "w", label: "排队中" },
+  probing: { dot: "w", label: "检查中" },
+  blocked: { dot: "w", label: "等待播放" },
+  waiting: { dot: "gr", label: "未开播" },
+  failed: { dot: "r", label: "播放异常" },
+  stopped: { dot: "gr", label: "未播放" }
 };
+
+export const dotMetaFor = (state, liveStatus) =>
+  state === "playing" && liveStatus === "carousel" ? { dot: "a", label: "轮播中" } : stateMeta[state] || stateMeta.connecting;
 
 export function initStatus(ctx) {
   ctx.setStatus = (tile, state, message) => {
     tile.state = state;
-    let meta = stateMeta[state] || stateMeta.connecting;
-    // 轮播中的房间也在放流：播放态徽标区分“LIVE / 轮播中”，与列表状态一致。
-    if (state === "playing" && tile.liveStatus === "carousel") meta = { dot: "a", badge: "轮播中", badgeClass: "badge loop" };
+    const meta = dotMetaFor(state, tile.liveStatus);
     tile.dotEl.className = `dot ${meta.dot}`;
-    tile.badgeEl.className = meta.badge ? meta.badgeClass : "badge hide";
-    tile.badgeEl.textContent = meta.badge;
-    tile.noteEl.textContent = message || "";
+    tile.dotEl.title = meta.label;
+    tile.dotEl.setAttribute("aria-label", meta.label);
+    // 日常播放状态只用状态点表达；异常消息按需显示，不再占用底部。
+    tile.noteEl.hidden = !message || !["failed", "blocked"].includes(state);
+    tile.noteEl.textContent = tile.noteEl.hidden ? "" : message;
     tile.noteEl.classList.toggle("is-failed", state === "failed");
     tile.retryEl.hidden = !(state === "reconnecting" && tile.retryAt);
     ctx.updateCount();
   };
 
   ctx.updateTileChrome = (tile) => {
-    tile.nameEl.textContent = `${tile.rid} · ${tile.name || tile.rid}`;
-    tile.nameEl.title = `${tile.rid} · ${tile.name || ""}`;
-    setIconButton(tile.muteBtn, tile.muted ? "muted" : "volume", tile.muted ? "开启声音（M）" : "静音（M）");
+    const name = roomDisplayName(tile);
+    tile.nameEl.textContent = name;
+    tile.nameEl.title = name;
+    tile.root.setAttribute("aria-label", `${name}，可拖动换位，或按 Alt 加左右方向键换位`);
+    tile.video.setAttribute("aria-label", `${name}的直播画面`);
+    if (ctx.pipSession?.tile === tile) {
+      ctx.pipSession.window.document.title = `斗鱼 · ${name}`;
+      ctx.pipSession.placeholder.querySelector(".pip-marker").textContent = `${name} · 画中画播放中`;
+    }
+    setIconButton(tile.muteBtn, tile.muted ? "muted" : "volume", tile.muted ? "开启声音" : "静音");
     tile.muteBtn.setAttribute("aria-pressed", String(!tile.muted));
+    tile.audioCorner?.classList.toggle("is-muted", tile.muted);
+    tile.audioCorner?.setAttribute("title", tile.muted ? "当前静音（点击开启声音，滚轮微调音量）" : `当前音量 ${Math.round(tile.vol * 100)}%（点击静音，滚轮微调音量）`);
     tile.volSlider.value = String(tile.vol);
     ctx.paintSlider(tile.volSlider);
-    setIconButton(tile.soloBtn, "solo", "独奏该房间（S）");
+    setIconButton(tile.soloBtn, "solo", "独奏该房间");
     tile.soloBtn.setAttribute("aria-pressed", String(ctx.audio.mode === "solo" && tile.id === ctx.soloTargetId()));
-    setIconButton(tile.danmakuBtn, tile.danmaku.enabled ? "chat" : "chatOff", tile.danmaku.enabled ? "关闭弹幕（D）" : "开启弹幕（D）");
+    setIconButton(tile.danmakuBtn, tile.danmaku.enabled ? "chat" : "chatOff", tile.danmaku.enabled ? "关闭弹幕" : "开启弹幕");
     tile.danmakuBtn.setAttribute("aria-pressed", String(tile.danmaku.enabled));
-    setIconButton(tile.resumeBtn, tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 继续（Space）" : "暂停（Space）");
-    tile.clockEl.hidden = !ctx.clockEnabled;
+    setIconButton(tile.resumeBtn, tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 继续" : "暂停");
   };
 
   ctx.updateCount = () => {

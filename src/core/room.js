@@ -1,6 +1,7 @@
-// 直播状态三态：1=直播中，2=轮播中，其余=未开播。探测接口 show_status 为准，
-// 关注 / 搜索接口的 isLive 等字段按同一原始值映射，缺失即未开播。
-export const liveStatusFromRaw = (raw) => Number(raw) === 1 ? "live" : Number(raw) === 2 ? "carousel" : "offline";
+// 直播状态三态：轮播标志（betard videoLoop / 搜索 isLoop）=1 → 轮播中；开播标志
+// （show_status / isLive）=1 → 直播中；其余=未开播。实测接口语义：开播标志只有
+// 1=开播、2=未开播（2 不是轮播），轮播由独立标志给出且开播时仍为 1。
+export const liveStatusFromRaw = (raw, loop) => Number(loop) === 1 ? "carousel" : Number(raw) === 1 ? "live" : "offline";
 
 export const parseRoom = (input) => {
   const text = input.trim();

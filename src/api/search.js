@@ -2,13 +2,16 @@ import { API_BASE } from "../core/settings.js";
 import { fetchJson } from "../core/fetch-json.js";
 import { parseRoom, liveStatusFromRaw } from "../core/room.js";
 import { pickAvatar } from "./pick-avatar.js";
+import { normalizeRoomName } from "../core/room-name.js";
 
 export const normalizeSearchResults = (payload) => {
   const rooms = /* @__PURE__ */ new Map();
   for (const entry of Array.isArray(payload?.data) ? payload.data : []) {
-    const room = entry?.roomResult, rid = String(room?.rid || "");
+    // getSearchRecV2 的房间记录包在 roomResult 里（type:2 的分类推荐没有），兜底兼容扁平项。
+    const room = entry?.roomResult ?? entry;
+    const rid = String(room?.rid ?? room?.roomId ?? room?.room_id ?? "");
     if (!/^[1-9]\d{0,11}$/.test(rid) || rooms.has(rid)) continue;
-    rooms.set(rid, { rid, name: String(room.nickName || entry.kw || rid).slice(0, 80), category: String(room.cateName || "").slice(0, 40), liveStatus: liveStatusFromRaw(room.isLive), avatar: pickAvatar(room.roomSrc, room.roompic, room.room_pic, room.avatar, room.userAvatar, entry.roomSrc) });
+    rooms.set(rid, { rid, name: normalizeRoomName(room.nickName || room.nickname || room.owner_name || room.roomName || room.nick_name, rid), category: String(room.cateName || room.cate_name || "").slice(0, 40), liveStatus: liveStatusFromRaw(room.isLive ?? room.show_status, room.isLoop ?? room.videoLoop), avatar: pickAvatar(room.roomSrc, room.roompic, room.room_pic, room.avatar, room.userAvatar, entry.roomSrc) });
   }
   return [...rooms.values()].slice(0, 30);
 };

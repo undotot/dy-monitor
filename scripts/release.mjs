@@ -90,21 +90,24 @@ const today = new Date().toISOString().slice(0, 10);
 const changelogPath = join(root, "CHANGELOG.md");
 let changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : "# 更新日志\n";
 const bullets = notes.map((n) => `- ${n}`).join("\n");
+// 行尾跟随文件：CRLF 文件里 "# 更新日志\n" 字面匹配会静默失效，插入点改为首个换行符定位
+const eol = changelog.includes("\r\n") ? "\r\n" : "\n";
 const topHeading = changelog.match(/^## (\d+\.\d+\.\d+) - [^\n]*\n/m);
 if (topHeading && topHeading[1] === version) {
   // 同版本续发：要点按时间顺序追加到该条目末尾（下一段标题之前）
   const next = changelog.indexOf("\n## ", topHeading.index + topHeading[0].length);
   const insertAt = next === -1 ? changelog.length : next;
-  changelog = changelog.slice(0, insertAt) + `${bullets}\n` + changelog.slice(insertAt);
+  changelog = changelog.slice(0, insertAt) + `${bullets.split("\n").join(eol)}${eol}` + changelog.slice(insertAt);
 } else {
-  const entry = `\n## ${version} - ${today}\n${bullets}\n`;
-  if (changelog.startsWith("# 更新日志")) {
-    changelog = changelog.replace("# 更新日志\n", `# 更新日志\n${entry}`);
+  const entry = `${eol}## ${version} - ${today}${eol}${bullets.split("\n").join(eol)}${eol}`;
+  const titleEnd = changelog.indexOf("\n") + 1;
+  if (changelog.startsWith("# 更新日志") && titleEnd > 0) {
+    changelog = changelog.slice(0, titleEnd) + entry + changelog.slice(titleEnd);
   } else {
-    changelog = `# 更新日志\n${entry}\n${changelog}`;
+    changelog = `# 更新日志${eol}${entry}${changelog}`;
   }
 }
-writeFileSync(changelogPath, changelog.trimEnd() + "\n", "utf8");
+writeFileSync(changelogPath, changelog.trimEnd() + eol, "utf8");
 
 console.log(`
 发布完成 v${version}

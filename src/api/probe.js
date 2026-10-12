@@ -17,7 +17,7 @@ export async function fetchProbe(rid, signal) {
     if (!room || !/^\d+$/.test(String(room.room_id))) throw new Error("房间探测：未返回有效房间");
     return {
       rid: String(room.room_id),
-      liveStatus: liveStatusFromRaw(room.show_status),
+      liveStatus: liveStatusFromRaw(room.show_status, room.videoLoop),
       name: String(room.owner_name || room.name || ""),
       category: String(room.cate_name || room.game_name || ""),
       avatar: pickAvatar(room.room_src, room.room_pic, room.avatar, room.owner_avatar)

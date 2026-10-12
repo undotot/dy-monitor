@@ -8,7 +8,9 @@ export function shellMarkup() {
   return `<button data-entry type="button" class="entry-badge" title="进入监控室" aria-label="进入监控室">${iconMarkup("grid")}进入监控室</button>
     <dialog data-dialog aria-label="监控室">
       <div class="app-shell">
-        <header class="topbar">
+        <div class="topbar-slot" data-topbar-slot>
+          <div class="topbar-clip">
+        <header class="topbar" id="douyu-monitor-topbar" data-topbar>
           <div class="tb-left">
             <span class="logo">斗</span><span class="brand">监控室</span><span class="ver">MONITOR / ${SCRIPT_VERSION}</span>
             <span class="meta" data-count></span><span class="meta-health ok" data-health></span>
@@ -31,9 +33,12 @@ export function shellMarkup() {
             <button data-exit class="btn exit-btn">${iconMarkup("return")}退出监看</button>
           </div>
         </header>
+          </div>
+        </div>
+        <button data-topbar-collapse type="button" class="topbar-handle" aria-label="收起顶部栏" title="收起顶部栏">${iconMarkup("chevup")}</button>
+        <button data-topbar-expand type="button" class="topbar-handle" aria-label="展开顶部栏" title="展开顶部栏" aria-expanded="false" aria-controls="douyu-monitor-topbar" hidden>${iconMarkup("chevdown")}</button>
         <div class="app-body">
           <main data-wall aria-label="多路直播画面" class="wall">
-            <div class="wall-resize" data-wall-resize aria-hidden="true"></div>
           </main>
           <aside id="douyu-monitor-controls" data-drawer role="region" aria-label="设置" class="drawer" hidden>
             <div class="drawer-head"><h2>设置</h2><span style="flex:1"></span><button data-controls-collapse type="button" class="ibtn" title="收起设置" aria-label="收起设置"></button></div>
@@ -66,11 +71,13 @@ export function shellMarkup() {
                 <label class="switchrow"><span>关注房间开播提醒</span><span class="switch"><input data-live-alerts type="checkbox" checked><i></i></span></label>
                 <label class="switchrow"><span>提醒声音</span><span class="switch"><input data-live-sound type="checkbox"><i></i></span></label>
                 <label class="switchrow"><span>开播后自动取流</span><span class="switch"><input data-live-autoplay type="checkbox" checked><i></i></span></label>
-                <label class="switchrow"><span>画格显示时钟</span><span class="switch"><input data-clock-toggle type="checkbox" checked><i></i></span></label>
               </section>
               <section class="sec"><h3>工作区预设</h3>
                 <div class="preset-row"><select data-preset-select class="sel" aria-label="选择预设"><option value="">选择预设…</option></select><button data-preset-load class="btn mini">载入</button><button data-preset-delete class="btn mini">删除</button></div>
                 <div class="preset-row"><input data-preset-name maxlength="24" placeholder="预设名称，如：白天挂机"><button data-preset-save class="btn mini">${iconMarkup("save")}保存当前</button></div>
+              </section>
+              <section class="sec"><h3>数据管理</h3>
+                <div class="frow"><button data-clear-history class="btn mini">清空历史房号</button><span class="fhint">清除本地保存的历史房号缓存</span></div>
               </section>
               <section class="sec"><h3>诊断 · <span data-log-count>0</span> 条</h3>
                 <div class="frow"><button data-copy class="btn mini">复制诊断</button><button data-clear class="btn mini">清空</button></div>
@@ -84,7 +91,7 @@ export function shellMarkup() {
           <div class="add-card">
             <div class="add-head">
               <h2>添加房间</h2>
-              <label class="field">${iconMarkup("search")}<input data-add-search aria-label="房号、链接或主播名" autocomplete="off" maxlength="2048" placeholder="房号 / 斗鱼链接 / 主播名（回车直加房号）"></label>
+              <label class="field">${iconMarkup("search")}<input data-add-search aria-label="房号、链接或主播名" autocomplete="off" maxlength="2048" placeholder="房号 / 斗鱼链接 / 主播名（回车搜索）"></label>
               <label class="fitem"><span class="tb-label">新房间画质</span><select data-default-rate class="sel sel-sm">${rateOptions}</select></label>
               <button data-add-close type="button" class="ibtn" title="关闭" aria-label="关闭添加面板">${iconMarkup("close")}</button>
             </div>
@@ -99,7 +106,7 @@ export function shellMarkup() {
             <div class="add-foot">
               <span class="add-status" data-add-status role="status"></span>
               <button data-add-selected class="btn">添加选中</button>
-              <button data-add-live-all class="btn primary">一键添加全部直播中</button>
+              <button data-add-select-all class="btn" aria-pressed="false">全选当前列表</button>
             </div>
           </div>
         </section>

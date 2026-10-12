@@ -1,4 +1,4 @@
-import { KEY, LEGACY_KEY, MAX_TILES, CAPACITIES, RATES, AUDIO_MODES, clamp01 } from "../core/settings.js";
+import { KEY, LEGACY_KEY, MAX_TILES, CAPACITIES, RATES, AUDIO_MODES, THEMES, DEFAULT_THEME, normalizeTheme, clamp01 } from "../core/settings.js";
 import { normalizeDanmaku } from "../core/danmaku-render.js";
 import { migrateLegacyWorkspace } from "../core/workspace.js";
 import { parseRoom } from "../core/room.js";
@@ -11,17 +11,18 @@ export function initPersistence(ctx) {
 
   ctx.serializeWorkspace = () => ({
     schemaVersion: 2,
+    theme: ctx.theme,
     layoutMode: ctx.layoutMode,
     capacity: ctx.scheduler.capacity,
     hevc: ctx.hevc,
     pauseOfficial: ctx.pauseOfficialEnabled,
-    clock: ctx.clockEnabled,
     resumeMode: ctx.resumeMode,
     audio: { mode: ctx.audio.mode, master: ctx.audio.master, followFocus: ctx.audio.followFocus, autoMute: ctx.audio.autoMute },
     danmakuDefaults: ctx.danmakuDefaults,
     liveAlerts: ctx.liveAlerts, liveAlertSound: ctx.liveAlertSound, liveAutoPlay: ctx.liveAutoPlay,
     drawerVisible: ctx.drawerPreference,
-    tiles: [...ctx.tiles.values()].map((tile) => ({ rid: tile.rid, rate: tile.rate, danmaku: tile.danmaku, audio: { muted: tile.muted, volume: tile.vol } }))
+    topbarCollapsed: ctx.topbarCollapsed,
+    tiles: [...ctx.tiles.values()].map((tile) => ({ rid: tile.rid, name: tile.name, rate: tile.rate, danmaku: tile.danmaku, audio: { muted: tile.muted, volume: tile.vol } }))
   });
 
   ctx.save = () => {
@@ -49,10 +50,11 @@ export function initPersistence(ctx) {
     query("[data-live-alerts]").checked = ctx.liveAlerts;
     query("[data-live-sound]").checked = ctx.liveAlertSound;
     query("[data-live-autoplay]").checked = ctx.liveAutoPlay;
-    query("[data-clock-toggle]").checked = ctx.clockEnabled;
     for (const el of ctx.wrapper.querySelectorAll("[name=resume-mode]")) el.checked = el.value === ctx.resumeMode;
+    for (const el of ctx.wrapper.querySelectorAll("[name=theme-choice]")) el.checked = el.value === ctx.theme;
     ctx.syncDrawerDanmaku();
     ctx.syncLayoutRadios();
+    ctx.syncTopbar();
   };
 
   ctx.applyWorkspace = (data, autoplay = false) => {
@@ -62,11 +64,11 @@ export function initPersistence(ctx) {
       for (const tile of [...ctx.tiles.values()]) ctx.removeTile(tile);
       ctx.focused = null;
       ctx.selectedId = null;
+      ctx.setTheme?.(normalizeTheme(data.theme));
       ctx.layoutMode = ["auto", 1, 2, 3, 4].includes(data.layoutMode === "auto" ? "auto" : Number(data.layoutMode)) ? data.layoutMode : 2;
       ctx.scheduler.capacity = CAPACITIES.includes(data.capacity) ? data.capacity : 8;
       ctx.hevc = data.hevc === true;
       ctx.pauseOfficialEnabled = data.pauseOfficial !== false;
-      ctx.clockEnabled = data.clock !== false;
       ctx.resumeMode = ["always", "never"].includes(data.resumeMode) ? data.resumeMode : "ask";
       ctx.audio = {
         mode: AUDIO_MODES.includes(data.audio?.mode) ? data.audio.mode : "mix",
@@ -79,10 +81,11 @@ export function initPersistence(ctx) {
       ctx.liveAlertSound = data.liveAlertSound === true;
       ctx.liveAutoPlay = data.liveAutoPlay !== false;
       ctx.drawerPreference = data.drawerVisible !== false;
+      ctx.topbarCollapsed = data.topbarCollapsed === true;
       ctx.syncControlsFromState();
       for (const entry of (Array.isArray(data.tiles) ? data.tiles : []).slice(0, MAX_TILES)) {
         try {
-          ctx.addTile(parseRoom(String(entry.rid)), RATES.some(([rate]) => rate === entry.rate) ? entry.rate : 1, autoplay, entry.danmaku || null, entry.audio || null);
+          ctx.addTile(parseRoom(String(entry.rid)), RATES.some(([rate]) => rate === entry.rate) ? entry.rate : 1, autoplay, entry.danmaku || null, entry.audio || null, entry.name || "");
         } catch {
           ctx.log("", "跳过无效或重复的保存房间");
         }
@@ -105,7 +108,7 @@ export function initPersistence(ctx) {
     try {
       for (const entryData of entries) {
         try {
-          ctx.addTile(parseRoom(String(entryData.rid)), RATES.some(([rate]) => rate === entryData.rate) ? entryData.rate : 1, autoplay, entryData.danmaku || null, entryData.audio || null);
+          ctx.addTile(parseRoom(String(entryData.rid)), RATES.some(([rate]) => rate === entryData.rate) ? entryData.rate : 1, autoplay, entryData.danmaku || null, entryData.audio || null, entryData.name || "");
         } catch {
           ctx.log("", "跳过无效或重复的保存房间");
         }
@@ -121,7 +124,7 @@ export function initPersistence(ctx) {
   // 把墙上全部画格收回为“待加载”（拒绝继续播放 / 暂不加载时调用）：
   // 墙清空、房间配置原样保留，下次打开重新询问 —— 否则拒绝后房间仍留在墙上。
   ctx.parkAllTiles = () => {
-    const entries = [...ctx.tiles.values()].map((tile) => ({ rid: tile.rid, rate: tile.rate, danmaku: tile.danmaku, audio: { muted: tile.muted, volume: tile.vol } }));
+    const entries = [...ctx.tiles.values()].map((tile) => ({ rid: tile.rid, name: tile.name, rate: tile.rate, danmaku: tile.danmaku, audio: { muted: tile.muted, volume: tile.vol } }));
     if (!entries.length) return;
     ctx.pendingTiles = entries;
     for (const tile of [...ctx.tiles.values()]) ctx.removeTile(tile);
@@ -146,7 +149,6 @@ export function initPersistence(ctx) {
         ctx.scheduler.capacity = CAPACITIES.includes(saved.capacity) ? saved.capacity : 8;
         ctx.hevc = saved.hevc === true;
         ctx.pauseOfficialEnabled = saved.pauseOfficial !== false;
-        ctx.clockEnabled = saved.clock !== false;
         ctx.resumeMode = ["always", "never"].includes(saved.resumeMode) ? saved.resumeMode : "ask";
         ctx.audio = {
           mode: AUDIO_MODES.includes(saved.audio?.mode) ? saved.audio.mode : "mix",
@@ -159,6 +161,7 @@ export function initPersistence(ctx) {
         ctx.liveAlertSound = saved.liveAlertSound === true;
         ctx.liveAutoPlay = saved.liveAutoPlay !== false;
         ctx.drawerPreference = saved.drawerVisible !== false;
+        ctx.topbarCollapsed = saved.topbarCollapsed === true;
         ctx.pendingTiles = (Array.isArray(saved.tiles) ? saved.tiles : []).slice(0, MAX_TILES);
       }
     } catch {

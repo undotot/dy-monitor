@@ -1,5 +1,5 @@
 // 打包：src/main.js → dist/douyu-monitor.user.js（单文件 IIFE，banner 注入版本号）。
-// 默认不压缩（保留可读性，油猴面板里可直接调试）；--minify 时压缩输出。
+// 默认压缩 + tree-shaking（交付物面向安装，去掉未引用导出与死代码）；--no-minify 输出未压缩版便于调试。
 import { readFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +21,8 @@ await build({
   define: { __VERSION__: JSON.stringify(pkg.version) },
   loader: { ".css": "text" },
   outfile: join(root, "dist", "douyu-monitor.user.js"),
-  minify: process.argv.includes("--minify"),
+  minify: !process.argv.includes("--no-minify"),
+  treeShaking: true,
   logLevel: "info"
 });
 
