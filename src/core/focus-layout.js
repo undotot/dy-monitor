@@ -101,11 +101,11 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
   };
 
   let best = null;
-  // 小窗 16:9 适配度紧随主窗主导性、先于主窗画质（小窗 16:9 优先于大窗）；主窗可看
-  // 底线用 640×360 达成率十档软评分，拦截「小格贴合 16:9 但主窗缩成小方块」的候选
-  // （细条小格则由 meanVisible/bothRegions 拦截）。
+  // 评分全序：主窗主导性（≥1.5×格）→ 主窗可看底线（640×360 达成率十档软评分）→
+  // 双区优先（≥5房 L 型互锁满铺，绝不退化为单边长条）→ 小窗画面保留率 →
+  // 主窗比例达成 → 布局填满率 → 签名稳定 → 精确画面率 → 右列优先 → 签名破平。
   const tiersOf = (c) => {
-    const t = [c.dominant ? 1 : 0, Math.round(visibleOf(c.cell.width, c.cell.height, DEFAULT_RATIO) / 0.02), Math.round(c.quality / 0.1)];
+    const t = [c.dominant ? 1 : 0, Math.round(c.quality / 0.1)];
     if (prefer === "dual") t.push(c.bothRegions ? 1 : 0, Math.round(c.meanVisible / 0.01));
     else t.push(Math.round(c.meanVisible / 0.01), c.bothRegions ? 1 : 0);
     t.push(Math.round(c.mainVisible / 0.05), Math.round(c.fillRatio / 0.01));

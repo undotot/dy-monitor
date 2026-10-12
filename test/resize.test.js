@@ -155,10 +155,11 @@ test("3–16 房三项要求：等大保比例、精确满铺、主窗左上主�
       close(plan.main.width + plan.rightWidth + (plan.rightWidth ? plan.gap : 0), width);
       close(plan.topHeight + plan.bottomHeight + (plan.bottomHeight ? plan.gap : 0), height);
       if (width >= 1280) {
-        // 小窗盒子尽量 16:9（优先于双区排布与主窗画质）：高房数允许更小的等大格，
-        // 但格子比例与画面保留率必须贴合 16:9 流。
-        assert.ok(Math.abs(plan.cellRatio / landscape - 1) < 0.02, tag);
-        assert.ok(plan.meanVisible >= 0.98, tag);
+        // 双区优先（≥5房稳定保持 L 型互锁环抱主窗，3-4房单区兜底）：
+        // 格子等大精确满铺，内部视频 contain 居中完整显示不变形，画面保留率有下限。
+        if (count >= 5) assert.equal(plan.bothRegions, true, `${tag}: 应保持双区 L 型互锁`);
+        assert.ok(plan.cell.width >= 120 && plan.cell.height >= 60, `${tag}: 格子尺寸过小`);
+        assert.ok(plan.meanVisible >= 0.5, `${tag}: 小窗画面保留率过低`);
       }
     }
   }
