@@ -1,4 +1,4 @@
-import { SCRIPT_VERSION, UPDATE_META_URL, DOWNLOAD_USER_URL } from "../core/settings.js";
+import { SCRIPT_VERSION, UPDATE_META_URL, UPDATE_META_FALLBACK_URLS, DOWNLOAD_USER_URL } from "../core/settings.js";
 
 /**
  * 严格比对两个语义化版本号，判断 remote 是否大于 local
@@ -29,6 +29,23 @@ export function isNewerVersion(remote, local) {
 }
 
 /**
+ * 从版本号列表中筛选出最高的语义化版本号
+ * @param {string[]} versions
+ * @returns {string|null}
+ */
+export function findHighestVersion(versions) {
+  if (!Array.isArray(versions) || versions.length === 0) return null;
+  let highest = null;
+  for (const v of versions) {
+    if (!v) continue;
+    if (!highest || isNewerVersion(v, highest)) {
+      highest = v;
+    }
+  }
+  return highest;
+}
+
+/**
  * 从 Userscript 元数据头部提取 @version 标签
  * @param {string} metaText
  * @returns {string|null}
@@ -40,12 +57,11 @@ export function extractVersionFromMeta(metaText) {
 }
 
 /**
- * 发起非阻塞低开销请求获取远程最新版本号
- * 优先使用 GM_xmlhttpRequest，回退使用原生 fetch，超时保护 5 秒
- * @param {string} [metaUrl]
+ * 请求单个 URL 获取元数据版本号
+ * @param {string} metaUrl
  * @returns {Promise<string|null>}
  */
-export async function fetchRemoteVersion(metaUrl = UPDATE_META_URL) {
+async function fetchSingleVersion(metaUrl) {
   const urlWithCacheBust = `${metaUrl}${metaUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
 
   // 油猴环境特权 API
@@ -55,7 +71,7 @@ export async function fetchRemoteVersion(metaUrl = UPDATE_META_URL) {
         GM_xmlhttpRequest({
           method: "GET",
           url: urlWithCacheBust,
-          timeout: 5000,
+          timeout: 4000,
           onload: (res) => {
             if (res.status >= 200 && res.status < 300) {
               resolve(extractVersionFromMeta(res.responseText));
@@ -76,7 +92,7 @@ export async function fetchRemoteVersion(metaUrl = UPDATE_META_URL) {
   if (typeof fetch === "function") {
     try {
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 5000) : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 4000) : null;
       const res = await fetch(urlWithCacheBust, {
         cache: "no-cache",
         signal: ctrl?.signal
@@ -91,6 +107,29 @@ export async function fetchRemoteVersion(metaUrl = UPDATE_META_URL) {
   }
 
   return null;
+}
+
+/**
+ * 发起非阻塞请求获取远程最新版本号
+ * 支持多节点镜像并行比对，取最高版本号，彻底免疫单一 CDN 边缘节点的缓存滞后
+ * @param {string|string[]} [urls]
+ * @returns {Promise<string|null>}
+ */
+export async function fetchRemoteVersion(urls = UPDATE_META_FALLBACK_URLS) {
+  const candidates = Array.isArray(urls) ? urls : [urls || UPDATE_META_URL];
+  if (candidates.length === 1) {
+    return fetchSingleVersion(candidates[0]);
+  }
+
+  try {
+    const results = await Promise.allSettled(candidates.map((u) => fetchSingleVersion(u)));
+    const versions = results
+      .filter((r) => r.status === "fulfilled" && Boolean(r.value))
+      .map((r) => r.value);
+    return findHighestVersion(versions);
+  } catch {
+    return null;
+  }
 }
 
 /**

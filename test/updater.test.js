@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isNewerVersion, extractVersionFromMeta } from "../src/app/updater.js";
+import { isNewerVersion, extractVersionFromMeta, findHighestVersion } from "../src/app/updater.js";
 
 test("isNewerVersion 基础比对", () => {
   assert.equal(isNewerVersion("1.2.21", "1.2.20"), true, "patch 递增应判定为有新版");
@@ -8,6 +8,14 @@ test("isNewerVersion 基础比对", () => {
   assert.equal(isNewerVersion("2.0.0", "1.9.99"), true, "major 递增应判定为有新版");
   assert.equal(isNewerVersion("1.2.20", "1.2.20"), false, "相同版本应判定为无新版");
   assert.equal(isNewerVersion("1.2.19", "1.2.20"), false, "旧版本应判定为无新版");
+});
+
+test("findHighestVersion 多镜像多源版本挑选", () => {
+  assert.equal(findHighestVersion(["1.2.20", "1.2.23", "1.2.25"]), "1.2.25", "应选出最高版本");
+  assert.equal(findHighestVersion(["1.2.25", "1.2.20"]), "1.2.25", "即使滞后缓存排在后也应选最高版");
+  assert.equal(findHighestVersion(["v1.2.26", "1.2.25"]), "v1.2.26", "容错 v 前缀");
+  assert.equal(findHighestVersion([]), null);
+  assert.equal(findHighestVersion([null, undefined, ""]), null);
 });
 
 test("isNewerVersion 带 v 前缀或空格容错", () => {
