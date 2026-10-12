@@ -1,0 +1,53 @@
+name: 自动构建与发布 CDN
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 运行单元测试
+        run: npm test
+
+      - name: 编译打包产物
+        run: npm run build
+
+      - name: 语法健康检查
+        run: npm run check
+
+      - name: 推送产物至 release 分支
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: release
+          publish_dir: ./dist
+          destination_dir: dist
+          keep_files: false
+
+      - name: 刷新 jsDelivr CDN 边缘缓存（秒级生效）
+        run: |
+          echo "Purging jsDelivr cache..."
+          curl -s "https://purge.jsdelivr.net/gh/undotot/monitor-js@release/dist/douyu-monitor.meta.js" || true
+          curl -s "https://purge.jsdelivr.net/gh/undotot/monitor-js@release/dist/douyu-monitor.user.js" || true
+          echo "jsDelivr cache purged successfully."

@@ -34,7 +34,7 @@ export const scrapeFollowPage = () => {
   return [...rooms.values()].slice(0, 50);
 };
 
-export const fetchFollowPage = async (signal, page = 1) => {
+const fetchFollowPage = async (signal, page = 1) => {
   const offset = (page - 1) * 50;
   const endpoints = [
     `${API_BASE}/japi/weblist/api/getFollowList?offset=${offset}&limit=50&filter=0`,

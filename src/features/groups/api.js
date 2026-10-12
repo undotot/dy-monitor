@@ -8,7 +8,7 @@ let groupsCacheTime = 0;
 const membersCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5分钟内存缓存
 
-export function crossOriginGet(url, signal) {
+function crossOriginGet(url, signal) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new DOMException("已取消", "AbortError"));
 
@@ -76,7 +76,6 @@ export function normalizeGroups(list, { onlyActive = true } = {}) {
       isBearPaw,
       category: isBearPaw ? "bear" : "other",
       seasonName: activeSeason?.name || "",
-      seasonStatus: activeSeason?.status || "",
       isActive: activeSeason?.status === "active"
     };
   });
@@ -173,10 +172,4 @@ export async function fetchGroupMembers(code, { signal, force = false } = {}) {
     return members;
   }
   throw new Error(res?.message || `获取团播[${code}]成员失败`);
-}
-
-export function clearGroupsCache() {
-  groupsCache = null;
-  groupsCacheTime = 0;
-  membersCache.clear();
 }

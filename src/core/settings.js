@@ -6,8 +6,6 @@ export const PRESET_KEY = "douyu-monitor.presets.v1";
 
 export const HISTORY_KEY = "douyu-monitor.history.v1";
 
-export const THEME_KEY = "douyu-monitor.theme.v1";
-
 export const DEFAULT_THEME = "studio";
 
 export const THEMES = ["studio", "titanium", "stealth"];

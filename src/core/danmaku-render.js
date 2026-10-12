@@ -12,7 +12,7 @@ export const normalizeDanmaku = (value = {}) => {
   };
 };
 
-export const colors = { 1: "#ff5555", 2: "#55ccff", 3: "#55ee77", 4: "#ffcc55", 5: "#cc77ff", 6: "#ff88bb" };
+const colors = { 1: "#ff5555", 2: "#55ccff", 3: "#55ee77", 4: "#ffcc55", 5: "#cc77ff", 6: "#ff88bb" };
 
 // 全局弹幕时钟：集中驱动所有开启动画的画格，避免 16 路独立 rAF 造成主线程调度开销过大
 const activeRenderers = /* @__PURE__ */ new Set();

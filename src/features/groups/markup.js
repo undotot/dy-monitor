@@ -17,9 +17,9 @@ export function groupsFilterMarkup() {
   return `<div class="groups-filter-box" data-groups-box hidden>
     <div class="groups-cat-bar">
       <div class="groups-cat-pills" data-groups-cats>
-        <button type="button" class="groups-cat-pill is-active" data-group-cat="all">全部 <span class="groups-cat-count" data-cat-count="all">12</span></button>
-        <button type="button" class="groups-cat-pill" data-group-cat="bear">🐾 熊掌团播 <span class="groups-cat-count" data-cat-count="bear">4</span></button>
-        <button type="button" class="groups-cat-pill" data-group-cat="other">其他团播 <span class="groups-cat-count" data-cat-count="other">8</span></button>
+        <button type="button" class="groups-cat-pill is-active" data-group-cat="all">全部 <span class="groups-cat-count" data-cat-count="all">-</span></button>
+        <button type="button" class="groups-cat-pill" data-group-cat="bear">🐾 熊掌团播 <span class="groups-cat-count" data-cat-count="bear">-</span></button>
+        <button type="button" class="groups-cat-pill" data-group-cat="other">其他团播 <span class="groups-cat-count" data-cat-count="other">-</span></button>
       </div>
       <div class="groups-current-badge" data-groups-current-info>选择团播</div>
     </div>

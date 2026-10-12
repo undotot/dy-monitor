@@ -1,6 +1,6 @@
 // 打包：src/main.js → dist/douyu-monitor.user.js（单文件 IIFE，banner 注入版本号）。
 // 默认压缩 + tree-shaking（交付物面向安装，去掉未引用导出与死代码）；--no-minify 输出未压缩版便于调试。
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -27,3 +27,6 @@ await build({
 });
 
 console.log(`built dist/douyu-monitor.user.js @ v${pkg.version}`);
+
+writeFileSync(join(root, "dist", "douyu-monitor.meta.js"), banner.trim() + "\n", "utf8");
+console.log(`built dist/douyu-monitor.meta.js @ v${pkg.version}`);

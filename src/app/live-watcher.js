@@ -1,7 +1,7 @@
 import { fetchProbe } from "../api/probe.js";
 import { normalizeRoomName, roomDisplayName } from "../core/room-name.js";
 
-export function showNotification(title, body) {
+function showNotification(title, body) {
   try {
     if (typeof GM_notification === "function") {
       GM_notification({ title, text: body });
