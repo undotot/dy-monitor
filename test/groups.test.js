@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
-import { normalizeGroups, normalizeGroupMembers, BEAR_PAW_CODES } from "../src/features/groups/api.js";
+import { normalizeGroups, normalizeGroupMembers, sortRoomsByLiveStatus, BEAR_PAW_CODES } from "../src/features/groups/api.js";
 import { groupCardMarkup } from "../src/features/groups/markup.js";
 import { mountGroupsFeature } from "../src/features/groups/index.js";
 
-test("normalizeGroups 正确区分熊掌团播与其他团播", () => {
+test("normalizeGroups 默认只筛选进行中的团播，并正确区分熊掌团播与其他团播", () => {
   const mockRaw = [
     { code: "Can", name: "灿团", kind: "fixed", leaderName: "苏阿灿", seasons: [{ name: "S7", status: "active" }] },
     { code: "224", name: "224团播", kind: "fixed", leaderName: "大舅哥", seasons: [{ name: "青训营", status: "completed" }] },
@@ -13,18 +13,43 @@ test("normalizeGroups 正确区分熊掌团播与其他团播", () => {
     { code: "Gu", name: "婺源小团", kind: "small", leaderName: "姑姑", seasons: [{ name: "S1", status: "active" }] }
   ];
 
-  const result = normalizeGroups(mockRaw);
-  assert.equal(result.length, 4);
+  // 默认过滤掉已结营的 224，只保留进行中的 3 个
+  const activeOnly = normalizeGroups(mockRaw);
+  assert.equal(activeOnly.length, 3);
+  assert.equal(activeOnly.some((g) => g.code === "224"), false, "已结营的224团播应被过滤");
 
-  const can = result.find((g) => g.code === "Can");
+  const can = activeOnly.find((g) => g.code === "Can");
   assert.equal(can.isBearPaw, true);
   assert.equal(can.category, "bear");
   assert.equal(can.isActive, true);
 
-  const lang = result.find((g) => g.code === "320");
+  const lang = activeOnly.find((g) => g.code === "320");
   assert.equal(lang.isBearPaw, false);
   assert.equal(lang.category, "other");
   assert.equal(lang.isActive, true);
+
+  // 传 onlyActive: false 可获取完整列表
+  const all = normalizeGroups(mockRaw, { onlyActive: false });
+  assert.equal(all.length, 4);
+});
+
+test("sortRoomsByLiveStatus 严格按照 已开播 -> 轮播中 -> 检查中 -> 未开播 排序", () => {
+  const rooms = [
+    { rid: "1", name: "离线主播1", liveStatus: "offline", isLeader: false },
+    { rid: "2", name: "轮播主播", liveStatus: "carousel", isLeader: false },
+    { rid: "3", name: "开播队员", liveStatus: "live", isLeader: false },
+    { rid: "4", name: "离线团长", liveStatus: "offline", isLeader: true },
+    { rid: "5", name: "开播团长", liveStatus: "live", isLeader: true },
+    { rid: "6", name: "检查中队员", liveStatus: null, isLeader: false }
+  ];
+
+  const sorted = sortRoomsByLiveStatus([...rooms]);
+  const rids = sorted.map((r) => r.rid);
+
+  // 状态优先级：开播(live) > 轮播(carousel) > 检查中(null) > 未开播(offline)
+  // 同为开播：开播团长(5) 优先于 开播队员(3)
+  // 同为离线：离线团长(4) 优先于 离线主播1(1)
+  assert.deepEqual(rids, ["5", "3", "2", "6", "4", "1"]);
 });
 
 test("normalizeGroupMembers 正确提取成员、去重、补充团长角色", () => {

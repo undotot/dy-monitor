@@ -62,9 +62,9 @@ export function crossOriginGet(url, signal) {
   });
 }
 
-export function normalizeGroups(list) {
+export function normalizeGroups(list, { onlyActive = true } = {}) {
   if (!Array.isArray(list)) return [];
-  return list.map((g) => {
+  const normalized = list.map((g) => {
     const isBearPaw = BEAR_PAW_CODES.includes(g.code);
     const activeSeason = g.seasons?.[0] || null;
     return {
@@ -79,6 +79,21 @@ export function normalizeGroups(list) {
       seasonStatus: activeSeason?.status || "",
       isActive: activeSeason?.status === "active"
     };
+  });
+  return onlyActive ? normalized.filter((g) => g.isActive) : normalized;
+}
+
+export function sortRoomsByLiveStatus(rooms) {
+  if (!Array.isArray(rooms)) return [];
+  const rank = { live: 3, carousel: 2, offline: 0 };
+  return rooms.sort((a, b) => {
+    const ra = rank[a.liveStatus] ?? 1;
+    const rb = rank[b.liveStatus] ?? 1;
+    if (ra !== rb) return rb - ra; // 已开播(3) > 轮播中(2) > 检查中(1) > 未开播(0)
+    // 同状态下：团长优先，队长次之，其后队员
+    if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+    if (a.isCaptain !== b.isCaptain) return a.isCaptain ? -1 : 1;
+    return 0;
   });
 }
 

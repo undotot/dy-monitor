@@ -1,7 +1,7 @@
 // [插件独立模块] 团播选择器核心控制器（方案 A：电竞暗色横向滑轨卡片）
 // 设计原则：高内聚、低耦合，方便随时开启或整块拆卸。
 
-import { fetchGroups, fetchGroupMembers } from "./api.js";
+import { fetchGroups, fetchGroupMembers, sortRoomsByLiveStatus } from "./api.js";
 import { groupsTabMarkup, groupsFilterMarkup, groupCardMarkup, groupsSelectLiveButtonMarkup, escapeHtml } from "./markup.js";
 import { groupsCss } from "./styles.js";
 
@@ -165,16 +165,17 @@ export function mountGroupsFeature(ctx) {
       const members = await fetchGroupMembers(code, { signal: controller.signal });
       if (generation !== addState.generation || state.disposed) return;
 
-      addState.rooms = members;
+      addState.rooms = sortRoomsByLiveStatus([...members]);
       updateHeaderSummary(members.length);
       ctx.renderAddList?.();
       if (els.addStatus) {
         els.addStatus.textContent = `【${target.name}】共 ${members.length} 人，直播状态探测中…`;
       }
 
-      // 触发原有探测能力，自动打上在播绿标
+      // 触发原有探测能力，自动打上在播绿标，并保持【已开播 - 轮播中 - 未开播】动态排序
       ctx.probeRoomsStatus?.(addState.rooms, () => {
         if (generation === addState.generation && !state.disposed) {
+          sortRoomsByLiveStatus(addState.rooms);
           ctx.renderAddList?.();
         }
       });
