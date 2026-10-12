@@ -6,6 +6,7 @@ import { fetchFollowRooms, isExcludedFollowRoom } from "../api/follow.js";
 import { loadHistory, recordHistory } from "../api/history.js";
 import { addRowMarkup } from "../ui/tile-markup.js";
 import { normalizeRoomName, roomDisplayName } from "../core/room-name.js";
+import { mountGroupsFeature } from "../features/groups/index.js";
 
 // 添加房间面板：关注 / 历史 / 搜索 / 手动四个标签页，批量勾选与状态探测。
 export function initAddPanel(ctx) {
@@ -325,4 +326,7 @@ export function initAddPanel(ctx) {
     ctx.renderAddList();
   };
   query("[data-add-select-all]").addEventListener("click", handleSelectAll);
+
+  // [独立扩展插件] 挂载团播选择器功能（可随时单行注释拆卸）
+  mountGroupsFeature(ctx);
 }

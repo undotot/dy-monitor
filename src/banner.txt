@@ -11,7 +11,9 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_notification
+// @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
 // @grant        window.onurlchange
+// @connect      13.xiebin.best
 // ==/UserScript==
 "use strict";

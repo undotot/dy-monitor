@@ -234,7 +234,7 @@ check("重复房间不虚报成功", tilesInWall() === 4 && query("[data-add-sta
 // 勾选精确批量（“勾几个却加一大批”的“添加选中”半边）
 pickTab("all");
 await sleep(120);
-check("页签只剩关注·全部/添加历史/手动房号", qa("[name=add-tab]").map((el) => el.value).join(",") === "all,history,manual");
+check("页签包含关注·全部/添加历史/手动房号/团播（不含旧搜索标签）", qa("[name=add-tab]").map((el) => el.value).join(",") === "all,history,manual,groups");
 check("关注·全部列出 12 行", qa("[data-add-list] [data-rid]").length === 12);
 const rows = () => qa("[data-add-list] [data-rid]");
 const firstRow = rows()[0];
