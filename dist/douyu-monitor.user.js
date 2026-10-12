@@ -16,8 +16,8 @@
 // @grant        window.onurlchange
 // @connect      13.xiebin.best
 // @connect      fastly.jsdelivr.net
-// @updateURL    https://fastly.jsdelivr.net/gh/undotot/monitor-js@release/dist/douyu-monitor.meta.js
-// @downloadURL  https://fastly.jsdelivr.net/gh/undotot/monitor-js@release/dist/douyu-monitor.user.js
+// @updateURL    https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js
+// @downloadURL  https://fastly.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js
 // ==/UserScript==
 "use strict";
 
