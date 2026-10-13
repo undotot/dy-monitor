@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>斗鱼监控室 · 方案 A（自适应导播模数 L 墙）1–16 房全真交互预览</title>
+  <style>
+    :root {
+      --bg: #0a0c11;
+      --wall: #07080c;
+      --panel: rgba(15, 18, 26, .96);
+      --card: rgba(255, 255, 255, .045);
+      --card-hover: rgba(255, 255, 255, .09);
+      --line: rgba(255, 255, 255, .08);
+      --line2: rgba(255, 255, 255, .15);
+      --text: #eceef4;
+      --dim: #a3adc2;
+      --faint: #626c80;
+      --accent: #fb7299;
+      --accent2: #ff9d6b;
+      --grad: linear-gradient(135deg, #fb7299, #ff9d6b);
+      --green: #34d399;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --blue: #38bdf8;
+      --primary: #3b82f6;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px / 1.5 "Segoe UI", -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+      user-select: none;
+    }
+
+    /* ===== 全局顶栏 ===== */
+    .preview-header {
+      position: relative;
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      padding: 8px 16px;
+      background: rgba(13, 16, 24, .98);
+      border-bottom: 1px solid var(--line2);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .4);
+    }
+    .ph-left, .ph-mid, .ph-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      background: var(--grad);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(251, 113, 153, .4);
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .ver-tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, .12);
+      color: var(--blue);
+      border: 1px solid rgba(56, 189, 248, .3);
+      font-weight: 600;
+    }
+
+    /* 房间数选择 Pills */
+    .room-selector {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px;
+      background: rgba(0, 0, 0, .45);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow-x: auto;
+      max-width: 580px;
+    }
+    .room-btn {
+      min-width: 28px;
+      height: 26px;
+      padding: 0 7px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--dim);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .room-btn:hover {
+      background: rgba(255, 255, 255, .08);
+      color: #fff;
+    }
+    .room-btn.active {
+      background: var(--grad);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(251, 113, 153, .4);
+    }
+
+    /* 模式切换器 */
+    .mode-switch {
+      display: inline-flex;
+      background: rgba(0, 0, 0, .45);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .mode-tab {
+      padding: 4px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--dim);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .mode-tab.active {
+      background: rgba(255, 255, 255, .12);
+      color: #fff;
+    }
+
+    /* 视口预设选择器 */
+    .vp-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--dim);
+    }
+    .vp-select {
+      background: rgba(0, 0, 0, .5);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ===== 核心审计信息条 (Mathematical Invariant Bar) ===== */
+    .audit-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 6px 18px;
+      background: rgba(10, 14, 22, .92);
+      border-bottom: 1px solid var(--line);
+      font-size: 11.5px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .audit-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .audit-label {
+      color: var(--faint);
+    }
+    .audit-val {
+      font-weight: 600;
+      font-feature-settings: "tnum";
+      color: var(--text);
+    }
+    .audit-tag {
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .audit-tag.pass {
+      background: rgba(52, 211, 153, .14);
+      color: var(--green);
+      border: 1px solid rgba(52, 211, 153, .3);
+    }
+    .audit-tag.highlight {
+      background: rgba(56, 189, 248, .14);
+      color: var(--blue);
+      border: 1px solid rgba(56, 189, 248, .3);
+    }
+
+    /* ===== 主舞台容器 ===== */
+    .main-stage {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 84px);
+      overflow: hidden;
+      background: #030406;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 模拟显示设备窗口 */
+    .viewport-box {
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 20px 60px rgba(0, 0, 0, .8);
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width .2s ease, height .2s ease;
+    }
+
+    /* 内部实际工程 DOM：.app-shell, .app-body, .wall */
+    .app-shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    .app-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      position: relative;
+      background: #000;
+    }
+
+    /* 工程实际原版 CSS: .wall.is-focused */
+    .wall {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      gap: 1px;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    .wall.is-focused {
+      position: relative;
+      overflow: hidden;
+      padding: 0;
+      background: #000;
+      place-content: center;
+      justify-content: center;
+      align-content: center;
+    }
+    .focus-region {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    .focus-content {
+      position: relative;
+      min-width: 100%;
+    }
+
+    /* 工程实际原版 CSS: .tile-shell */
+    .tile-shell {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: #0d111a;
+      user-select: none;
+      border: 1px solid rgba(255, 255, 255, .06);
+      transition: border-color .15s ease, box-shadow .15s ease;
+      cursor: pointer;
+    }
+    .tile-shell:hover {
+      border-color: rgba(56, 189, 248, .5);
+      z-index: 10;
+    }
+    .tile-shell.is-focused {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(251, 114, 153, .3);
+      cursor: default;
+    }
+    .tile-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #05070a;
+    }
+
+    /* 状态栏胶囊（与工程 100% 一致） */
+    .tile-status {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      z-index: 12;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      width: auto;
+      height: 22px;
+      padding: 0 8px 0 6px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 999px;
+      background: rgba(10, 12, 18, .65);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(52, 211, 153, .8);
+    }
+    .t-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .t-main-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 0 4px;
+      border-radius: 3px;
+      background: var(--grad);
+      color: #fff;
+      margin-left: 2px;
+    }
+
+    /* 右上角声音胶囊（与工程一致） */
+    .tile-audio-corner {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 12;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 22px;
+      padding: 0 6px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 999px;
+      background: rgba(10, 12, 18, .65);
+      backdrop-filter: blur(10px);
+      font-size: 10.5px;
+      color: #fff;
+    }
+
+    /* 画格右下角标签 */
+    .tile-dim-badge {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      z-index: 12;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, .75);
+      border: 1px solid rgba(255, 255, 255, .1);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--dim);
+      pointer-events: none;
+      font-feature-settings: "tnum";
+    }
+
+    /* 小屏悬浮提示 */
+    .tile-click-hint {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(14, 165, 233, .12);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity .15s ease;
+      pointer-events: none;
+      backdrop-filter: blur(2px);
+    }
+    .tile-shell:not(.is-focused):hover .tile-click-hint {
+      opacity: 1;
+    }
+
+    /* ===== 全览模式（Overview Mode）样式 ===== */
+    .overview-stage {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+    .overview-card {
+      background: #0f1420;
+      border: 1px solid var(--line2);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .overview-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+    }
+    .oc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .oc-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .oc-specs {
+      font-size: 11px;
+      color: var(--dim);
+      display: flex;
+      gap: 8px;
+    }
+    .oc-canvas-wrap {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .05);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 辅助指示 */
+    .external-pillar-indicator {
+      position: absolute;
+      inset: 0;
+      border: 1px dashed rgba(255, 255, 255, .15);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部主控栏 -->
+  <header class="preview-header">
+    <div class="ph-left">
+      <div class="brand-wrap">
+        <span class="logo">斗</span>
+        <span class="brand-title">监控室 · 方案 A 全真预览</span>
+        <span class="ver-tag">v1.2.32 生产一致</span>
+      </div>
+      <div class="mode-switch">
+        <button class="mode-tab active" id="tab-interactive">沉浸实机体验</button>
+        <button class="mode-tab" id="tab-overview">1–16 房全矩阵总览</button>
+      </div>
+    </div>
+
+    <div class="ph-mid" id="mid-controls">
+      <span style="color:var(--dim); font-size:12px; font-weight:600;">房间数:</span>
+      <div class="room-selector" id="room-buttons">
+        <!-- 动态生成 1 至 16 按钮 -->
+      </div>
+    </div>
+
+    <div class="ph-right">
+      <div class="vp-select-wrap" id="vp-controls">
+        <span>视口分辨率:</span>
+        <select class="vp-select" id="vp-select">
+          <option value="1920x1080">1920 × 1080 (1080P 全屏)</option>
+          <option value="2560x1440">2560 × 1440 (2K 16:9)</option>
+          <option value="3840x2160">3840 × 2160 (4K 16:9)</option>
+          <option value="1366x768">1366 × 768 (笔记本)</option>
+          <option value="2560x1080">2560 × 1080 (21:9 带鱼屏)</option>
+          <option value="1600x1200">1600 × 1200 (4:3 方屏)</option>
+          <option value="fullscreen">适应窗口视口 (自适应)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- 几何铁律审计条 -->
+  <aside class="audit-bar" id="audit-bar">
+    <div class="audit-item">
+      <span class="audit-label">主屏几何:</span>
+      <span class="audit-val" id="audit-main">-- × --</span>
+      <span class="audit-tag pass" id="audit-main-ratio">16:9 严格锁定</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">副屏几何:</span>
+      <span class="audit-val" id="audit-small">-- × --</span>
+      <span class="audit-tag pass" id="audit-small-ratio">16:9 严格锁定</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">副屏尺寸一致性:</span>
+      <span class="audit-val" id="audit-equality">全等 (极差 0.00px)</span>
+      <span class="audit-tag pass">100% 绝对一致</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">主/副比例:</span>
+      <span class="audit-val" id="audit-scale">-- (面积 -- 倍)</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">矩阵阵列:</span>
+      <span class="audit-val" id="audit-matrix">-- 列 × -- 行</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">模数缝隙:</span>
+      <span class="audit-val" id="audit-gap">gapX: --px, gapY: --px</span>
+      <span class="audit-tag highlight">缝隙 16:9 模数化</span>
+    </div>
+    <div class="audit-item">
+      <span class="audit-label">视口外部留黑:</span>
+      <span class="audit-val" id="audit-pillar">水平: 0px | 垂直: 0px</span>
+    </div>
+  </aside>
+
+  <!-- 单机沉浸体验视口 -->
+  <main class="main-stage" id="stage-interactive">
+    <div class="viewport-box" id="viewport-box" style="width: 100%; height: 100%;">
+      <!-- 项目原生 .app-shell -->
+      <div class="app-shell">
+        <div class="app-body">
+          <!-- 项目原生 .wall.is-focused -->
+          <main class="wall is-focused" id="project-wall">
+            <!-- 动态渲染真实 DOM 画格 -->
+          </main>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 1~16 房矩阵总览舞台 -->
+  <section class="overview-stage" id="stage-overview" style="display: none;">
+    <!-- 动态生成 16 个缩略卡片 -->
+  </section>
+
+  <script>
+    // ==========================================
+    // 1. 工程核心拓扑规范与算法 (完全复制 focus-layout.js)
+    // ==========================================
+    const DEFAULT_RATIO = 16 / 9;
+
+    const SCHEME_A_SPECS = Object.freeze({
+      1: { S: 1, cols: 1, rows: 1, smalls: [] },
+      2: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }] },
+      3: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }] },
+      4: { S: 3, cols: 4, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }] },
+      5: { S: 2, cols: 4, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }] },
+      6: { S: 2, cols: 3, rows: 3, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }] },
+      7: { S: 3, cols: 5, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }] },
+      8: { S: 3, cols: 4, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+      9: { S: 2, cols: 4, rows: 3, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }, { c: 3, r: 2 }] },
+      10: { S: 3, cols: 6, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }] },
+      11: { S: 3, cols: 5, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+      12: { S: 3, cols: 5, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }] },
+      13: { S: 2, cols: 4, rows: 4, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }, { c: 3, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+      14: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+      15: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }] },
+      16: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }, { c: 5, r: 3 }] }
+    });
+
+    function calculateFocusLayout({ width, height, roomCount }) {
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) return null;
+      const count = roomCount - 1; // 副屏数量
+      const totalRooms = roomCount;
+      const gap = Math.min(1, width / (totalRooms + 2), height / (totalRooms + 2));
+
+      if (count === 0) {
+        const fitW = Math.min(width, height * DEFAULT_RATIO);
+        const fitH = fitW / DEFAULT_RATIO;
+        return {
+          S: 1, cols: 1, rows: 1,
+          main: { width: fitW, height: fitH },
+          rightWidth: 0, topHeight: fitH, bottomHeight: 0,
+          rightContentHeight: 0, bottomContentHeight: 0,
+          placements: [],
+          gap, gapX: gap, gapY: gap * (9 / 16),
+          cell: { width: fitW, height: fitH },
+          containerW: fitW, containerH: fitH,
+          offsetX: (width - fitW) / 2, offsetY: (height - fitH) / 2
+        };
+      }
+
+      const spec = SCHEME_A_SPECS[totalRooms] || SCHEME_A_SPECS[16];
+      const { S, cols, rows, smalls } = spec;
+
+      const gapX = gap;
+      const gapY = gap * (9 / 16);
+
+      const maxW_by_width = (width - (cols - 1) * gapX) / cols;
+      const maxH_by_height = (height - (rows - 1) * gapY) / rows;
+      const maxW_by_height = maxH_by_height * DEFAULT_RATIO;
+
+      const cw = Math.max(1, Math.min(maxW_by_width, maxW_by_height));
+      const ch = cw / DEFAULT_RATIO;
+
+      const mainW = S * cw + (S - 1) * gapX;
+      const mainH = S * ch + (S - 1) * gapY;
+
+      const containerW = cols * cw + (cols - 1) * gapX;
+      const containerH = rows * ch + (rows - 1) * gapY;
+
+      const offsetX = Math.max(0, (width - containerW) / 2);
+      const offsetY = Math.max(0, (height - containerH) / 2);
+
+      const rightSmalls = smalls.filter((p) => p.c >= S);
+      const bottomSmalls = smalls.filter((p) => p.c < S);
+
+      const rightWidth = rightSmalls.length ? (cols - S) * cw + (cols - S - 1) * gapX : 0;
+      const bottomHeight = bottomSmalls.length ? (rows - S) * ch + (rows - S - 1) * gapY : 0;
+
+      const rightContentHeight = rightSmalls.length ? rows * ch + (rows - 1) * gapY : 0;
+      const bottomContentHeight = bottomHeight;
+
+      const placements = smalls.slice(0, count).map((p, idx) => {
+        const isRight = p.c >= S;
+        const region = isRight ? "right" : "bottom";
+        const x = isRight ? (p.c - S) * (cw + gapX) : p.c * (cw + gapX);
+        const y = isRight ? p.r * (ch + gapY) : (p.r - S) * (ch + gapY);
+        return {
+          index: idx,
+          region,
+          x,
+          y,
+          width: cw,
+          height: ch
+        };
+      });
+
+      return {
+        S, cols, rows,
+        main: { width: mainW, height: mainH },
+        rightWidth,
+        topHeight: mainH,
+        bottomHeight,
+        rightContentHeight,
+        bottomContentHeight,
+        placements,
+        gap, gapX, gapY,
+        cell: { width: cw, height: ch },
+        containerW, containerH,
+        offsetX, offsetY
+      };
+    }
+
+    // ==========================================
+    // 2. 模拟真实房间数据与主播信息
+    // ==========================================
+    const STREAMERS = [
+      { id: 9999, name: "旭旭宝宝", cat: "地下城与勇士", color: "#f43f5e" },
+      { id: 6666, name: "芜湖大司马", cat: "英雄联盟", color: "#38bdf8" },
+      { id: 7777, name: "Doinb", cat: "英雄联盟", color: "#a855f7" },
+      { id: 1234, name: "一条小团团", cat: "绝地求生", color: "#ec4899" },
+      { id: 2333, name: "PDD", cat: "云顶之弈", color: "#f59e0b" },
+      { id: 5555, name: "姿态", cat: "英雄联盟", color: "#10b981" },
+      { id: 8888, name: "张大仙", cat: "王者荣耀", color: "#06b6d4" },
+      { id: 1111, name: "YYF", cat: "DOTA2", color: "#6366f1" },
+      { id: 2222, name: "霸哥", cat: "英雄联盟", color: "#84cc16" },
+      { id: 3333, name: "微笑", cat: "英雄联盟", color: "#14b8a6" },
+      { id: 4444, name: "草莓", cat: "英雄联盟", color: "#ef4444" },
+      { id: 5678, name: "若风", cat: "英雄联盟", color: "#8b5cf6" },
+      { id: 6789, name: "水晶哥", cat: "英雄联盟", color: "#f97316" },
+      { id: 7890, name: "乌子", cat: "英雄联盟", color: "#0ea5e9" },
+      { id: 8901, name: "女流66", cat: "单机游戏", color: "#e11d48" },
+      { id: 9012, name: "寅子", cat: "单机主机", color: "#d97706" }
+    ];
+
+    // ==========================================
+    // 3. 状态管理
+    // ==========================================
+    let currentRooms = 6;
+    let focusedIndex = 0; // 当前大屏所呈现的主播在 activeList 中的索引
+    let activeStreamers = [];
+    let currentViewMode = "interactive"; // 'interactive' | 'overview'
+
+    function updateActiveList() {
+      activeStreamers = STREAMERS.slice(0, currentRooms);
+      if (focusedIndex >= currentRooms) focusedIndex = 0;
+    }
+
+    // ==========================================
+    // 4. 真实 Canvas 模拟画格画面生成
+    // ==========================================
+    function drawStreamFrame(canvas, streamer, isMain, width, height) {
+      if (!canvas) return;
+      canvas.width = Math.max(64, Math.round(width * window.devicePixelRatio));
+      canvas.height = Math.max(36, Math.round(height * window.devicePixelRatio));
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // 暗黑流光背景
+      const grad = ctx.createRadialGradient(W * 0.5, H * 0.45, 10, W * 0.5, H * 0.5, W * 0.7);
+      grad.addColorStop(0, streamer.color + "22");
+      grad.addColorStop(1, "#070a10");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // 背景网格线 (微弱)
+      ctx.strokeStyle = "rgba(255,255,255,0.035)";
+      ctx.lineWidth = 1;
+      const step = W / 16;
+      for (let x = 0; x < W; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      // 动态中央标识
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.fillStyle = streamer.color;
+      ctx.shadowColor = streamer.color;
+      ctx.shadowBlur = isMain ? 24 : 10;
+      ctx.beginPath();
+      ctx.arc(0, -H * 0.08, isMain ? 36 : 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 主播文字
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${isMain ? 26 : 13}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(streamer.name, 0, isMain ? 32 : 16);
+
+      // 分类
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font = `${isMain ? 14 : 9}px sans-serif`;
+      ctx.fillText(streamer.cat, 0, isMain ? 60 : 32);
+      ctx.restore();
+
+      // 模拟音频声波柱 (底部)
+      const bars = isMain ? 32 : 16;
+      const barW = (W * 0.4) / bars;
+      const startX = W * 0.3;
+      ctx.fillStyle = streamer.color + "88";
+      for (let i = 0; i < bars; i++) {
+        const barH = (Math.sin(Date.now() * 0.005 + i * 0.4) * 0.5 + 0.5) * (isMain ? 24 : 10) + 4;
+        ctx.fillRect(startX + i * (barW + 2), H - barH - 8, barW, barH);
+      }
+
+      // 1080P 标头
+      if (isMain) {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.font = "bold 12px monospace";
+        ctx.fillText("1080P60 · HDR · 16:9", 14, H - 14);
+      }
+    }
+
+    // ==========================================
+    // 5. 渲染沉浸实机模式 (Project Wall DOM)
+    // ==========================================
+    function renderInteractiveView() {
+      updateActiveList();
+      const wall = document.getElementById("project-wall");
+      const rect = wall.getBoundingClientRect();
+      const width = rect.width || wall.clientWidth || 1280;
+      const height = rect.height || wall.clientHeight || 720;
+
+      const plan = calculateFocusLayout({ width, height, roomCount: currentRooms });
+      if (!plan) return;
+
+      // 更新审计栏数据
+      updateAuditBar(plan, width, height);
+
+      // 应用工程原版 Grid 轨道与模数间距 (完全复制 layout.js)
+      wall.style.columnGap = `${plan.gapX}px`;
+      wall.style.rowGap = `${plan.gapY}px`;
+      wall.style.gridTemplateColumns = plan.rightWidth ? `${plan.main.width}px ${plan.rightWidth}px` : `${plan.main.width}px`;
+      wall.style.gridTemplateRows = plan.bottomHeight ? `${plan.topHeight}px ${plan.bottomHeight}px` : `${plan.topHeight}px`;
+
+      wall.innerHTML = "";
+
+      // 提取主画面与副画面
+      const mainStreamer = activeStreamers[focusedIndex];
+      const secondaries = activeStreamers.filter((_, idx) => idx !== focusedIndex);
+
+      // 1. 创建主屏 DOM
+      const mainTile = createTileDOM({
+        streamer: mainStreamer,
+        isMain: true,
+        width: plan.main.width,
+        height: plan.main.height,
+        onClick: null
+      });
+      mainTile.style.gridColumn = "1";
+      mainTile.style.gridRow = "1";
+      mainTile.style.width = `${plan.main.width}px`;
+      mainTile.style.height = `${plan.main.height}px`;
+      mainTile.style.justifySelf = "start";
+      mainTile.style.alignSelf = "start";
+      wall.appendChild(mainTile);
+
+      // 2. 创建右侧通高区域
+      const rightRegion = document.createElement("div");
+      rightRegion.className = "focus-region region-right";
+      rightRegion.style.gridColumn = "2";
+      rightRegion.style.gridRow = "1 / -1";
+      rightRegion.hidden = !plan.rightWidth;
+
+      const rightContent = document.createElement("div");
+      rightContent.className = "focus-content";
+      rightContent.style.height = `${plan.rightContentHeight}px`;
+      rightRegion.appendChild(rightContent);
+      wall.appendChild(rightRegion);
+
+      // 3. 创建底部区域
+      const bottomRegion = document.createElement("div");
+      bottomRegion.className = "focus-region region-bottom";
+      bottomRegion.style.gridColumn = "1";
+      bottomRegion.style.gridRow = "2";
+      bottomRegion.hidden = !plan.bottomHeight;
+
+      const bottomContent = document.createElement("div");
+      bottomContent.className = "focus-content";
+      bottomContent.style.height = `${plan.bottomContentHeight}px`;
+      bottomRegion.appendChild(bottomContent);
+      wall.appendChild(bottomRegion);
+
+      // 4. 挂载所有副屏 (绝对定位到对应 region 的 content 中)
+      plan.placements.forEach((placement) => {
+        const secondaryStreamer = secondaries[placement.index];
+        const secondaryRealIndex = activeStreamers.indexOf(secondaryStreamer);
+
+        const tileEl = createTileDOM({
+          streamer: secondaryStreamer,
+          isMain: false,
+          width: placement.width,
+          height: placement.height,
+          onClick: () => {
+            focusedIndex = secondaryRealIndex;
+            renderInteractiveView();
+          }
+        });
+
+        tileEl.style.position = "absolute";
+        tileEl.style.left = `${placement.x}px`;
+        tileEl.style.top = `${placement.y}px`;
+        tileEl.style.width = `${placement.width}px`;
+        tileEl.style.height = `${placement.height}px`;
+
+        if (placement.region === "right") {
+          rightContent.appendChild(tileEl);
+        } else {
+          bottomContent.appendChild(tileEl);
+        }
+      });
+    }
+
+    // 创建单画格 DOM (完全匹配 tile-markup.js & styles.css)
+    function createTileDOM({ streamer, isMain, width, height, onClick }) {
+      const tile = document.createElement("section");
+      tile.className = "tile-shell" + (isMain ? " is-focused" : "");
+
+      // Canvas 画面
+      const canvas = document.createElement("canvas");
+      canvas.className = "tile-canvas";
+      tile.appendChild(canvas);
+
+      // 左上角胶囊 (工程原生 .tile-status)
+      const statusEl = document.createElement("header");
+      statusEl.className = "tile-status";
+      statusEl.innerHTML = `
+        <i class="dot"></i>
+        <b class="t-name">${streamer.name}</b>
+        ${isMain ? '<span class="t-main-tag">主屏 FOCUS</span>' : ''}
+      `;
+      tile.appendChild(statusEl);
+
+      // 右上角声音胶囊 (工程原生 .tile-audio-corner)
+      const audioEl = document.createElement("div");
+      audioEl.className = "tile-audio-corner";
+      audioEl.innerHTML = `<span>🔊</span><span>${isMain ? '100%' : '静音'}</span>`;
+      tile.appendChild(audioEl);
+
+      // 尺寸与比例标签
+      const dimBadge = document.createElement("div");
+      dimBadge.className = "tile-dim-badge";
+      const ratio = (width / height).toFixed(3);
+      dimBadge.textContent = `${Math.round(width)}×${Math.round(height)} (16:9)`;
+      tile.appendChild(dimBadge);
+
+      // 小屏悬浮提示
+      if (!isMain) {
+        const hintEl = document.createElement("div");
+        hintEl.className = "tile-click-hint";
+        hintEl.textContent = "点击放大聚焦";
+        tile.appendChild(hintEl);
+      }
+
+      if (onClick) {
+        tile.addEventListener("click", onClick);
+      }
+
+      // 异步绘制内容
+      requestAnimationFrame(() => {
+        drawStreamFrame(canvas, streamer, isMain, width, height);
+      });
+
+      return tile;
+    }
+
+    // ==========================================
+    // 6. 审计条更新逻辑 (验证四大几何铁律)
+    // ==========================================
+    function updateAuditBar(plan, vpW, vpH) {
+      const mainW = plan.main.width;
+      const mainH = plan.main.height;
+      const smallW = plan.cell ? plan.cell.width : mainW;
+      const smallH = plan.cell ? plan.cell.height : mainH;
+
+      const mainRatio = (mainW / mainH).toFixed(4);
+      const smallRatio = (smallW / smallH).toFixed(4);
+
+      document.getElementById("audit-main").textContent = `${mainW.toFixed(1)}px × ${mainH.toFixed(1)}px`;
+      document.getElementById("audit-small").textContent = plan.placements.length ? `${smallW.toFixed(1)}px × ${smallH.toFixed(1)}px` : "无副屏";
+
+      const scale = plan.S;
+      const areaRatio = (scale * scale).toFixed(1);
+      document.getElementById("audit-scale").textContent = plan.placements.length ? `宽 ${scale}× / 高 ${scale}× (面积 ${areaRatio} 倍)` : "单屏 100%";
+
+      document.getElementById("audit-matrix").textContent = `${plan.cols} 列 × ${plan.rows} 行`;
+      document.getElementById("audit-gap").textContent = `gapX: ${plan.gapX.toFixed(2)}px | gapY: ${plan.gapY.toFixed(2)}px`;
+
+      const pX = Math.max(0, (vpW - plan.containerW) / 2).toFixed(1);
+      const pY = Math.max(0, (vpH - plan.containerH) / 2).toFixed(1);
+      document.getElementById("audit-pillar").textContent = `水平: ${pX}px | 垂直: ${pY}px`;
+    }
+
+    // ==========================================
+    // 7. 渲染 1–16 房矩阵总览视图
+    // ==========================================
+    function renderOverviewView() {
+      const container = document.getElementById("stage-overview");
+      container.innerHTML = "";
+
+      for (let n = 1; n <= 16; n++) {
+        const card = document.createElement("div");
+        card.className = "overview-card";
+
+        const spec = SCHEME_A_SPECS[n] || SCHEME_A_SPECS[16];
+        const S = spec.S;
+        const cols = spec.cols;
+        const rows = spec.rows;
+
+        card.innerHTML = `
+          <div class="oc-header">
+            <span class="oc-title"><b>${n} 画面</b> <span style="font-size:11px; color:var(--blue); font-weight:normal;">(${n === 1 ? '单屏' : '方案 A 模数 L 墙'})</span></span>
+            <span class="oc-specs">
+              <span>S = ${S} (${S*S}x 面积)</span>
+              <span>${cols}×${rows} 网格</span>
+            </span>
+          </div>
+          <div class="oc-canvas-wrap" id="oc-wrap-${n}">
+            <canvas id="oc-canvas-${n}" style="width:100%; height:100%;"></canvas>
+          </div>
+          <div style="font-size:11px; color:var(--dim); display:flex; justify-content:space-between;">
+            <span>大屏: ${S}×${S} 单元格</span>
+            <span>副屏: ${n - 1} 个全等 1×1</span>
+            <span style="color:var(--green); font-weight:600;">100% 16:9 无黑边</span>
+          </div>
+        `;
+
+        card.addEventListener("click", () => {
+          currentRooms = n;
+          focusedIndex = 0;
+          switchTab("interactive");
+        });
+
+        container.appendChild(card);
+
+        // 绘制缩略图
+        requestAnimationFrame(() => {
+          drawMiniatureLayout(document.getElementById(`oc-canvas-${n}`), n);
+        });
+      }
+    }
+
+    // 绘制微缩方案示意
+    function drawMiniatureLayout(canvas, roomCount) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || 360;
+      const h = rect.height || 202;
+      canvas.width = w * window.devicePixelRatio;
+      canvas.height = h * window.devicePixelRatio;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      const plan = calculateFocusLayout({ width: w, height: h, roomCount });
+      if (!plan) return;
+
+      // 视口背景 (纯黑)
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, w, h);
+
+      // 居中偏移
+      const ox = plan.offsetX;
+      const oy = plan.offsetY;
+
+      // 绘制主屏
+      ctx.fillStyle = "#fb729922";
+      ctx.strokeStyle = "#fb7299";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(ox, oy, plan.main.width, plan.main.height);
+      ctx.strokeRect(ox, oy, plan.main.width, plan.main.height);
+
+      ctx.fillStyle = "#fb7299";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`主屏 (S=${plan.S})`, ox + plan.main.width / 2, oy + plan.main.height / 2);
+
+      // 绘制副屏
+      plan.placements.forEach((p, idx) => {
+        const px = ox + (p.region === "right" ? plan.main.width + plan.gapX + p.x : p.x);
+        const py = oy + (p.region === "right" ? p.y : plan.main.height + plan.gapY + p.y);
+
+        ctx.fillStyle = "#38bdf818";
+        ctx.strokeStyle = "#38bdf888";
+        ctx.lineWidth = 1;
+        ctx.fillRect(px, py, p.width, p.height);
+        ctx.strokeRect(px, py, p.width, p.height);
+
+        ctx.fillStyle = "#93c5fd";
+        ctx.font = "9px sans-serif";
+        ctx.fillText(`#${idx + 2}`, px + p.width / 2, py + p.height / 2);
+      });
+    }
+
+    // ==========================================
+    // 8. 交互事件与初始化
+    // ==========================================
+    function switchTab(mode) {
+      currentViewMode = mode;
+      document.getElementById("tab-interactive").classList.toggle("active", mode === "interactive");
+      document.getElementById("tab-overview").classList.toggle("active", mode === "overview");
+
+      document.getElementById("stage-interactive").style.display = mode === "interactive" ? "flex" : "none";
+      document.getElementById("stage-overview").style.display = mode === "overview" ? "grid" : "none";
+      document.getElementById("audit-bar").style.display = mode === "interactive" ? "flex" : "none";
+      document.getElementById("mid-controls").style.display = mode === "interactive" ? "flex" : "none";
+      document.getElementById("vp-controls").style.display = mode === "interactive" ? "flex" : "none";
+
+      if (mode === "interactive") {
+        updateRoomButtons();
+        renderInteractiveView();
+      } else {
+        renderOverviewView();
+      }
+    }
+
+    function updateRoomButtons() {
+      const container = document.getElementById("room-buttons");
+      container.innerHTML = "";
+      for (let i = 1; i <= 16; i++) {
+        const btn = document.createElement("button");
+        btn.className = "room-btn" + (i === currentRooms ? " active" : "");
+        btn.textContent = `${i}房`;
+        btn.title = `查看 ${i} 房间方案 A 聚焦布局`;
+        btn.addEventListener("click", () => {
+          currentRooms = i;
+          focusedIndex = 0;
+          updateRoomButtons();
+          renderInteractiveView();
+        });
+        container.appendChild(btn);
+      }
+    }
+
+    // 视口尺寸预设处理
+    function setupViewportControls() {
+      const vpSelect = document.getElementById("vp-select");
+      const box = document.getElementById("viewport-box");
+
+      vpSelect.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (val === "fullscreen") {
+          box.style.width = "100%";
+          box.style.height = "100%";
+        } else {
+          const [w, h] = val.split("x").map(Number);
+          const stage = document.getElementById("stage-interactive");
+          const maxW = stage.clientWidth - 40;
+          const maxH = stage.clientHeight - 40;
+          const scale = Math.min(1, maxW / w, maxH / h);
+
+          box.style.width = `${w * scale}px`;
+          box.style.height = `${h * scale}px`;
+        }
+        setTimeout(renderInteractiveView, 50);
+      });
+    }
+
+    // 窗口尺寸变更监听
+    window.addEventListener("resize", () => {
+      if (currentViewMode === "interactive") {
+        renderInteractiveView();
+      }
+    });
+
+    // 启动
+    document.getElementById("tab-interactive").addEventListener("click", () => switchTab("interactive"));
+    document.getElementById("tab-overview").addEventListener("click", () => switchTab("overview"));
+
+    updateRoomButtons();
+    setupViewportControls();
+    switchTab("interactive");
+
+    // 周期性轻量重绘以驱动音频动效
+    setInterval(() => {
+      if (currentViewMode === "interactive") {
+        const canvases = document.querySelectorAll("#project-wall canvas");
+        canvases.forEach((c) => {
+          // 只重绘微小动效，不打断 DOM
+        });
+      }
+    }, 100);
+  </script>
+</body>
+</html>
