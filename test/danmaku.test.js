@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeDanmaku, truncateSender, DanmakuRenderer } from "../src/core/danmaku-render.js";
 import { PacketReader, encodePacket, parseFields } from "../src/core/danmaku-protocol.js";
+import { DanmakuClient } from "../src/api/danmaku-client.js";
 import {
   getFanMedalClass,
   NOBLE_MAP,
@@ -325,4 +326,39 @@ test("DanmakuRenderer 模式切换与聚合器测试", () => {
   assert.equal(renderer.items[0].count, 2);
   assert.equal(renderer.items[0].aggregateText, " x 2");
   renderer.stop();
+});
+
+test("DanmakuClient 消息派发不受 rid 类型 (数字 vs 字符串) 或靓号别名阻断", () => {
+  const received = [];
+  class MockSocket {
+    constructor(url) {
+      this.url = url;
+      this.binaryType = "blob";
+      setTimeout(() => {
+        this.onopen?.();
+        // 模拟推送 loginres
+        this.onmessage?.({ data: encodePacket("type@=loginres/userid@=0/") });
+        // 模拟推送 chatmsg (附带字符串 rid "9999")
+        this.onmessage?.({ data: encodePacket("type@=chatmsg/rid@=9999/nn@=测试老哥/txt@=弹幕正常显示/col@=1/") });
+      }, 5);
+    }
+    send() {}
+    close() {}
+  }
+
+  // 构造时传入数字类型 rid: 9999
+  const client = new DanmakuClient(9999, (msg) => {
+    received.push(msg);
+  }, () => {}, MockSocket);
+
+  client.start();
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      client.stop();
+      assert.equal(received.length, 1, "应成功收到并派发 1 条弹幕");
+      assert.equal(received[0].nn, "测试老哥");
+      assert.equal(received[0].txt, "弹幕正常显示");
+      resolve();
+    }, 20);
+  });
 });

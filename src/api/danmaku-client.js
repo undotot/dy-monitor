@@ -50,7 +50,7 @@ export const DanmakuClient = class {
             socket.send(encodePacket(`type@=joingroup/rid@=${this.rid}/gid@=-9999/`));
             this.onStatus("\u5F39\u5E55\u5DF2\u8FDE\u63A5");
           }
-          if (message.type === "chatmsg" && (!message.rid || message.rid === this.rid) && message.txt) this.onMessage(message);
+          if (message.type === "chatmsg" && message.txt) this.onMessage(message);
         }
       } catch {
         handleFailure();
