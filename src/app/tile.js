@@ -88,13 +88,14 @@ export function initTile(ctx) {
       muteBtn: find("[data-t-mute]"), volSlider: find("[data-t-vol]"), volPct: find("[data-t-vol-pct]"), audioCorner: find("[data-audio-corner]"),
       resumeBtn: find("[data-t-resume]"), soloBtn: find("[data-t-solo]"), danmakuBtn: find("[data-t-danmaku]"),
       rateSel: find("[data-t-rate]"), pipButton: find("[data-t-pip]"), settingsBtn: find("[data-t-settings]"),
-      settingsEl: find("[data-tile-settings]"), dmStatus: find("[data-dm-status]")
+      settingsEl: find("[data-tile-settings]"), dmStatus: find("[data-dm-status]"),
+      dmSidebar: find("[data-dm-sidebar]"), dmSidebarList: find("[data-dm-sb-list]"), dmSidebarStatus: find("[data-dm-sb-status]")
     };
     if (audioRestore) {
       tile.vol = clamp01(audioRestore.volume);
       tile.muted = audioRestore.muted !== false;
     }
-    tile.renderer = new DanmakuRenderer(tile.canvas, tile.danmaku);
+    tile.renderer = new DanmakuRenderer(tile.canvas, tile.danmaku, { sidebarEl: tile.dmSidebar, sidebarListEl: tile.dmSidebarList });
     find("[data-t-rate]").innerHTML = rateOptions;
     find("[data-t-rate]").value = String(rate);
     find("[data-dm-size]").innerHTML = sizeOptions;

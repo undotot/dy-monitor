@@ -2,6 +2,18 @@ import { normalizeDanmaku } from "../core/danmaku-render.js";
 
 export function syncDanmakuFields(ctx, tile) {
   const find = (selector) => tile.root.querySelector(selector);
+  if (find("[data-dm-mode]")) {
+    find("[data-dm-mode]").value = tile.danmaku.mode || "scroll";
+  }
+  if (find("[data-dm-style]")) {
+    find("[data-dm-style]").value = tile.danmaku.scrollStyle || "simple";
+  }
+  if (find("[data-dm-style-wrap]")) {
+    find("[data-dm-style-wrap]").hidden = tile.danmaku.mode === "sidebar";
+  }
+  if (find("[data-dm-aggregate]")) {
+    find("[data-dm-aggregate]").checked = tile.danmaku.aggregate !== false;
+  }
   find("[data-dm-size]").value = String(tile.danmaku.size);
   find("[data-dm-speed]").value = String(tile.danmaku.speed);
   find("[data-dm-opacity]").value = String(tile.danmaku.opacity);
@@ -23,6 +35,9 @@ export function readDanmakuFields(tile) {
   tile.dmStatus.textContent = "";
   return normalizeDanmaku({
     enabled: tile.danmaku.enabled,
+    mode: find("[data-dm-mode]") ? find("[data-dm-mode]").value : "scroll",
+    scrollStyle: find("[data-dm-style]") ? find("[data-dm-style]").value : "simple",
+    aggregate: find("[data-dm-aggregate]") ? find("[data-dm-aggregate]").checked : true,
     showSender: find("[data-dm-sender]") ? find("[data-dm-sender]").checked : true,
     size: Number(find("[data-dm-size]").value),
     speed: Number(find("[data-dm-speed]").value),
@@ -39,8 +54,11 @@ export function bindTileDanmaku(ctx, tile) {
     const next = readDanmakuFields(tile);
     if (!next) return;
     tile.danmaku = next;
+    if (find("[data-dm-style-wrap]")) {
+      find("[data-dm-style-wrap]").hidden = tile.danmaku.mode === "sidebar";
+    }
     ctx.updateTileChrome(tile);
-    tile.renderer.update(tile.danmaku);
+    tile.renderer.update(tile.danmaku, { sidebarEl: tile.dmSidebar, sidebarListEl: tile.dmSidebarList });
     ctx.save();
   };
 
@@ -51,10 +69,11 @@ export function bindTileDanmaku(ctx, tile) {
     ctx.save();
   });
 
-  for (const selector of ["[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) {
-    find(selector).addEventListener("change", handleDanmakuOptions);
+  for (const selector of ["[data-dm-mode]", "[data-dm-style]", "[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) {
+    find(selector)?.addEventListener("change", handleDanmakuOptions);
   }
   find("[data-dm-sender]")?.addEventListener("change", handleDanmakuOptions);
+  find("[data-dm-aggregate]")?.addEventListener("change", handleDanmakuOptions);
   find("[data-dm-opacity]").addEventListener("input", handleDanmakuOptions);
   find("[data-dm-blocked]").addEventListener("change", handleDanmakuOptions);
 

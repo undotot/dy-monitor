@@ -37,6 +37,15 @@ export function initDrawer(ctx) {
 
   /* --- 弹幕默认值 --- */
   ctx.syncDrawerDanmaku = () => {
+    if (query("[data-dm-defaults-mode]")) {
+      query("[data-dm-defaults-mode]").value = ctx.danmakuDefaults.mode || "scroll";
+    }
+    if (query("[data-dm-defaults-style]")) {
+      query("[data-dm-defaults-style]").value = ctx.danmakuDefaults.scrollStyle || "simple";
+    }
+    if (query("[data-dm-defaults-aggregate]")) {
+      query("[data-dm-defaults-aggregate]").checked = ctx.danmakuDefaults.aggregate !== false;
+    }
     query("[data-dm-size]").value = String(ctx.danmakuDefaults.size);
     query("[data-dm-speed]").value = String(ctx.danmakuDefaults.speed);
     query("[data-dm-opacity]").value = String(ctx.danmakuDefaults.opacity);
@@ -49,6 +58,9 @@ export function initDrawer(ctx) {
   };
   const readDrawerDanmaku = () => normalizeDanmaku({
     enabled: true,
+    mode: query("[data-dm-defaults-mode]") ? query("[data-dm-defaults-mode]").value : "scroll",
+    scrollStyle: query("[data-dm-defaults-style]") ? query("[data-dm-defaults-style]").value : "simple",
+    aggregate: query("[data-dm-defaults-aggregate]") ? query("[data-dm-defaults-aggregate]").checked : true,
     showSender: query("[data-dm-defaults-sender]") ? query("[data-dm-defaults-sender]").checked : true,
     size: Number(query("[data-dm-size]").value),
     speed: Number(query("[data-dm-speed]").value),
@@ -60,7 +72,11 @@ export function initDrawer(ctx) {
     ctx.danmakuDefaults = readDrawerDanmaku();
     ctx.save();
   });
-  for (const selector of ["[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) query(selector).addEventListener("change", () => {
+  query("[data-dm-defaults-aggregate]")?.addEventListener("change", () => {
+    ctx.danmakuDefaults = readDrawerDanmaku();
+    ctx.save();
+  });
+  for (const selector of ["[data-dm-defaults-mode]", "[data-dm-defaults-style]", "[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) query(selector)?.addEventListener("change", () => {
     ctx.danmakuDefaults = readDrawerDanmaku();
     ctx.save();
   });

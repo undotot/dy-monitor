@@ -75,12 +75,17 @@ export function shellMarkup() {
               </section>
               <section class="sec"><h3>弹幕默认值 · 新房间继承，单格可覆盖</h3>
                 <div class="frow">
+                  <label class="fitem">模式 <select data-dm-defaults-mode class="sel sel-sm"><option value="scroll">画面飘屏</option><option value="sidebar">右侧悬浮栏</option></select></label>
+                  <label class="fitem">版式 <select data-dm-defaults-style class="sel sel-sm"><option value="simple">精简版</option><option value="normal">正常版</option></select></label>
                   <label class="fitem">字号 <select data-dm-size class="sel sel-sm">${sizeOptions}</select></label>
                   <label class="fitem">速度 <select data-dm-speed class="sel sel-sm">${speedOptions}</select></label>
                   <label class="fitem">透明度 <input data-dm-opacity type="range" min="0.1" max="1" step="0.1" class="slider" style="width:96px"></label>
                   <label class="fitem">区域 <select data-dm-area class="sel sel-sm">${areaOptions}</select></label>
                 </div>
-                <label class="switchrow" style="margin-top:7px"><span>显示发送者昵称</span><span class="switch"><input data-dm-defaults-sender type="checkbox" checked><i></i></span></label>
+                <div class="frow" style="margin-top:7px">
+                  <label class="switchrow inline"><span>显示发送者昵称</span><span class="switch"><input data-dm-defaults-sender type="checkbox" checked><i></i></span></label>
+                  <label class="switchrow inline"><span>同质刷屏合并</span><span class="switch"><input data-dm-defaults-aggregate type="checkbox" checked><i></i></span></label>
+                </div>
                 <textarea data-dm-blocked class="p-textarea" maxlength="2048" rows="2" placeholder="屏蔽词，每行一个，或用逗号分隔" style="margin-top:9px"></textarea>
                 <div class="frow" style="margin-top:9px"><button data-dm-defaults-save class="btn mini">保存为默认</button><button data-dm-apply-all class="btn mini">应用到全部房间</button></div>
               </section>

@@ -272,4 +272,86 @@ input[type=range].slider::-moz-range-thumb { width: 8px; height: 8px; border-rad
 .pip-container { position: relative; height: 100%; width: 100%; }
 .pip-container .tile-shell { height: 100%; width: 100%; }
 .pip-marker { display: grid; place-items: center; height: 100%; color: var(--faint); font-size: 12px; letter-spacing: .1em; }
+
+/* ===== 弹幕多模与身份令牌微标体系 ===== */
+.tile-dm-sidebar { position: absolute; right: 0; top: 0; bottom: 0; width: 280px; max-width: 45%; background: rgba(11, 15, 23, .88); backdrop-filter: blur(12px); border-left: 1px solid rgba(255, 255, 255, .08); z-index: 11; display: flex; flex-direction: column; pointer-events: auto; box-shadow: -4px 0 20px rgba(0, 0, 0, .4); }
+.tile-dm-sidebar[hidden] { display: none !important; }
+.tile-dm-sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); background: rgba(15, 23, 42, .6); flex-shrink: 0; }
+.dm-sb-title { font-size: 11.5px; font-weight: 700; color: #38bdf8; }
+.dm-sb-status { font-size: 10px; color: #10b981; display: inline-flex; align-items: center; gap: 4px; }
+.dm-sb-status::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #10b981; }
+.tile-dm-sidebar-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; }
+.tile-dm-sidebar-list::-webkit-scrollbar { width: 4px; }
+.tile-dm-sidebar-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .2); border-radius: 2px; }
+.sidebar-item-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 4px; background: rgba(30, 41, 59, .35); font-size: 11.5px; line-height: 1.5; color: var(--text); word-break: break-all; }
+.sidebar-item-row:hover { background: rgba(30, 41, 59, .6); }
+
+/* 基础微标体系组件 (官方 1:1, 严格去除至尊) */
+.dy-tag { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-size: 10px; border-radius: 3px; font-weight: 700; line-height: 16px; vertical-align: middle; flex-shrink: 0; }
+.dy-tag-anchor { background: linear-gradient(135deg, #ff4d4f, #ff7a45); color: #fff; }
+.dy-tag-admin { background: #ff7849; color: #fff; }
+.dy-tag-noble-ranger { background: #22c55e; color: #fff; font-weight: 700; }
+.dy-tag-noble-knight { background: #06b6d4; color: #fff; font-weight: 700; }
+.dy-tag-noble-viscount { background: #3b82f6; color: #fff; font-weight: 700; }
+.dy-tag-noble-count { background: #2563eb; color: #fff; font-weight: 700; }
+.dy-tag-noble-duke { background: #7c3aed; color: #fff; font-weight: 700; box-shadow: 0 0 5px rgba(124, 58, 237, .4); }
+.dy-tag-noble-king { background: linear-gradient(135deg, #ea580c, #f97316); color: #fff; font-weight: 700; box-shadow: 0 0 6px rgba(234, 88, 12, .4); }
+.dy-tag-noble-emperor { background: #fbbf24; color: #1e1b4b; font-weight: 800; box-shadow: 0 0 6px rgba(251, 191, 36, .5); }
+.dy-tag-noble-super-emperor { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-weight: 800; box-shadow: 0 0 8px rgba(239, 68, 68, .6); }
+.dy-tag-noble-god { background: linear-gradient(135deg, #f43f5e, #8b5cf6); color: #fff; font-weight: 800; box-shadow: 0 0 10px rgba(244, 63, 94, .6); }
+
+.dy-user-level { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-size: 9.5px; font-family: Arial, -apple-system, sans-serif; font-weight: 700; border-radius: 3px; line-height: 16px; vertical-align: middle; flex-shrink: 0; border: 1px solid rgba(255, 255, 255, .15); }
+.dy-ul-1 { background: #52c41a; color: #fff; border-color: #52c41a; }
+.dy-ul-16 { background: #1890ff; color: #fff; border-color: #1890ff; }
+.dy-ul-31 { background: #fa8c16; color: #fff; border-color: #fa8c16; }
+.dy-ul-61 { background: #9333ea; color: #fff; border-color: #a855f7; }
+.dy-ul-91 { background: #e11d48; color: #fff; border-color: #f43f5e; }
+.dy-ul-121 { background: linear-gradient(135deg, #f59e0b, #ec4899); color: #fff; border-color: #fbbf24; box-shadow: 0 0 6px rgba(245, 158, 11, .4); }
+
+.dy-medal { display: inline-flex; align-items: center; height: 16px; border-radius: 3px; overflow: hidden; font-size: 10px; font-weight: 600; line-height: 16px; vertical-align: middle; flex-shrink: 0; border: 1px solid rgba(255, 255, 255, .15); }
+.dy-medal-name { padding: 0 4px; color: #ffffff; }
+.dy-medal-level { padding: 0 3px; background: rgba(0, 0, 0, .35); color: #ffffff; font-family: Arial, sans-serif; }
+.dy-medal-green { background: #52c41a; border-color: #52c41a; }
+.dy-medal-blue { background: #1890ff; border-color: #1890ff; }
+.dy-medal-purple { background: #b37feb; border-color: #b37feb; }
+.dy-medal-orange { background: #fa8c16; border-color: #fa8c16; }
+.dy-medal-diamond { background: linear-gradient(90deg, #722ed1, #eb2f96); border-color: #f759ab; box-shadow: 0 0 6px rgba(235, 47, 150, .45); }
+.dy-medal-gold { background: linear-gradient(90deg, #d97706, #f59e0b); border-color: #fbbf24; box-shadow: 0 0 5px rgba(245, 158, 11, .45); }
+.dy-medal-purple-gold { background: linear-gradient(90deg, #6b21a8, #d97706); border-color: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, .45); }
+.dy-medal-50 { background: linear-gradient(90deg, #581c87, #b45309, #fbbf24); border-color: #fde047; box-shadow: 0 0 8px rgba(250, 204, 21, .6); }
+.dy-medal-51 { background: linear-gradient(90deg, #18181b 0%, #3f2c00 55%, #78350f 100%); border-color: #d97706; box-shadow: 0 0 8px rgba(217, 119, 6, .6), inset 0 0 4px rgba(251, 191, 36, .3); }
+.dy-medal-56 { background: linear-gradient(135deg, #09090b 0%, #4a044e 45%, #b45309 85%, #f59e0b 100%); border-color: #fbbf24; box-shadow: 0 0 10px rgba(245, 158, 11, .7), inset 0 0 5px rgba(236, 72, 153, .4); }
+
+.dy-diamond-medal { display: inline-flex; align-items: center; gap: 2px; height: 16px; padding: 0 4px; border-radius: 3px; background: linear-gradient(135deg, #a855f7, #ec4899); color: #ffffff; font-size: 10px; font-weight: 700; line-height: 16px; vertical-align: middle; flex-shrink: 0; box-shadow: 0 0 6px rgba(236, 72, 153, .45); }
+.dy-diamond-icon { font-size: 10px; line-height: 1; }
+.dy-diamond-months { font-size: 9.5px; font-family: Arial, sans-serif; font-weight: 800; letter-spacing: -.2px; }
+
+.sidebar-user { font-weight: 600; color: #94a3b8; }
+.sidebar-user-anchor { color: #ff7849; }
+.sidebar-user-admin { color: #ff9800; }
+.sidebar-user-diamond { color: #f472b6; }
+.sidebar-user-emperor { color: #fbbf24; }
+.sidebar-user-god { color: #ec4899; }
+
+.dm-col-0 { color: #f8fafc; }
+.dm-col-1 { color: #ff4d4f; }
+.dm-col-2 { color: #40a9ff; }
+.dm-col-3 { color: #52c41a; }
+.dm-col-4 { color: #fa8c16; }
+.dm-col-5 { color: #b37feb; }
+.dm-col-6 { color: #f759ab; }
+
+.ct-tail-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; color: #94a3b8; vertical-align: middle; opacity: .6; margin-left: auto; }
+.ct-tail-web { color: #38bdf8; }
+.ct-tail-android { color: #4ade80; }
+.ct-tail-ios { color: #cbd5e1; }
+
+.dm-badge-aggregate { display: inline-flex; align-items: center; margin-left: 6px; padding: 0 6px; height: 16px; border-radius: 8px; font-size: 10px; font-family: Arial, sans-serif; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; box-shadow: 0 0 6px rgba(239, 68, 68, .5); vertical-align: middle; }
+
+.official-diamond-capsule { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px 0 6px; background: linear-gradient(90deg, rgba(74, 28, 128, .95) 0%, rgba(135, 45, 195, .9) 65%, rgba(200, 60, 225, .85) 100%); border: 1.5px solid #d946ef; border-radius: 18px; box-shadow: 0 0 16px rgba(217, 70, 239, .5), inset 0 1px 1px rgba(255, 255, 255, .4); }
+.official-diamond-avatar-ring { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #fdf4ff; display: flex; align-items: center; justify-content: center; font-size: 11px; background: linear-gradient(135deg, #9333ea, #ec4899); }
+.official-emperor-capsule { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 12px 0 6px; background: linear-gradient(90deg, rgba(24, 24, 27, .95), rgba(120, 53, 15, .85)); border: 1.5px solid #d97706; border-radius: 17px; box-shadow: 0 0 14px rgba(217, 119, 6, .45); }
+.official-capsule-badge { font-size: 14px; margin-right: 2px; }
+.official-capsule { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 10px 0 6px; background: rgba(15, 23, 42, .88); border: 1px solid rgba(255, 255, 255, .15); border-radius: 15px; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

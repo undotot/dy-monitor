@@ -55,14 +55,17 @@ export function initPlayback(ctx) {
     tile.danmakuClient?.stop();
     tile.danmakuClient = null;
     tile.renderer.stop();
-    tile.renderer.update(tile.danmaku);
+    tile.renderer.update(tile.danmaku, { sidebarEl: tile.dmSidebar, sidebarListEl: tile.dmSidebarList });
     if (!tile.danmaku.enabled || !tile.player) {
-      tile.dmStatus.textContent = tile.danmaku.enabled ? "播放后连接弹幕" : "弹幕已关闭";
+      const msg = tile.danmaku.enabled ? "播放后连接弹幕" : "弹幕已关闭";
+      tile.dmStatus.textContent = msg;
+      if (tile.dmSidebarStatus) tile.dmSidebarStatus.textContent = msg;
       return;
     }
     tile.renderer.start();
     tile.danmakuClient = new DanmakuClient(tile.rid, (message) => tile.renderer.add(message), (message) => {
       tile.dmStatus.textContent = message;
+      if (tile.dmSidebarStatus) tile.dmSidebarStatus.textContent = message;
     });
     tile.danmakuClient.start();
   };

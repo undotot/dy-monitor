@@ -1,2 +1,5 @@
 node_modules/
 *.log
+.workbuddy/
+douyu-monitor-ui/
+repair_workspace.js
