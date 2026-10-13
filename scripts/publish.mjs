@@ -1,0 +1,269 @@
+// 监控室 · 一键提交与发布脚本 (Interactive & CLI Publisher)
+// 功能特性：
+// 1. 支持交互式命令行（自动询问更新日志与升级级别）与非交互式命令行参数
+// 2. 自动化质量门检验：构建打包、语法合规校验、单测与冒烟、违禁文案过滤
+// 3. 自动 SemVer 版本递增与 CHANGELOG.md 追加维护
+// 4. 双仓原子级发布：源码仓 (undotot/dy-monitor) + 纯产物分发仓 (undotot/monitor-js)
+// 5. 自动刷新 jsDelivr CDN 节点缓存
+// 6. 统一向 D:/PROJECT/mom/ 输出离线单文件脚本与快照 txt 交付物
+//
+// 命令行示例：
+// node scripts/publish.mjs
+// node scripts/publish.mjs patch --msg "优化单格音量防脱手控制"
+// node scripts/publish.mjs minor --msg "新增主窗等比例缩放功能"
+// node scripts/publish.mjs --local --msg "仅本地构建验证"
+
+import { readFileSync, writeFileSync, copyFileSync, rmSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { createInterface } from "node:readline/promises";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const momRoot = resolve(root, "..");
+const argv = process.argv.slice(2);
+
+const DIST_REPO_URL = "https://github.com/undotot/monitor-js.git";
+const SOURCE_REPO_URL = "https://github.com/undotot/dy-monitor.git";
+
+// 参数解析助手
+const hasFlag = (f) => argv.includes(f);
+const argValue = (flag) => {
+  const i = argv.indexOf(flag);
+  if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--")) return argv[i + 1];
+  const inline = argv.find((a) => a.startsWith(`${flag}=`));
+  return inline ? inline.slice(flag.length + 1) : null;
+};
+
+// 执行外部命令
+const run = (cmd, args, label, cwd = root) => {
+  console.log(`» [${label}] ${cmd} ${args.join(" ")}`);
+  const res = spawnSync(cmd, args, { cwd, stdio: "inherit", shell: true });
+  return res.status === 0;
+};
+
+// 交互式输入逻辑
+async function resolveInputs() {
+  let customMsg = argValue("--msg") || argValue("-m");
+  let bumpKind = argv.find((a) => !a.startsWith("-") && a !== customMsg);
+  const isLocal = hasFlag("--local");
+  const skipTests = hasFlag("--skip-tests");
+
+  // 若处于交互终端且未提供消息参数，则交互式询问
+  if (!customMsg && process.stdin.isTTY) {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      console.log(`\n======================================================`);
+      console.log(`🛠️  监控室 · 一键提交与发布助手`);
+      console.log(`======================================================\n`);
+
+      const inputMsg = await rl.question(`📝 请输入本次提交说明 (Commit Message) [默认: 日常优化与功能更新]: `);
+      customMsg = inputMsg.trim() || "日常优化与功能更新";
+
+      if (!bumpKind) {
+        console.log(`\n🏷️ 请选择版本递增类型：`);
+        console.log(`   [1] patch  补丁更新 (如 1.2.34 -> 1.2.35，日常修复推荐)`);
+        console.log(`   [2] minor  特性更新 (如 1.2.34 -> 1.3.0，增加新功能推荐)`);
+        console.log(`   [3] major  主版本更新 (如 1.2.34 -> 2.0.0，重构架构)`);
+        const kindInput = await rl.question(`👉 请选择 [1/2/3/自定义版本号, 默认 1]: `);
+        const trimmed = kindInput.trim();
+        if (trimmed === "2") bumpKind = "minor";
+        else if (trimmed === "3") bumpKind = "major";
+        else if (/^\d+\.\d+\.\d+$/.test(trimmed)) bumpKind = trimmed;
+        else bumpKind = "patch";
+      }
+    } finally {
+      rl.close();
+    }
+  }
+
+  return {
+    customMsg: customMsg || "日常优化与功能更新",
+    bumpKind: bumpKind || "patch",
+    isLocal,
+    skipTests
+  };
+}
+
+async function main() {
+  const { customMsg, bumpKind, isLocal, skipTests } = await resolveInputs();
+
+  const pkgPath = join(root, "package.json");
+  const pkgOriginal = readFileSync(pkgPath, "utf8");
+  const pkg = JSON.parse(pkgOriginal);
+
+  // 版本递增计算
+  const nextVersion = (current, kind) => {
+    if (/^\d+\.\d+\.\d+$/.test(kind)) return kind;
+    const [major, minor, patch] = current.split(".").map(Number);
+    if (kind === "major") return `${major + 1}.0.0`;
+    if (kind === "minor") return `${major}.${minor + 1}.0`;
+    return `${major}.${minor}.${patch + 1}`;
+  };
+
+  const oldVersion = pkg.version;
+  const version = nextVersion(oldVersion, bumpKind);
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    console.error(`❌ 无效版本号：${version}`);
+    process.exit(1);
+  }
+
+  console.log(`\n======================================================`);
+  console.log(`🚀 准备发布版本：v${oldVersion} → v${version} (${bumpKind})`);
+  console.log(`📝 提交更新说明：${customMsg}`);
+  console.log(`🎯 发布模式：${isLocal ? "仅本地打包归档 (跳过推送)" : "完整发布 (本地归档 + GitHub双仓 + CDN刷新)"}`);
+  console.log(`======================================================\n`);
+
+  // 1. 预先更新 package.json
+  pkg.version = version;
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
+
+  const rollback = () => {
+    writeFileSync(pkgPath, pkgOriginal, "utf8");
+    console.error(`\n❌ 质量门验收未通过，已回滚 package.json 版本至 v${oldVersion}。发布中断。\n`);
+    process.exit(1);
+  };
+
+  // 2. 严格质量门验收
+  console.log(`\n--- 阶段一：全自动化质量门验收 ---`);
+  if (!run(process.execPath, ["scripts/build.mjs"], "打包构建 dist/douyu-monitor.user.js")) rollback();
+  if (!run(process.execPath, ["--check", "dist/douyu-monitor.user.js"], "语法合规性检查 (node --check)")) rollback();
+
+  if (!skipTests) {
+    if (!run("npm", ["test"], "全量单元测试与集成冒烟 (npm test)")) rollback();
+  } else {
+    console.log(`⚠ 已跳过测试套件验收 (--skip-tests)`);
+  }
+
+  // 3. 文案规范合规性校验
+  const bundlePath = join(root, "dist", "douyu-monitor.user.js");
+  const bundleContent = readFileSync(bundlePath, "utf8");
+  if (bundleContent.includes("监看台") || bundleContent.includes("监看墙")) {
+    console.error(`❌ 错误：构建产物中仍检测到废弃文案“监看台 / 监看墙”，必须统一使用“监控室”。`);
+    rollback();
+  }
+
+  // 4. 追加 CHANGELOG.md
+  try {
+    const changelogPath = join(root, "CHANGELOG.md");
+    const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : "# 更新日志\n\n";
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = `## ${version} - ${today}\n- ${customMsg}\n\n`;
+    const headerIdx = changelog.indexOf("\n\n");
+    const updatedChangelog = headerIdx >= 0
+      ? changelog.slice(0, headerIdx + 2) + entry + changelog.slice(headerIdx + 2)
+      : `# 更新日志\n\n${entry}${changelog}`;
+    writeFileSync(changelogPath, updatedChangelog, "utf8");
+    console.log(`✓ 已更新 CHANGELOG.md`);
+  } catch (err) {
+    console.warn(`⚠ 更新 CHANGELOG 警告：${err.message}`);
+  }
+
+  // 5. 输出本地发版交付物至 D:/PROJECT/mom/
+  console.log(`\n--- 阶段二：本地交付物归档与快照 ---`);
+  try {
+    const deliverUserJs = join(momRoot, "监控室.user.js");
+    const deliverTxt = join(momRoot, `监控室-${version}.txt`);
+    const distTxt = join(root, "dist", "监控室.txt");
+
+    copyFileSync(bundlePath, deliverUserJs);
+    copyFileSync(bundlePath, deliverTxt);
+    copyFileSync(bundlePath, distTxt);
+    console.log(`✓ 已同步更新本地生产文件: ${deliverUserJs}`);
+    console.log(`✓ 已生成版本快照归档: ${deliverTxt}`);
+
+    // 同步工程内与外层的交互预览 HTML 文件
+    const innerPreview = join(root, "focus-scheme-a-preview.html");
+    const outerPreview = join(momRoot, "focus-scheme-a-preview.html");
+    if (existsSync(innerPreview)) {
+      copyFileSync(innerPreview, outerPreview);
+      console.log(`✓ 已同步外层全真交互预览: ${outerPreview}`);
+    }
+  } catch (err) {
+    console.warn(`⚠ 本地交付物同步异常: ${err.message}`);
+  }
+
+  if (isLocal) {
+    console.log(`\n🎉 本地构建与交付成功完成 (v${version})！已跳过远程推送。`);
+    return;
+  }
+
+  // 6. 提交与推送至纯分发仓库 undotot/monitor-js
+  console.log(`\n--- 阶段三：推送纯分发仓库 (monitor-js) ---`);
+  const deployTmpDir = join(root, ".deploy-temp");
+  try {
+    if (existsSync(deployTmpDir)) rmSync(deployTmpDir, { recursive: true, force: true });
+    mkdirSync(deployTmpDir, { recursive: true });
+
+    copyFileSync(join(root, "dist", "douyu-monitor.user.js"), join(deployTmpDir, "douyu-monitor.user.js"));
+    copyFileSync(join(root, "dist", "douyu-monitor.meta.js"), join(deployTmpDir, "douyu-monitor.meta.js"));
+
+    const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **jsDelivr CDN 直链（推荐）**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **jsDelivr 精准 Tag 直链（免缓存）**：[douyu-monitor.user.js (v${version})](https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
+    writeFileSync(join(deployTmpDir, "README.md"), distReadme, "utf8");
+
+    run("git", ["init"], "初始化产物仓库", deployTmpDir);
+    run("git", ["branch", "-M", "main"], "切换 main 分支", deployTmpDir);
+    run("git", ["add", "-A"], "暂存编译产物", deployTmpDir);
+    run("git", ["commit", "-m", `"release: v${version} (build artifact)"`], "提交产物", deployTmpDir);
+    run("git", ["tag", "-f", `v${version}`], `创建产物标签 v${version}`, deployTmpDir);
+
+    const pushDist = run("git", ["push", "-f", DIST_REPO_URL, "main"], "推送到 monitor-js:main", deployTmpDir);
+    run("git", ["push", "-f", DIST_REPO_URL, `v${version}`], `推送 tag v${version} 到 monitor-js`, deployTmpDir);
+
+    if (pushDist) {
+      console.log(`✓ 纯分发仓库 monitor-js 同步成功！`);
+    } else {
+      console.warn(`⚠ 推送到 monitor-js 失败，请检查网络连接。`);
+    }
+  } catch (err) {
+    console.error(`❌ 分发仓库推送发生错误: ${err.message}`);
+  } finally {
+    try { rmSync(deployTmpDir, { recursive: true, force: true }); } catch {}
+  }
+
+  // 7. 刷新 jsDelivr CDN 边缘缓存节点
+  console.log(`\n--- 阶段四：刷新 jsDelivr CDN 节点缓存 ---`);
+  try {
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"`], "刷新 CDN 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js"`], "刷新 CDN 脚本缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.meta.js"`], "刷新 CDN tag 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js"`], "刷新 CDN tag 脚本缓存");
+    console.log(`✓ jsDelivr CDN 节点已发送秒级刷新指令。`);
+  } catch (err) {
+    console.warn(`⚠ 刷新 CDN 请求警告: ${err.message}`);
+  }
+
+  // 8. 提交源码工程到实际源码仓库 dy-monitor
+  console.log(`\n--- 阶段五：提交与推送源码工程 (dy-monitor) ---`);
+  run("git", ["remote", "set-url", "origin", SOURCE_REPO_URL], "关联源码远程 origin");
+  run("git", ["add", "-A"], "Git 暂存源码变更");
+  run("git", ["commit", "-m", `"release: v${version} - ${customMsg}"`], "提交源码更新");
+  run("git", ["tag", "-f", `v${version}`], `创建源码标签 v${version}`);
+  const pushSource = run("git", ["push", "origin", "main"], "推送到源码仓 main");
+  run("git", ["push", "-f", "origin", `v${version}`], "推送源码 tag 到 dy-monitor");
+
+  if (pushSource) {
+    console.log(`✓ 源码仓库 dy-monitor 同步成功！`);
+  } else {
+    console.warn(`⚠ 源码推送到 dy-monitor 遇到网络抖动，可稍后重试 git push origin main。`);
+  }
+
+  // 9. 最终输出汇总卡片
+  console.log(`\n======================================================`);
+  console.log(`🎉 发布完成！版本：v${version}`);
+  console.log(`📁 本地交付物:   D:/PROJECT/mom/监控室.user.js`);
+  console.log(`📁 本地历史快照: D:/PROJECT/mom/监控室-${version}.txt`);
+  console.log(`📦 纯分发仓库:   https://github.com/undotot/monitor-js`);
+  console.log(`🛠️ 源码仓库:     https://github.com/undotot/dy-monitor`);
+  console.log(`🚀 jsDelivr CDN 直链 (油猴一键更新, 免分支缓存):`);
+  console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js`);
+  console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js (主分支滚动版)`);
+  console.log(`⚡ GitHub Raw 实时直链 (100% 零缓存直连):`);
+  console.log(`👉 https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js`);
+  console.log(`======================================================\n`);
+}
+
+main().catch((err) => {
+  console.error("❌ 发布过程发生未捕获异常:", err);
+  process.exit(1);
+});
