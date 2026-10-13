@@ -1,183 +1,197 @@
-// 放大模式布局：等大格精确镶嵌整墙。三项要求——① 占满屏幕：主窗矩形 + 全等小格
-// 精确填满可视区，仅余 1px 缝隙（零留边、零黑洞）；② 小窗盒子尽量 16:9（适配度优先
-// 于主窗画质），画面保持直播流比例完整显示（contain 居中，不变形不裁切）；③ 主窗恒在
-// 左上角（剩余矩形），面积 ≥ 1.5× 单个小格（主窗主导）。
-// 结构枚举两种 L 形互锁（A：右列通高 + 底行同主窗宽；B：右列同主窗高 + 底行通宽）
-// 与单区兜底（R：右列；D：底行），分组必须满足 S = k·r + m·n 精确铺满，否则出洞跳过。
-// 评分全序：主窗主导性 → 小窗 16:9 适配度 → 主窗可看底线（640×360 十档软评分）→
-// （dual：双区优先 / quality：画面保留优先）→ 小窗画面保留率 → 主窗比例达成 →
-// 签名稳定 → 精确画面率 → 右列优先 → 签名破平。单区候选另一维是自由参数，粗网格
-// 扫描后按全序细化。
-export const FOCUS_LIMITS = Object.freeze({ mainMin: 640, mainMinHeight: 360, smallMin: 200, mainAreaRatio: 1.5 });
+// 方案 A 放大模式布局引擎：
+// 1. 所有画面严格 16:9（主窗与所有小窗均为 16:9，画面内部 0 黑边，无拉伸无裁切）；
+// 2. 所有小窗大小严格一致（完全等宽等高）；
+// 3. 大屏与小屏保持合理的黄金比例：大屏宽高等于小屏宽高的 S 倍（S=2 或 S=3，面积为 4 或 9 倍）；
+// 4. 整个监控墙组合容器在视口中居中，多余宽度/高度在容器外留黑（视口四周留黑，直播间内零黑边）。
+
+export const FOCUS_LIMITS = Object.freeze({ mainMin: 640, mainMinHeight: 360, smallMin: 120, mainAreaRatio: 1.5 });
 
 const DEFAULT_RATIO = 16 / 9;
 const ratioOf = (value) => (Number.isFinite(value) && value > 0 ? value : DEFAULT_RATIO);
 const fitVideo = (width, height, ratio) => {
-  const fittedWidth = Math.min(width, height * ratio);
-  return { width: fittedWidth, height: fittedWidth / ratio };
+  const r = ratioOf(ratio);
+  const fittedWidth = Math.min(width, height * r);
+  return { width: fittedWidth, height: fittedWidth / r };
 };
-// 画面保留率：格子比例 vs 流比例（contain 完整显示时画面占格子的面积比）。
 const visibleOf = (cw, ch, ratio) => {
+  const r = ratioOf(ratio);
   const cellRatio = cw / ch;
-  return Math.max(0, Math.min(1, cellRatio / ratio, ratio / cellRatio));
+  const val = Math.min(cellRatio / r, r / cellRatio);
+  return Math.abs(val - 1) < 1e-9 ? 1 : Math.max(0, Math.min(1, val));
 };
+
+// 3 至 16 房间（以及 1、2 房间）的方案 A 拓扑规范表
+// S: 主屏占据的网格跨度 (S x S)
+// cols, rows: 整体紧凑网格的列数与行数
+// smalls: 所有小屏在 (col, row) 网格中的严格排布坐标
+export const SCHEME_A_SPECS = Object.freeze({
+  1: { S: 1, cols: 1, rows: 1, smalls: [] },
+  2: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }] },
+  3: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }] },
+  4: { S: 3, cols: 4, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }] },
+  5: { S: 2, cols: 4, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }] },
+  6: { S: 2, cols: 3, rows: 3, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }] },
+  7: { S: 3, cols: 5, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }] },
+  8: { S: 3, cols: 4, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+  9: { S: 2, cols: 4, rows: 3, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }, { c: 3, r: 2 }] },
+  10: { S: 3, cols: 6, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }] },
+  11: { S: 3, cols: 5, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+  12: { S: 3, cols: 5, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }] },
+  13: { S: 2, cols: 4, rows: 4, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }, { c: 3, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+  14: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
+  15: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }] },
+  16: { S: 3, cols: 6, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 5, r: 0 }, { c: 5, r: 1 }, { c: 5, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }, { c: 4, r: 3 }, { c: 5, r: 3 }] }
+});
+
 const qualityOf = (width, height) => Math.min(1, width / FOCUS_LIMITS.mainMin, height / FOCUS_LIMITS.mainMinHeight);
 
-export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO, secondaryRatios = [], previous = null, prefer = "dual" }) => {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
-  mainRatio = ratioOf(mainRatio);
-  const ratios = secondaryRatios.map(ratioOf);
-  const count = ratios.length;
-  const gap = Math.min(1, width / (count + 2), height / (count + 2));
-  const wallArea = width * height;
+export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO, secondaryRatios = [], previous = null }) => {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) return null;
+
+  const count = secondaryRatios.length;
+  const totalRooms = count + 1;
+  const gap = Math.min(1, width / (totalRooms + 2), height / (totalRooms + 2));
+
   if (!count) {
-    const main = { width, height };
-    const mainVideo = fitVideo(width, height, mainRatio);
-    const quality = qualityOf(width, height);
-    return { family: "single", main, mainVideo, rightWidth: 0, topHeight: height, bottomHeight: 0, rightContentHeight: 0, bottomContentHeight: 0,
-      placements: [], signature: "single", gap, cell: null, cellRatio: null, rightCount: 0, bottomCount: 0, mainArea: width * height,
-      meanVisible: 1, mainVisible: (mainVideo.width * mainVideo.height) / wallArea, fillRatio: (mainVideo.width * mainVideo.height) / wallArea,
-      layoutFillRatio: 1, dominant: true, bothRegions: false, quality, constrained: quality < 1 - 1e-7, overflow: false };
-  }
-
-  const place = (region, regionCount, columns, cw, ch, offset) => Array.from({ length: regionCount }, (_, i) => ({
-    index: offset + i,
-    region,
-    x: (i % columns) * (cw + gap),
-    y: Math.floor(i / columns) * (ch + gap),
-    width: cw,
-    height: ch,
-    video: fitVideo(cw, ch, ratios[offset + i]),
-    visible: visibleOf(cw, ch, ratios[offset + i]),
-    ratio: ratios[offset + i],
-  }));
-
-  const build = ({ family, k, r, m, n, cw, ch }) => {
-    const rightCount = k * r;
-    const bottomCount = m * n;
-    const rightWidth = rightCount ? k * cw + (k - 1) * gap : 0;
-    const bottomHeight = bottomCount ? n * ch + (n - 1) * gap : 0;
-    let mainW, mainH, rightH;
-    if (family === "A") { mainW = m * cw + (m - 1) * gap; mainH = height - bottomHeight - gap; rightH = height; }
-    else if (family === "B") { mainH = r * ch + (r - 1) * gap; mainW = width - rightWidth - gap; rightH = mainH; }
-    else if (family === "R") { mainH = height; mainW = width - rightWidth - gap; rightH = height; }
-    else { mainW = width; mainH = height - bottomHeight - gap; rightH = 0; }
-    if (!(mainW > 1 && mainH > 1 && cw > 0 && ch > 0)) return null;
-    const cellArea = cw * ch;
-    const mainArea = mainW * mainH;
-    const mainVideo = fitVideo(mainW, mainH, mainRatio);
-    const placements = [...place("right", rightCount, k, cw, ch, 0), ...place("bottom", bottomCount, m, cw, ch, rightCount)];
-    const meanVisible = placements.reduce((sum, p) => sum + p.visible, 0) / count;
-    const mainVisible = (mainVideo.width * mainVideo.height) / mainArea;
-    const videoArea = mainVideo.width * mainVideo.height + placements.reduce((sum, p) => sum + p.visible * cellArea, 0);
-    const quality = qualityOf(mainW, mainH);
+    const mainRatioVal = DEFAULT_RATIO;
+    const maxW = width;
+    const maxH = height;
+    const fitW = Math.min(maxW, maxH * mainRatioVal);
+    const fitH = fitW / mainRatioVal;
+    const quality = qualityOf(fitW, fitH);
+    const mainVideo = fitVideo(fitW, fitH, mainRatio);
     return {
-      family,
-      main: { width: mainW, height: mainH },
+      family: "single",
+      main: { width: fitW, height: fitH },
       mainVideo,
-      rightWidth,
-      topHeight: mainH,
-      bottomHeight,
-      rightContentHeight: rightCount ? rightH : 0,
-      bottomContentHeight: bottomHeight,
-      placements,
-      signature: family === "R" ? `R:${k},${r}` : family === "D" ? `D:${m},${n}` : `${family}:${k},${r},${m},${n}`,
+      rightWidth: 0,
+      topHeight: fitH,
+      bottomHeight: 0,
+      rightContentHeight: 0,
+      bottomContentHeight: 0,
+      placements: [],
+      signature: "single",
       gap,
-      cell: { width: cw, height: ch },
-      cellRatio: cw / ch,
-      rightCount,
-      bottomCount,
-      mainArea,
-      meanVisible,
-      mainVisible,
-      fillRatio: videoArea / wallArea,
-      layoutFillRatio: (mainArea + count * cellArea) / wallArea,
-      dominant: mainArea >= FOCUS_LIMITS.mainAreaRatio * cellArea - 1e-6,
-      bothRegions: rightCount > 0 && bottomCount > 0,
+      gapX: gap,
+      gapY: gap * (9 / 16),
+      cell: null,
+      cellRatio: DEFAULT_RATIO,
+      rightCount: 0,
+      bottomCount: 0,
+      mainArea: fitW * fitH,
+      meanVisible: 1,
+      mainVisible: 1,
+      fillRatio: 1,
+      layoutFillRatio: 1,
+      dominant: true,
+      bothRegions: false,
       quality,
       constrained: quality < 1 - 1e-7,
       overflow: false,
+      containerW: fitW,
+      containerH: fitH,
+      offsetX: (width - fitW) / 2,
+      offsetY: (height - fitH) / 2
     };
-  };
-
-  let best = null;
-  // 评分全序：主窗主导性（≥1.5×格）→ 主窗可看底线（640×360 达成率十档软评分）→
-  // 双区优先（≥5房 L 型互锁满铺，绝不退化为单边长条）→ 小窗画面保留率 →
-  // 主窗比例达成 → 布局填满率 → 签名稳定 → 精确画面率 → 右列优先 → 签名破平。
-  const tiersOf = (c) => {
-    const t = [c.dominant ? 1 : 0, Math.round(c.quality / 0.1)];
-    if (prefer === "dual") t.push(c.bothRegions ? 1 : 0, Math.round(c.meanVisible / 0.01));
-    else t.push(Math.round(c.meanVisible / 0.01), c.bothRegions ? 1 : 0);
-    t.push(Math.round(c.mainVisible / 0.05), Math.round(c.fillRatio / 0.01));
-    return t;
-  };
-  const consider = (cand) => {
-    if (!cand) return;
-    if (!best) { best = cand; return; }
-    const a = tiersOf(cand);
-    const b = tiersOf(best);
-    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) { if (a[i] > b[i]) best = cand; return; }
-    const pa = cand.signature === previous ? 1 : 0;
-    const pb = best.signature === previous ? 1 : 0;
-    if (pa !== pb) { if (pa > pb) best = cand; return; }
-    if (Math.abs(cand.fillRatio - best.fillRatio) > 1e-9) { if (cand.fillRatio > best.fillRatio) best = cand; return; }
-    const ra = cand.rightCount > 0 ? 1 : 0;
-    const rb = best.rightCount > 0 ? 1 : 0;
-    if (ra !== rb) { if (ra > rb) best = cand; return; }
-    if (cand.signature < best.signature) best = cand;
-  };
-
-  // 双区 L 形互锁：k·r + m·n 必须精确等于小窗数；A 型约束 n < r 保主窗高度占优。
-  for (let k = 1; k <= count; k++) {
-    for (let r = 1; r <= count; r++) {
-      if (k * r >= count) break;
-      for (let m = 1; m <= count; m++) {
-        for (let n = 1; n <= count; n++) {
-          if (k * r + m * n !== count) continue;
-          if (n < r) consider(build({ family: "A", k, r, m, n, cw: (width - (k + m - 1) * gap) / (k + m), ch: (height - (r - 1) * gap) / r }));
-          consider(build({ family: "B", k, r, m, n, cw: (width - (m - 1) * gap) / m, ch: (height - (r + n - 1) * gap) / (r + n) }));
-        }
-      }
-    }
   }
 
-  // 单区兜底（双区铺不满时的 R/D 结构）：另一维是自由参数，粗网格 + 局部细化。
-  // 细化跟随全序评分的当前胜出点而非 fillRatio——后者会漂向细条格。
-  const scan = (buildAt, samples) => {
-    let bestT = 0;
-    let localBest = null;
-    const beats = (a, b) => {
-      const ta = tiersOf(a);
-      const tb = tiersOf(b);
-      for (let i = 0; i < ta.length; i++) if (ta[i] !== tb[i]) return ta[i] > tb[i];
-      return a.fillRatio > b.fillRatio;
+  const spec = SCHEME_A_SPECS[totalRooms] || SCHEME_A_SPECS[16];
+  const { S, cols, rows, smalls } = spec;
+
+  // 保证大屏与小屏在包含 gap 间距时均 100.00% 保持 16:9
+  const gapX = gap;
+  const gapY = gap * (9 / 16);
+
+  // 计算小格的最大可用宽高（严格受限于可视区域）
+  const maxW_by_width = (width - (cols - 1) * gapX) / cols;
+  const maxH_by_height = (height - (rows - 1) * gapY) / rows;
+  const maxW_by_height = maxH_by_height * DEFAULT_RATIO;
+
+  const cw = Math.max(1, Math.min(maxW_by_width, maxW_by_height));
+  const ch = cw / DEFAULT_RATIO;
+
+  // 主屏宽与高（S 倍单元格 + 内部缝隙），由于 gapY = gapX * 9 / 16，mainW / mainH 严格为 16:9
+  const mainW = S * cw + (S - 1) * gapX;
+  const mainH = S * ch + (S - 1) * gapY;
+
+  // 监控墙外接矩形总尺寸
+  const containerW = cols * cw + (cols - 1) * gapX;
+  const containerH = rows * ch + (rows - 1) * gapY;
+
+  // 在视口中居中（多余宽度/高度留黑）
+  const offsetX = Math.max(0, (width - containerW) / 2);
+  const offsetY = Math.max(0, (height - containerH) / 2);
+
+  // 分区：
+  // c >= S 为右侧区域 (通高)
+  // c < S 为底部区域 (同主窗宽)
+  const rightSmalls = smalls.filter((p) => p.c >= S);
+  const bottomSmalls = smalls.filter((p) => p.c < S);
+
+  const rightWidth = rightSmalls.length ? (cols - S) * cw + (cols - S - 1) * gapX : 0;
+  const bottomHeight = bottomSmalls.length ? (rows - S) * ch + (rows - S - 1) * gapY : 0;
+
+  const rightContentHeight = rightSmalls.length ? rows * ch + (rows - 1) * gapY : 0;
+  const bottomContentHeight = bottomHeight;
+
+  // 映射所有副屏位置与坐标（相对所在 region.content 容器）
+  const placements = smalls.slice(0, count).map((p, idx) => {
+    const isRight = p.c >= S;
+    const region = isRight ? "right" : "bottom";
+    const x = isRight ? (p.c - S) * (cw + gapX) : p.c * (cw + gapX);
+    const y = isRight ? p.r * (ch + gapY) : (p.r - S) * (ch + gapY);
+    const ratio = ratioOf(secondaryRatios[idx]);
+    return {
+      index: idx,
+      region,
+      x,
+      y,
+      width: cw,
+      height: ch,
+      video: fitVideo(cw, ch, ratio),
+      visible: visibleOf(cw, ch, ratio),
+      ratio
     };
-    for (let i = 1; i <= samples; i++) {
-      const t = i / (samples + 1);
-      const cand = buildAt(t);
-      consider(cand);
-      if (cand && (!localBest || beats(cand, localBest))) { localBest = cand; bestT = t; }
-    }
-    const step = 1 / (samples + 1);
-    for (let i = -8; i <= 8; i++) {
-      const t = bestT + (i / 8) * step;
-      if (t > 0 && t < 1) consider(buildAt(t));
-    }
-  };
-  for (let k = 1; k <= count; k++) {
-    const r = count / k;
-    if (!Number.isInteger(r)) continue;
-    const ch = (height - (r - 1) * gap) / r;
-    const cwMax = (width - (k - 1) * gap - gap - 1) / k;
-    if (cwMax > 0) scan((t) => build({ family: "R", k, r, m: 0, n: 0, cw: cwMax * t, ch }), 64);
-  }
-  for (let m = 1; m <= count; m++) {
-    const n = count / m;
-    if (!Number.isInteger(n)) continue;
-    const cw = (width - (m - 1) * gap) / m;
-    const chMax = (height - (n - 1) * gap - gap - 1) / n;
-    if (chMax > 0) scan((t) => build({ family: "D", k: 0, r: 0, m, n, cw, ch: chMax * t }), 64);
-  }
+  });
 
-  return best;
+  const quality = qualityOf(mainW, mainH);
+  const cellArea = cw * ch;
+  const mainArea = mainW * mainH;
+  const totalContentArea = mainArea + placements.length * cellArea;
+  const containerArea = containerW * containerH;
+  const mainVideo = fitVideo(mainW, mainH, mainRatio);
+
+  return {
+    family: "A",
+    main: { width: mainW, height: mainH },
+    mainVideo,
+    rightWidth,
+    topHeight: mainH,
+    bottomHeight,
+    rightContentHeight,
+    bottomContentHeight,
+    placements,
+    signature: `A:${S}:${cols}x${rows}:${count}`,
+    gap,
+    gapX,
+    gapY,
+    cell: { width: cw, height: ch },
+    cellRatio: DEFAULT_RATIO,
+    rightCount: rightSmalls.length,
+    bottomCount: bottomSmalls.length,
+    mainArea,
+    meanVisible: count ? placements.reduce((sum, p) => sum + p.visible, 0) / count : 1,
+    mainVisible: (mainVideo.width * mainVideo.height) / mainArea,
+    fillRatio: totalContentArea / containerArea,
+    layoutFillRatio: totalContentArea / containerArea,
+    dominant: mainArea >= FOCUS_LIMITS.mainAreaRatio * cellArea - 1e-6,
+    bothRegions: rightSmalls.length > 0 && bottomSmalls.length > 0,
+    quality,
+    constrained: quality < 0.98,
+    overflow: false,
+    containerW,
+    containerH,
+    offsetX,
+    offsetY
+  };
 };

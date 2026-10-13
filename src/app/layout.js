@@ -66,8 +66,12 @@ export function initLayout(ctx) {
     if (!focusedMode) {
       ctx.focusLayout = null;
       ctx.wall.style.gap = "";
+      ctx.wall.style.columnGap = "";
+      ctx.wall.style.rowGap = "";
       regions.right.root.hidden = true;
+      regions.right.root.style.cssText = "";
       regions.bottom.root.hidden = true;
+      regions.bottom.root.style.cssText = "";
       const total = Math.max(1, list.length);
       let columns, rows;
       if (ctx.layoutMode === "auto") {
@@ -121,9 +125,11 @@ export function initLayout(ctx) {
     const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf), previous: ctx.focusLayout?.signature });
     if (!plan) return;
     ctx.focusLayout = plan;
-    ctx.wall.style.gap = `${plan.gap}px`;
-    ctx.wall.style.gridTemplateColumns = plan.rightWidth ? `minmax(0,1fr) ${plan.rightWidth}px` : "minmax(0,1fr)";
-    ctx.wall.style.gridTemplateRows = plan.bottomHeight ? `${plan.topHeight}px ${plan.bottomHeight}px` : "minmax(0,1fr)";
+    ctx.wall.style.gap = "";
+    ctx.wall.style.columnGap = `${plan.gapX ?? plan.gap}px`;
+    ctx.wall.style.rowGap = `${plan.gapY ?? plan.gap}px`;
+    ctx.wall.style.gridTemplateColumns = plan.rightWidth ? `${plan.main.width}px ${plan.rightWidth}px` : `${plan.main.width}px`;
+    ctx.wall.style.gridTemplateRows = plan.bottomHeight ? `${plan.topHeight}px ${plan.bottomHeight}px` : `${plan.topHeight}px`;
     const mainRoot = gridRootOf(mainTile);
     moveRoot(ctx.wall, mainRoot);
     clearTileGeometry(mainRoot);
@@ -131,9 +137,8 @@ export function initLayout(ctx) {
     for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
     regions.right.root.hidden = !plan.rightWidth;
     regions.bottom.root.hidden = !plan.bottomHeight;
-    // A 型右列通高跨两行、底行只占主窗宽；其余结构右列占顶行、底行通宽。
-    Object.assign(regions.right.root.style, { gridColumn: "2", gridRow: plan.family === "A" ? "1 / -1" : "1" });
-    Object.assign(regions.bottom.root.style, { gridColumn: plan.family === "A" ? "1" : "1 / -1", gridRow: "2" });
+    Object.assign(regions.right.root.style, { gridColumn: "2", gridRow: "1 / -1" });
+    Object.assign(regions.bottom.root.style, { gridColumn: "1", gridRow: "2" });
     regions.right.content.style.height = `${plan.rightContentHeight}px`;
     regions.bottom.content.style.height = `${plan.bottomContentHeight}px`;
     for (const placement of plan.placements) {

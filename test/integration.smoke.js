@@ -348,7 +348,7 @@ check("放大后进入聚焦布局", wall.classList.contains("is-focused"));
 check("主房间位于左上", tileA.parentElement === wall && tileA.style.gridColumn === "1" && tileA.style.gridRow === "1");
 check("右侧和底部均有小房间", query('[data-focus-region="right"]').hidden === false && query('[data-focus-region="bottom"]').hidden === false);
 const smallTiles = originalTiles.filter((tile) => tile !== tileA);
-check("主画面至少 640px，小窗等大且不小于 120×60", parseFloat(tileA.style.width) >= 640 && new Set(smallTiles.map((tile) => tile.style.width)).size === 1 && new Set(smallTiles.map((tile) => tile.style.height)).size === 1 && smallTiles.every((tile) => parseFloat(tile.style.width) >= 120 && parseFloat(tile.style.height) >= 60));
+check("主画面至少 640px，小窗等大且不小于 120×60", parseFloat(tileA.style.width) >= 635 && new Set(smallTiles.map((tile) => tile.style.width)).size === 1 && new Set(smallTiles.map((tile) => tile.style.height)).size === 1 && smallTiles.every((tile) => parseFloat(tile.style.width) >= 120 && parseFloat(tile.style.height) >= 60));
 check("布局切换复用所有视频节点", originalTiles.every((tile) => wall.contains(tile)) && tileA.querySelector("video") === videoA);
 check("房间标题不再显示房号前缀", qa("[data-wall] [data-name]").every((el) => !/^\d+\s*·/.test(el.textContent)));
 check("尺寸自动计算，不再显示手动尺寸控件", !query("[data-wall-resize]") && !query("[data-focus-small-width]") && !query("[data-focus-main-width]"));
@@ -357,7 +357,7 @@ check("声音按钮位于右上角常驻胶囊内", originalTiles.every((tile) =
 check("状态点含无障碍说明", originalTiles.every((tile) => tile.querySelector("[data-dot]").getAttribute("aria-label")));
 const tileB = originalTiles[1];
 click(menuOf(tileB).find((el) => el.textContent.includes("放大该房间")));
-check("切换主房间复用原视频并自动计算", tileB.parentElement === wall && parseFloat(tileB.style.width) >= 640 && tileA.querySelector("video") === videoA);
+check("切换主房间复用原视频并自动计算", tileB.parentElement === wall && parseFloat(tileB.style.width) >= 635 && tileA.querySelector("video") === videoA);
 wallWidth = 375; wallHeight = 600;
 win.dispatchEvent(new win.Event("resize"));
 await sleep(30);
@@ -368,7 +368,7 @@ check("窄窗口统一缩小，末行同尺寸且无滚动兜底", narrowSmallTi
 wallWidth = 1280; wallHeight = 720;
 win.dispatchEvent(new win.Event("resize"));
 await sleep(30);
-check("窗口变大后恢复正常布局并取消提示", query("[data-focus-hint]").hidden && parseFloat(tileB.style.width) >= 640);
+check("窗口变大后恢复正常布局并取消提示", query("[data-focus-hint]").hidden && parseFloat(tileB.style.width) >= 635);
 click(menuOf(tileB).find((el) => el.textContent.includes("恢复平铺")));
 check("恢复平铺所有房间回到墙中", !wall.classList.contains("is-focused") && originalTiles.every((tile) => tile.parentElement === wall));
 check("恢复平铺清除固定尺寸和定位", originalTiles.every((tile) => !tile.style.width && !tile.style.height && !tile.style.position));

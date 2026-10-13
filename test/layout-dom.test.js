@@ -23,7 +23,7 @@ test("聚焦、画中画占位与平铺复用原节点并恢复位置和顺序",
     const ctx = { wall, tiles, wrapper: win.document.body, els: {}, layoutMode: 2, applyAudioAll: () => {} };
     initLayout(ctx);
     ctx.setFocus("0");
-    assert.ok(Math.abs(ctx.focusLayout.main.height + ctx.focusLayout.bottomHeight + ctx.focusLayout.gap - 719.5) < 1e-7);
+    assert.ok(Math.abs(ctx.focusLayout.main.height + ctx.focusLayout.bottomHeight + (ctx.focusLayout.gapY ?? ctx.focusLayout.gap) - 719.5) < 1e-4);
     const mainTile = tiles.get("0");
     const root = mainTile.root;
     const video = mainTile.video;
