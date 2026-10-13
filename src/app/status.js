@@ -57,6 +57,7 @@ export function initStatus(ctx) {
     tile.muteBtn.setAttribute("aria-pressed", String(!tile.muted));
     tile.audioCorner?.classList.toggle("is-muted", tile.muted);
     tile.audioCorner?.setAttribute("title", tile.muted ? "当前静音（点击开启声音，滚轮微调音量）" : `当前音量 ${Math.round(tile.vol * 100)}%（点击静音，滚轮微调音量）`);
+    if (tile.volPct) tile.volPct.textContent = `${Math.round((tile.muted ? 0 : tile.vol) * 100)}%`;
     tile.volSlider.value = String(tile.vol);
     ctx.paintSlider(tile.volSlider);
     setIconButton(tile.soloBtn, "solo", "独奏该房间");

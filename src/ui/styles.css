@@ -96,13 +96,16 @@ dialog[data-dialog]::backdrop { background: #000; }
 /* 右上角声音控制胶囊：始终显示，体现是否静音，点击/滚轮/滑块调节声音 */
 .tile-audio-corner { position: absolute; right: 8px; top: 8px; z-index: 12; display: inline-flex; align-items: center; height: 20px; padding: 0 2px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px; background: rgba(10, 12, 18, .5); backdrop-filter: blur(10px); cursor: pointer; transition: background .15s, border-color .15s; }
 .tile-shell.is-selected .tile-audio-corner { background: rgba(14, 18, 28, .6); }
-.tile-audio-corner:hover, .tile-audio-corner:focus-within { background: rgba(18, 22, 34, .82); border-color: rgba(255, 255, 255, .22); }
+.tile-audio-corner:hover, .tile-audio-corner:focus-within, .tile-audio-corner.is-dragging-vol { background: rgba(18, 22, 34, .88); border-color: rgba(255, 255, 255, .25); box-shadow: 0 2px 10px rgba(0, 0, 0, .5); }
 .tile-audio-corner .audio-btn { width: 22px; height: 18px; border-radius: 99px; border: 0; background: transparent; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .tile-audio-corner .audio-btn svg { width: 13px; height: 13px; }
 .tile-audio-corner.is-muted .audio-btn { color: var(--dim); }
 .tile-audio-corner:not(.is-muted) .audio-btn { color: #5eead4; }
 .tile-audio-corner .t-vol { width: 0; margin: 0; opacity: 0; transition: width .18s ease, opacity .18s ease, margin .18s ease; pointer-events: none; }
-.tile-audio-corner:hover .t-vol, .tile-audio-corner:focus-within .t-vol { width: 52px; margin: 0 4px 0 2px; opacity: 1; pointer-events: auto; }
+.tile-audio-corner:hover .t-vol, .tile-audio-corner:focus-within .t-vol, .tile-audio-corner.is-dragging-vol .t-vol { width: 74px; margin: 0 4px 0 2px; opacity: 1; pointer-events: auto; }
+.tile-audio-corner .t-vol-pct { width: 0; margin: 0; opacity: 0; font-size: 11px; font-weight: 600; color: #fff; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; pointer-events: none; transition: width .18s ease, opacity .18s ease, margin .18s ease; }
+.tile-audio-corner:hover .t-vol-pct, .tile-audio-corner:focus-within .t-vol-pct, .tile-audio-corner.is-dragging-vol .t-vol-pct { width: 28px; margin: 0 4px 0 0; opacity: 1; }
+.tile-audio-corner.is-muted .t-vol-pct { color: var(--dim); }
 .tile-feedback { position: absolute; left: 8px; top: 32px; z-index: 13; max-width: calc(100% - 16px); max-height: calc(100% - 40px); overflow: hidden; padding: 5px 8px; border-radius: 8px; background: rgba(10, 12, 18, .88); color: var(--amber); font-size: 11px; overflow-wrap: anywhere; pointer-events: none; }
 .tile-feedback.is-failed { color: var(--red); }
 .tile-retry { position: absolute; top: 34px; left: 8px; z-index: 13; display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-radius: 9px; border: 1px solid rgba(251, 191, 36, .45); background: rgba(20, 18, 10, .92); font-size: 11px; color: var(--amber); font-variant-numeric: tabular-nums; }

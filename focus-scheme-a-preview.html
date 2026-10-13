@@ -358,7 +358,7 @@
       margin-left: 2px;
     }
 
-    /* 右上角声音胶囊（与工程一致） */
+    /* 右上角声音胶囊（方案 A 原位升级：加宽舒适轨 + 实时等宽数字 + 拖拽防缩回锁定） */
     .tile-audio-corner {
       position: absolute;
       right: 8px;
@@ -366,16 +366,70 @@
       z-index: 12;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
       height: 22px;
-      padding: 0 6px;
+      padding: 0 4px 0 2px;
       border: 1px solid rgba(255, 255, 255, .12);
       border-radius: 999px;
       background: rgba(10, 12, 18, .65);
       backdrop-filter: blur(10px);
-      font-size: 10.5px;
+      font-size: 11px;
       color: #fff;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
     }
+    .tile-audio-corner:hover, .tile-audio-corner:focus-within, .tile-audio-corner.is-dragging-vol {
+      background: rgba(18, 22, 34, .88);
+      border-color: rgba(255, 255, 255, .25);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+    }
+    .tile-audio-corner .audio-btn {
+      width: 20px;
+      height: 18px;
+      border-radius: 99px;
+      border: 0;
+      background: transparent;
+      color: #5eead4;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      font-size: 11px;
+    }
+    .tile-audio-corner.is-muted .audio-btn { color: var(--dim); }
+    .tile-audio-corner .t-vol {
+      width: 0;
+      margin: 0;
+      opacity: 0;
+      transition: width .18s ease, opacity .18s ease, margin .18s ease;
+      pointer-events: none;
+    }
+    .tile-audio-corner:hover .t-vol, .tile-audio-corner:focus-within .t-vol, .tile-audio-corner.is-dragging-vol .t-vol {
+      width: 74px;
+      margin: 0 4px 0 2px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .tile-audio-corner .t-vol-pct {
+      width: 0;
+      margin: 0;
+      opacity: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: none;
+      transition: width .18s ease, opacity .18s ease, margin .18s ease;
+    }
+    .tile-audio-corner:hover .t-vol-pct, .tile-audio-corner:focus-within .t-vol-pct, .tile-audio-corner.is-dragging-vol .t-vol-pct {
+      width: 28px;
+      margin: 0 4px 0 0;
+      opacity: 1;
+    }
+    .tile-audio-corner.is-muted .t-vol-pct { color: var(--dim); }
 
     /* 画格右下角标签 */
     .tile-dim-badge {
@@ -915,10 +969,68 @@
       `;
       tile.appendChild(statusEl);
 
-      // 右上角声音胶囊 (工程原生 .tile-audio-corner)
+      // 右上角声音胶囊 (工程原生升级版 .tile-audio-corner)
       const audioEl = document.createElement("div");
-      audioEl.className = "tile-audio-corner";
-      audioEl.innerHTML = `<span>🔊</span><span>${isMain ? '100%' : '静音'}</span>`;
+      audioEl.className = "tile-audio-corner" + ((streamer.muted ?? !isMain) ? " is-muted" : "");
+      const initVol = streamer.vol ?? (isMain ? 1 : 0.8);
+      const isMuted = streamer.muted ?? !isMain;
+      audioEl.innerHTML = `
+        <button type="button" class="audio-btn">${isMuted ? "🔇" : "🔊"}</button>
+        <input type="range" min="0" max="1" step="0.05" value="${initVol}" class="slider t-vol" aria-label="音量">
+        <b class="t-vol-pct">${isMuted ? "0%" : Math.round(initVol * 100) + "%"}</b>
+      `;
+      const muteBtn = audioEl.querySelector(".audio-btn");
+      const volSlider = audioEl.querySelector(".t-vol");
+      const volPct = audioEl.querySelector(".t-vol-pct");
+
+      muteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        streamer.muted = !streamer.muted;
+        audioEl.classList.toggle("is-muted", streamer.muted);
+        muteBtn.textContent = streamer.muted ? "🔇" : "🔊";
+        volPct.textContent = streamer.muted ? "0%" : `${Math.round((streamer.vol ?? initVol) * 100)}%`;
+      });
+
+      volSlider.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        audioEl.classList.add("is-dragging-vol");
+        const onUp = () => {
+          audioEl.classList.remove("is-dragging-vol");
+          window.removeEventListener("pointerup", onUp);
+          window.removeEventListener("pointercancel", onUp);
+        };
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+      });
+
+      volSlider.addEventListener("input", (e) => {
+        e.stopPropagation();
+        const v = parseFloat(e.target.value);
+        streamer.vol = v;
+        if (streamer.muted && v > 0) {
+          streamer.muted = false;
+          audioEl.classList.remove("is-muted");
+          muteBtn.textContent = "🔊";
+        }
+        volPct.textContent = `${Math.round(v * 100)}%`;
+      });
+
+      audioEl.addEventListener("wheel", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        let v = Math.max(0, Math.min(1, (streamer.vol ?? initVol) + delta));
+        v = Math.round(v * 100) / 100;
+        streamer.vol = v;
+        volSlider.value = String(v);
+        if (streamer.muted && delta > 0) {
+          streamer.muted = false;
+          audioEl.classList.remove("is-muted");
+          muteBtn.textContent = "🔊";
+        }
+        volPct.textContent = streamer.muted ? "0%" : `${Math.round(v * 100)}%`;
+      }, { passive: false });
+
       tile.appendChild(audioEl);
 
       // 尺寸与比例标签

@@ -10,6 +10,7 @@ export const tileMarkup = () => `
 <div class="tile-audio-corner" data-audio-corner title="声音控制">
   <button data-t-mute type="button" class="ibtn audio-btn" aria-label="声音控制"></button>
   <input data-t-vol type="range" min="0" max="1" step="0.05" value="1" class="slider t-vol" aria-label="该直播间音量">
+  <b data-t-vol-pct class="t-vol-pct">100%</b>
 </div>
 <video muted playsinline class="tile-video" aria-label="直播画面"></video>
 <canvas aria-hidden="true" class="tile-dm"></canvas>

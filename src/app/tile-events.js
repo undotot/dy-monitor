@@ -44,10 +44,26 @@ export function bindTileEvents(ctx, tile) {
 
   tile.soloBtn?.addEventListener("click", () => ctx.toggleSolo(tile));
 
+  tile.volSlider?.addEventListener("pointerdown", () => {
+    tile.audioCorner?.classList.add("is-dragging-vol");
+    const onPointerUp = () => {
+      tile.audioCorner?.classList.remove("is-dragging-vol");
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  });
+
   tile.volSlider?.addEventListener("input", (event) => {
     tile.vol = clamp01(event.target.value, tile.vol);
+    if (tile.muted && tile.vol > 0) {
+      tile.muted = false;
+      ctx.updateTileChrome(tile);
+    }
     ctx.paintSlider(event.target);
     ctx.applyAudio(tile);
+    if (tile.volPct) tile.volPct.textContent = `${Math.round(tile.vol * 100)}%`;
   });
 
   tile.volSlider?.addEventListener("change", () => ctx.save());
