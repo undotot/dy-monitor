@@ -26,14 +26,17 @@ export const tileMarkup = () => `
 <div class="tile-feedback" data-note role="status" hidden></div>
 <div class="tile-overlay">
   <div class="tile-tools" data-tools role="group" aria-label="直播间快捷操作">
-    <button data-t-resume type="button" class="ibtn tool-play"></button>
+    <button data-t-resume type="button" class="ibtn" title="暂停/播放" aria-label="播放 / 暂停"></button>
+    <button data-t-reload-bar type="button" class="ibtn" title="重新取流 / 刷新直播" aria-label="重新取流"></button>
+    <button data-t-solo type="button" class="ibtn" title="独奏该路声音" aria-label="独奏该路声音" aria-pressed="false"></button>
+    <button data-t-danmaku type="button" class="ibtn" title="开关弹幕" aria-label="开关弹幕" aria-pressed="false"></button>
     <span class="tool-divider" aria-hidden="true"></span>
-    <button data-t-solo type="button" class="ibtn" data-tool-label="独奏" aria-pressed="false"></button>
-    <button data-t-danmaku type="button" class="ibtn" data-tool-label="弹幕" aria-pressed="false"></button>
-    <span data-tool-quality-anchor><span class="tool-quality"><select data-t-rate class="sel" aria-label="画质"></select></span></span>
+    <span data-tool-quality-anchor><span class="tool-quality"><select data-t-rate class="rate-select sel" title="清晰度切换" aria-label="画质"></select></span></span>
     <span class="tool-divider" aria-hidden="true"></span>
-    <button data-t-full type="button" class="ibtn"></button>
-    <button data-t-more type="button" class="ibtn" aria-label="更多直播间操作" title="更多操作" aria-haspopup="menu" aria-expanded="false">${iconMarkup("more")}</button>
+    <button data-t-pip type="button" class="ibtn" title="画中画 (PiP)" aria-label="画中画"></button>
+    <button data-t-full type="button" class="ibtn" title="网页全屏" aria-label="全屏"></button>
+    <button data-t-remove-bar type="button" class="ibtn tool-del" style="color:#f87171;" title="移除房间" aria-label="移除房间"></button>
+    <button data-t-more type="button" class="ibtn tool-more-btn" aria-label="更多直播间操作" title="更多操作" aria-haspopup="menu" aria-expanded="false" style="display:none;">${iconMarkup("more")}</button>
   </div>
   <div class="tile-more" data-t-more-menu role="menu" aria-label="更多直播间操作" hidden>
     <div data-tool-quality-slot class="tool-menu-quality" role="group" aria-label="画质选择" hidden><span>画质</span></div>
@@ -43,7 +46,7 @@ export const tileMarkup = () => `
     <button data-tool-action="full" type="button" role="menuitem" class="tool-menu-item tool-mini-action" data-tool-label="全屏" aria-label="全屏">${iconMarkup("full")}</button>
     <button data-t-reload type="button" role="menuitem" class="tool-menu-item" data-tool-label="重新取流"></button>
     <button data-t-dm-settings type="button" role="menuitem" class="tool-menu-item dm-settings-entry" data-tool-label="弹幕设置" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("sliders")}</button>
-    <button data-t-pip type="button" role="menuitem" class="tool-menu-item" data-tool-label="画中画"></button>
+    <button data-t-pip-menu type="button" role="menuitem" class="tool-menu-item" data-tool-label="画中画" data-tool-action="pip"></button>
     <button data-t-external type="button" role="menuitem" class="tool-menu-item" data-tool-label="打开直播间"></button>
     <span class="tool-menu-divider" role="separator"></span>
     <button data-t-remove type="button" role="menuitem" class="tool-menu-item del" data-tool-label="移除房间"></button>

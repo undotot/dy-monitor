@@ -94,7 +94,7 @@ dialog[data-dialog]::backdrop { background: #000; }
 /* 状态栏为胶囊：仅状态点 + 直播间名，悬浮画面左上，不遮挡直播内容。
    紧凑档：宽度贴合名字长度（装饰共 22px = 点 6 + 间距 4 + 内边距 10 + 描边 2），短名时胶囊不再是名字的两倍长。
    宽度纯 auto（不设 max-width 固定上限），背景半透明让画面透出。 */
-.tile-status { position: absolute; left: 8px; top: 8px; z-index: 12; display: inline-flex; align-items: center; gap: 4px; width: auto; height: 20px; padding: 0 6px 0 4px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px; background: rgba(10, 12, 18, .5); backdrop-filter: blur(10px); cursor: grab; }
+.tile-status { position: absolute; left: 10px; top: 10px; z-index: 12; display: inline-flex; align-items: center; gap: 6px; width: auto; height: 24px; padding: 0 9px 0 7px; border: 1px solid rgba(255, 255, 255, 0.16) !important; border-radius: 999px; background: rgba(14, 20, 32, 0.6) !important; backdrop-filter: blur(20px) saturate(180%) !important; -webkit-backdrop-filter: blur(20px) saturate(180%) !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.22); cursor: grab; user-select: none; }
 .tile-status:active { cursor: grabbing; }
 .t-name { min-width: 0; max-width: 140px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 右上角音量控件 (方案 1：平时纯图标彻底零背景 · 零边框 · 点击向左展开无边框高透托盘与实时数值) */
@@ -126,22 +126,22 @@ dialog[data-dialog]::backdrop { background: #000; }
 .tile-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
 /* 工具条恒为单行：绝对定位下 width:auto 的收缩宽度只有格子的一半，按钮会提前折行；
    用 max-content 让条随内容撑开、nowrap 禁止换行，格子过窄时改横向滚动。 */
-.tile-tools { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; padding: 4px 5px; border-radius: 10px; border: 1px solid rgba(150,180,218,.18); background: rgba(10,18,28,.92); backdrop-filter: blur(14px); box-shadow: 0 5px 18px #0006; opacity: 0; transition: opacity .15s; pointer-events: none; width: max-content; max-width: calc(100% - 12px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; justify-content: center; z-index: 20; }
+.tile-tools { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%) translateY(8px); display: flex; align-items: center; gap: 3px; padding: 4px 6px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.22) !important; background: rgba(14, 20, 32, 0.6) !important; backdrop-filter: blur(24px) saturate(200%) !important; -webkit-backdrop-filter: blur(24px) saturate(200%) !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.28); opacity: 0; pointer-events: none; transition: opacity 0.16s ease, transform 0.16s ease; width: max-content; max-width: calc(100% - 12px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; justify-content: center; z-index: 20; }
 .tile-tools::-webkit-scrollbar { display: none; }
-.tile-shell:hover .tile-tools, .tile-tools:focus-within { opacity: 1; pointer-events: auto; }
-.tile-tools .ibtn { height: 30px; width: 30px; border-radius: 6px; color: #a6b6ca; }
-.tile-tools .tool-play { background: #24364c; color: #e0efff; }
-.tile-tools [data-tool-label] { width: auto; padding: 0 8px; gap: 6px; }
-.tile-tools [data-tool-label]::after { content: attr(data-tool-label); font-size: 11px; white-space: nowrap; }
-.tile-tools .ibtn:hover { background: #263c54; color: #e1f0ff; }
-.tile-tools .ibtn[aria-pressed="true"] { color: #79ddbf; background: rgba(50,150,120,.17); box-shadow: inset 0 0 0 1px rgba(80,180,155,.3); }
-.tool-divider { height: 16px; width: 1px; margin: 0 3px; flex-shrink: 0; background: rgba(150,180,218,.18); }
-.tool-quality { display: inline-flex; align-items: center; }
-.tool-quality .sel { height: 28px; min-width: 66px; max-width: 95px; padding: 0 5px; border: 0; border-radius: 5px; background: #182738; font-size: 11px; }
-.tools-compact .tile-tools [data-tool-label] { width: 30px; padding: 0; }
-.tools-compact .tile-tools [data-tool-label]::after { display: none; }
+.tile-shell:hover .tile-tools, .tile-tools:focus-within { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+.tile-tools .ibtn { width: 26px; height: 26px; border-radius: 5px; border: none; background: transparent; color: #cbd5e1; display: grid; place-items: center; cursor: pointer; transition: all 0.14s ease; position: relative; padding: 0; }
+.tile-tools .ibtn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+.tile-tools .ibtn.active, .tile-tools .ibtn[aria-pressed="true"] { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.tile-tools .ibtn svg { width: 14px; height: 14px; stroke-width: 1.8; }
+.tile-tools .tool-divider { width: 1px; height: 14px; background: rgba(255, 255, 255, 0.14); margin: 0 2px; border: none; flex-shrink: 0; }
+.tile-tools .tool-quality { display: inline-flex; align-items: center; }
+.tile-tools .rate-select, .tile-tools .tool-quality .sel { height: 22px; border: none; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: #f8fafc; font-size: 10px; font-weight: 600; padding: 0 4px; outline: none; cursor: pointer; appearance: auto; transition: background 0.14s ease; }
+.tile-tools .rate-select:hover, .tile-tools .tool-quality .sel:hover { background: rgba(255, 255, 255, 0.14); }
+.tile-tools .rate-select option, .tile-tools .tool-quality .sel option { background: #0f172a; color: #f8fafc; }
+.tile-tools [data-t-remove-bar], .tile-tools .tool-del { color: #f87171 !important; }
+.tile-tools [data-t-remove-bar]:hover, .tile-tools .tool-del:hover { background: rgba(248, 113, 113, 0.18) !important; color: #f87171 !important; }
 .tools-compact .tool-divider { margin: 0 1px; }
-.tools-mini .tile-tools [data-t-solo], .tools-mini .tile-tools [data-t-full], .tools-mini .tool-divider { display: none; }
+.tools-mini .tile-tools [data-t-solo], .tools-mini .tile-tools [data-t-full], .tools-mini .tile-tools .tool-divider { display: none; }
 .tools-tiny .tile-tools { gap: 1px; padding: 3px; }
 .tools-narrow .tile-tools [data-t-danmaku], .tools-micro .tile-tools [data-t-resume] { display: none; }
 .tile-tools .ibtn:focus-visible, .tool-menu-item:focus-visible { outline: 2px solid #8dbcf6; outline-offset: -2px; }

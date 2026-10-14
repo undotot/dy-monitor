@@ -106,11 +106,17 @@ export function initTile(ctx) {
     find("[data-t-rate]").value = String(rate);
     ctx.syncDanmakuFields(tile);
     for (const [selector, icon, label] of [
-      ["[data-t-resume]", "play", "播放 / 暂停"], ["[data-t-reload]", "retry", "重新取流"],
-      ["[data-t-solo]", "solo", "独奏该房间"], ["[data-t-danmaku]", "chat", "弹幕开关"],
-      ["[data-t-pip]", "pip", "弹幕画中画"],
-      ["[data-t-full]", "full", "全屏"], ["[data-t-external]", "external", "去该房间发弹幕"],
-      ["[data-t-remove]", "trash", "移除该房间"], ["[data-t-mute]", "muted", "静音"],
+      ["[data-t-resume]", "play", "播放 / 暂停"],
+      ["[data-t-reload]", "retry", "重新取流"],
+      ["[data-t-reload-bar]", "retry", "重新取流 / 刷新直播"],
+      ["[data-t-solo]", "solo", "独奏该房间"],
+      ["[data-t-danmaku]", "chat", "弹幕开关"],
+      ["[data-t-pip]", "pip", "画中画 (PiP)"],
+      ["[data-t-full]", "full", "全屏"],
+      ["[data-t-external]", "external", "去该房间发弹幕"],
+      ["[data-t-remove]", "close", "移除该房间"],
+      ["[data-t-remove-bar]", "close", "移除房间"],
+      ["[data-t-mute]", "muted", "静音"],
       ["[data-t-retry-now]", "retry", "立即重试"]
     ]) {
       const button = find(selector);

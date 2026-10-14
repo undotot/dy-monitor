@@ -40,7 +40,9 @@ export function bindTileEvents(ctx, tile) {
     void tile.video.play().catch(() => ctx.setStatus(tile, "blocked", "浏览器仍阻止播放，请再次点击播放"));
   });
 
-  find("[data-t-reload]")?.addEventListener("click", () => void ctx.handleStart(tile));
+  for (const btn of root.querySelectorAll("[data-t-reload], [data-t-reload-bar]")) {
+    btn.addEventListener("click", () => void ctx.handleStart(tile));
+  }
 
   find("[data-t-retry-now]")?.addEventListener("click", () => {
     tile.attempt = 0;
@@ -70,7 +72,9 @@ export function bindTileEvents(ctx, tile) {
     window.open(`https://www.douyu.com/${tile.rid}`, "_blank", "noopener,noreferrer");
   });
 
-  find("[data-t-remove]")?.addEventListener("click", () => ctx.removeTile(tile));
+  for (const btn of root.querySelectorAll("[data-t-remove], [data-t-remove-bar]")) {
+    btn.addEventListener("click", () => ctx.removeTile(tile));
+  }
 
   tile.rateSel?.addEventListener("change", (event) => {
     tile.rate = Number(event.target.value);
