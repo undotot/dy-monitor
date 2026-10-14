@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>画格音量控件 · 纯图标 + 点击展开无边框进度条与百分比 (设计演练场)</title>
+  <style>
+    :root {
+      --bg-base: #080c14;
+      
+      /* 顶级工匠毛玻璃体系 (彻底移除生硬边框，全靠微光高斯漫反射与纯净柔影) */
+      --glass-surface-resting: rgba(10, 14, 24, 0.45);
+      --glass-surface-hover: rgba(15, 22, 36, 0.75);
+      --glass-surface-active: rgba(14, 20, 32, 0.94);
+      --glass-shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.45);
+      --glass-shadow-elevated: 0 10px 30px rgba(0, 0, 0, 0.65);
+      
+      /* 斗鱼活力橙光感体系 */
+      --brand-orange: #ff5e1e;
+      --brand-orange-light: #ff7e47;
+      --brand-orange-glow: rgba(255, 94, 30, 0.5);
+      
+      --color-cyan: #38bdf8;
+      --color-cyan-glow: rgba(56, 189, 248, 0.5);
+      
+      --text-main: #ffffff;
+      --text-sub: #cbd5e1;
+      --text-muted: #94a3b8;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-full: 9999px;
+      
+      /* 阻尼物理曲线 */
+      --spring-smooth: 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      --anim-fast: 0.15s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-base);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(255, 94, 30, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(18, 26, 42, 0.45) 0px, transparent 100%);
+      color: var(--text-sub);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 顶部标题栏 */
+    .demo-header {
+      height: 52px;
+      background: rgba(12, 17, 28, 0.85);
+      backdrop-filter: blur(28px) saturate(210%);
+      -webkit-backdrop-filter: blur(28px) saturate(210%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+    .demo-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .demo-badge {
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 94, 30, 0.15);
+      color: var(--brand-orange-light);
+      font-weight: 600;
+      border: none;
+    }
+    .demo-hint {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .demo-hint b {
+      color: #fff;
+    }
+
+    /* 2x2 对比演练舞台 */
+    .compare-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0;
+      position: relative;
+    }
+
+    .tile-card {
+      position: relative;
+      background: #060910;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tile-bg-mock {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.72;
+      filter: brightness(0.8);
+      transition: filter var(--anim-fast);
+    }
+    .tile-card:hover .tile-bg-mock {
+      filter: brightness(0.85);
+    }
+
+    /* 方案标签 */
+    .scheme-tag {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      z-index: 10;
+      background: rgba(14, 20, 32, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: none !important;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .scheme-tag.recommend {
+      background: rgba(30, 18, 22, 0.88);
+    }
+    .scheme-tag.recommend .tag-star {
+      color: var(--brand-orange);
+    }
+
+    /* 底部工匠解析说明 */
+    .scheme-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(6, 9, 16, 0.96) 0%, rgba(6, 9, 16, 0.75) 75%, transparent 100%);
+      padding: 26px 16px 12px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--text-sub);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .scheme-footer b {
+      color: #fff;
+    }
+
+    /* 采纳按钮 */
+    .choose-btn {
+      position: absolute;
+      right: 14px;
+      bottom: 12px;
+      height: 28px;
+      padding: 0 15px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      border: none !important;
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: all var(--anim-fast);
+      z-index: 25;
+      pointer-events: auto;
+    }
+    .choose-btn:hover {
+      background: var(--brand-orange);
+      box-shadow: 0 4px 18px var(--brand-orange-glow);
+    }
+
+    /* Toast HUD */
+    .toast-hud {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(14, 20, 32, 0.95);
+      backdrop-filter: blur(28px) saturate(210%);
+      -webkit-backdrop-filter: blur(28px) saturate(210%);
+      border: none !important;
+      padding: 8px 22px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7);
+      z-index: 999;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.22s var(--spring-smooth);
+    }
+    .toast-hud.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+
+    /* ==========================================================================
+       ★ 核心共性：彻底移除边框 (border: none !important)
+       平时只显示纯图标，点击后展开进度条与当前百分比
+       ========================================================================== */
+
+    /* ==========================================================================
+       ★ 核心共性：彻底移除背景与边框 (background: transparent !important; border: none !important)
+       平时只显示纯图标，无任何背景色/胶囊框/圆底，点击后展开进度条与当前百分比
+       ========================================================================== */
+
+    /* --------------------------------------------------------------------------
+       ★ 方案 1 (最强烈推荐): 【原位向左舒展 · 纯图标 + 无边框温润托盘】
+       - 平时 (静止未点击)：【彻底零背景】，仅一颗纯粹悬浮的小喇叭图标，0 边框、0 底色；
+       - 点击图标：在原位向左自然展开一条无边框温润磨砂托盘，显示【进度条】+【当前百分比数值 (如 45%)】；
+       - 展开态下：拖拽/点击进度条直接调节，滚轮亦可微调，点击喇叭一键静音/恢复；点击外部自动收起回纯图标。
+       -------------------------------------------------------------------------- */
+    .zone-v1 {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 30;
+    }
+
+    .borderless-pill-v1 {
+      height: 30px;
+      border-radius: var(--radius-full);
+      background: transparent !important; /* 平时彻底零背景！ */
+      border: none !important; /* 彻底不要边框！ */
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 !important;
+      cursor: pointer;
+      transition: all var(--spring-smooth);
+      overflow: hidden;
+      position: relative;
+    }
+    .borderless-pill-v1:hover {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .borderless-pill-v1.is-expanded {
+      background: rgba(14, 20, 32, 0.92) !important;
+      backdrop-filter: blur(28px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65) !important;
+      padding: 0 12px 0 6px !important;
+      border: none !important;
+    }
+
+    /* 喇叭触发图标 (彻底零背景纯悬浮按钮) */
+    .v1-icon-btn {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      border: none !important;
+      background: transparent !important;
+      outline: none;
+      flex-shrink: 0;
+      transition: transform 0.16s ease, color 0.16s ease, filter 0.16s ease;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 0 2px rgba(0,0,0,0.9));
+    }
+    .v1-icon-btn:hover {
+      transform: scale(1.16);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,1)) drop-shadow(0 0 6px rgba(255,255,255,0.5));
+    }
+    .v1-icon-btn:active {
+      transform: scale(0.92);
+    }
+    .borderless-pill-v1.is-muted .v1-icon-btn {
+      color: var(--text-muted);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+    }
+
+    /* 展开托盘：由点击展开驱动 */
+    .v1-tray {
+      max-width: 0;
+      opacity: 0;
+      margin-left: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: max-width 0.32s var(--spring-smooth), opacity 0.22s ease, margin-left 0.22s ease;
+    }
+    .borderless-pill-v1.is-expanded .v1-tray {
+      max-width: 170px;
+      opacity: 1;
+      margin-left: 8px;
+      pointer-events: auto;
+    }
+
+    /* 无边框流光滑轨 */
+    .v1-track {
+      position: relative;
+      width: 82px;
+      height: 5px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.18);
+      border: none !important;
+      cursor: pointer;
+    }
+    .v1-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #ff5e1e, #ff844b);
+      box-shadow: 0 0 8px var(--brand-orange-glow);
+      border-radius: var(--radius-full);
+      pointer-events: none;
+      transition: width 0.04s linear;
+    }
+    .v1-bead {
+      position: absolute;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 8px var(--brand-orange-glow);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: left 0.04s linear, transform var(--anim-fast);
+    }
+    .v1-track:hover .v1-bead {
+      transform: translate(-50%, -50%) scale(1.22);
+    }
+
+    /* 展开时显示的当前音量百分比 (纯净数字，字号适中) */
+    .v1-pct {
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, "SF Pro Text", Menlo, Consolas, monospace;
+      color: #ffffff;
+      min-width: 32px;
+      text-align: right;
+      letter-spacing: -0.3px;
+    }
+
+
+    /* --------------------------------------------------------------------------
+       ★ 方案 2: 【极致全流程零背景 · 纯浮动滑轨与百分比】
+       - 平时：彻底零背景，仅小喇叭纯图标；
+       - 点击图标：连展开态也彻底不要任何背景板 (background: transparent)！
+         直接向左滑出一根带暗影深槽的浮动进度条，右侧并列浮动当前百分比，极客至简；
+       -------------------------------------------------------------------------- */
+    .zone-v2 {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 30;
+    }
+    .borderless-pill-v2 {
+      height: 30px;
+      background: transparent !important; /* 平时与展开均彻底零背景！ */
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      width: 26px;
+      padding: 0;
+      transition: width var(--spring-smooth);
+    }
+    .borderless-pill-v2:hover {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .borderless-pill-v2.is-expanded {
+      width: 160px;
+      background: transparent !important; /* 展开也完全没有背景底板！ */
+      box-shadow: none !important;
+    }
+
+    .v2-floating-track {
+      position: absolute;
+      left: 32px;
+      width: 80px;
+      height: 5px;
+      border-radius: var(--radius-full);
+      background: rgba(0, 0, 0, 0.65);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.8), inset 0 1px 2px rgba(0,0,0,0.9);
+      border: none !important;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .borderless-pill-v2.is-expanded .v2-floating-track {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .v2-floating-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      background: linear-gradient(90deg, #ff5e1e, #ff844b);
+      box-shadow: 0 0 8px var(--brand-orange-glow);
+      border-radius: var(--radius-full);
+      pointer-events: none;
+      transition: width 0.04s linear;
+    }
+    .v2-floating-bead {
+      position: absolute;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 8px var(--brand-orange-glow);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: left 0.04s linear;
+    }
+
+    .v2-icon-anchor {
+      position: absolute;
+      left: 0;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      z-index: 5;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 0 2px rgba(0,0,0,0.9));
+      transition: transform 0.16s ease;
+    }
+    .v2-icon-anchor:hover {
+      transform: scale(1.16);
+    }
+    .borderless-pill-v2.is-muted .v2-icon-anchor {
+      color: var(--text-muted);
+    }
+
+    /* 百分比数字 */
+    .v2-pct-anchor {
+      position: absolute;
+      right: 0;
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #ffffff;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.95));
+      transition: opacity 0.2s ease;
+    }
+    .borderless-pill-v2.is-expanded .v2-pct-anchor {
+      opacity: 1;
+    }
+
+
+    /* --------------------------------------------------------------------------
+       ★ 方案 3: 【独立纯图标 · 点击下弹无边框柔和微卡】
+       - 平时：右上角纯图标 (彻底零背景、无圆底、无边框)；
+       - 点击图标：在小图标下方轻柔下弹无边框微卡，收纳进度条与百分比。
+       -------------------------------------------------------------------------- */
+    .zone-v3 {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .v3-trigger-btn {
+      width: 26px;
+      height: 26px;
+      background: transparent !important; /* 平时彻底零背景！ */
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      cursor: pointer;
+      padding: 0;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 0 2px rgba(0,0,0,0.9));
+      transition: transform 0.16s ease, filter 0.16s ease;
+    }
+    .v3-trigger-btn:hover {
+      transform: scale(1.16);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,1)) drop-shadow(0 0 6px rgba(255,255,255,0.45));
+    }
+    .v3-pop-card {
+      background: rgba(14, 20, 32, 0.94);
+      backdrop-filter: blur(28px) saturate(200%);
+      -webkit-backdrop-filter: blur(28px) saturate(200%);
+      border: none !important;
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      transform: translateY(-8px) scale(0.96);
+      pointer-events: none;
+      transition: all 0.22s var(--spring-smooth);
+    }
+    .zone-v3.is-open .v3-pop-card {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+
+    /* --------------------------------------------------------------------------
+       ★ 方案 4: 【超纤细侧边条 · 纯图标 + 点击向左滑出 4px 微线】
+       - 平时：极简纯图标 (彻底零背景)；
+       - 点击图标：向左滑出 4px 极细微光滑轨与紧凑百分比；
+       -------------------------------------------------------------------------- */
+    .zone-v4 {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 30;
+    }
+    .borderless-pill-v4 {
+      height: 28px;
+      border-radius: var(--radius-full);
+      background: transparent !important; /* 彻底零背景！ */
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 !important;
+      cursor: pointer;
+      transition: all var(--spring-smooth);
+      overflow: hidden;
+    }
+    .borderless-pill-v4:hover {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .borderless-pill-v4.is-expanded {
+      background: rgba(14, 20, 32, 0.9) !important;
+      backdrop-filter: blur(24px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+      padding: 0 10px 0 4px !important;
+    }
+    .v4-tray {
+      max-width: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: max-width 0.28s var(--spring-smooth), opacity 0.2s ease;
+    }
+    .borderless-pill-v4.is-expanded .v4-tray {
+      max-width: 150px;
+      opacity: 1;
+      margin-left: 6px;
+      pointer-events: auto;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- 顶部标题 -->
+  <header class="demo-header">
+    <div class="demo-title">
+      <span>画格音量控件 · 纯图标常驻（彻底零背景）+ 点击展开无边框进度条与百分比</span>
+      <span class="demo-badge">100% 遵照指令：平时彻底零背景 · 只要一个纯图标 · 0 边框 · 点击展开进度条与当前百分比</span>
+    </div>
+    <div class="demo-hint">
+      最新修改说明：<b>平时彻底去除任何背景底色与胶囊框，仅悬浮一颗纯图标</b>；鼠标移上去绝不误弹；<b>点击图标</b>平滑向左展开进度条与实时数值；点击外部空白自动收起回纯图标。
+    </div>
+  </header>
+
+  <!-- 4 套无边框点击展开对比舞台 -->
+  <main class="compare-grid" id="demoGrid">
+
+    <!-- =========================================================
+         画格 1: 方案 1 (最强烈推荐): 【原位向左舒展 · 纯图标 + 无边框温润托盘】
+         ========================================================= -->
+    <article class="tile-card" onclick="handleTileBlankClick(event)">
+      <img class="tile-bg-mock" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1000&q=80" alt="">
+      
+      <div class="scheme-tag recommend">
+        <span class="tag-star">★ 方案 1（最强烈推荐）</span>
+        <span>原位向左展开 · 纯图标 + 无边框柔和托盘</span>
+      </div>
+
+      <!-- 右上角音量 1 -->
+      <div class="zone-v1">
+        <div class="borderless-pill-v1" id="pillV1" onclick="toggleExpandV1(event)" title="点击展开音量条与百分比；滚轮亦可直接微调">
+          
+          <!-- 喇叭纯图标 (彻底零背景) -->
+          <div class="v1-icon-btn" id="iconV1" onclick="handleIconClickV1(event)">
+            <!-- 动态生成 -->
+          </div>
+
+          <!-- 点击后向左展开的托盘：进度条 + 百分比 (无边框) -->
+          <div class="v1-tray" id="trayV1">
+            <div class="v1-track" id="trackV1" onmousedown="handleDragV1(event)">
+              <div class="v1-fill" id="fillV1"></div>
+              <div class="v1-bead" id="beadV1"></div>
+            </div>
+            <span class="v1-pct" id="pctV1">45%</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="scheme-footer">
+        <b>方案 1 细节精修解析：</b><br>
+        1. <b>平时（静止）</b>：<b>彻底零背景（background: transparent）</b>，仅一颗小巧纯净的浮动图标，<b>0 边框、0 底色</b>；<br>
+        2. <b>点击图标展开</b>：在原位优雅向左舒展出无边框温润托盘，包含精准进度条与当前百分比（如 45%）；<br>
+        3. <b>交互完整</b>：展开状态下拖拽/点击滑道调音，点击喇叭一键静音/恢复，点击空白处自动收起回纯图标。
+      </div>
+
+      <button class="choose-btn" onclick="applyMasterScheme('方案 1（原位向左展开·纯图标+无边框高透托盘）')">
+        ✓ 采纳方案 1
+      </button>
+    </article>
+
+
+    <!-- =========================================================
+         画格 2: 方案 2: 【极致全流程零背景 · 纯浮动滑轨与百分比】
+         ========================================================= -->
+    <article class="tile-card" onclick="handleTileBlankClick(event)">
+      <img class="tile-bg-mock" src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1000&q=80" alt="">
+
+      <div class="scheme-tag">
+        <span>方案 2</span>
+        <span>极致全流程零背景 · 纯浮动滑轨与百分比</span>
+      </div>
+
+      <!-- 右上角音量 2 -->
+      <div class="zone-v2">
+        <div class="borderless-pill-v2" id="pillV2" onclick="handlePillClickV2(event)" title="点击展开无背景纯浮动进度条；滚轮亦可调音">
+          <div class="v2-icon-anchor" id="iconV2" onclick="handleIconClickV2(event)">
+            <!-- 动态图标 -->
+          </div>
+          
+          <div class="v2-floating-track" id="trackV2" onmousedown="handleDragV2(event)">
+            <div class="v2-floating-fill" id="fillV2"></div>
+            <div class="v2-floating-bead" id="beadV2"></div>
+          </div>
+
+          <span class="v2-pct-anchor" id="pctV2">50%</span>
+        </div>
+      </div>
+
+      <div class="scheme-footer">
+        <b>方案 2 细节精修解析：</b><br>
+        1. <b>平时（静止）</b>：<b>彻底零背景</b>，仅一颗纯小喇叭图标，0 底色、0 边框；<br>
+        2. <b>点击展开</b>：<b>连展开态也彻底不要任何背景板（background: transparent）</b>！纯浮动滑槽与白色百分比直接悬浮于画面上；<br>
+        3. <b>极客至简</b>：全生命周期 0 遮挡、0 底板、0 边框。
+      </div>
+
+      <button class="choose-btn" onclick="applyMasterScheme('方案 2（极致全流程零背景·纯浮动滑轨与百分比）')">
+        ✓ 采纳方案 2
+      </button>
+    </article>
+
+
+    <!-- =========================================================
+         画格 3: 方案 3: 【悬浮式无边框微卡 · 独立下沉微透镜】
+         ========================================================= -->
+    <article class="tile-card" onclick="handleTileBlankClick(event)">
+      <img class="tile-bg-mock" src="https://images.unsplash.com/photo-1548681528-6a5c45b66b42?auto=format&fit=crop&w=1000&q=80" alt="">
+
+      <div class="scheme-tag">
+        <span>方案 3</span>
+        <span>独立纯图标 · 点击下弹无边框微卡</span>
+      </div>
+
+      <!-- 右上角音量 3 -->
+      <div class="zone-v3" id="zoneV3">
+        <button class="v3-trigger-btn" onclick="toggleV3Card(event)" id="btnV3" title="点击展开无边框浮动卡片">
+          <span id="iconV3"></span>
+        </button>
+
+        <div class="v3-pop-card" id="cardV3" onclick="event.stopPropagation()">
+          <div class="v1-track" id="trackV3" onmousedown="handleDragV3(event)" style="width:78px;">
+            <div class="v1-fill" id="fillV3"></div>
+            <div class="v1-bead" id="beadV3"></div>
+          </div>
+          <span class="v1-pct" id="pctV3">65%</span>
+        </div>
+      </div>
+
+      <div class="scheme-footer">
+        <b>方案 3 细节精修解析：</b><br>
+        1. <b>平时</b>：<b>彻底零背景（无圆底、无底板）</b>，仅右上角纯图标，0 边框；<br>
+        2. <b>点击图标</b>：在小圆点下方轻盈下弹无边框磨砂微卡，水平收纳进度条与百分比数字；<br>
+        3. <b>优点</b>：图标位置恒定不动，完全不发生水平挤压形变。
+      </div>
+
+      <button class="choose-btn" onclick="applyMasterScheme('方案 3（独立图标·下弹无边框微卡）')">
+        ✓ 采纳方案 3
+      </button>
+    </article>
+
+
+    <!-- =========================================================
+         画格 4: 方案 4: 【超纤细流光滑轨 · 贴边滑入极简版】
+         ========================================================= -->
+    <article class="tile-card" onclick="handleTileBlankClick(event)">
+      <img class="tile-bg-mock" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80" alt="">
+
+      <div class="scheme-tag">
+        <span>方案 4</span>
+        <span>超纤细极窄流光条 · 无边框贴合</span>
+      </div>
+
+      <!-- 右上角音量 4 -->
+      <div class="zone-v4">
+        <div class="borderless-pill-v4" id="pillV4" onclick="toggleExpandV4(event)" title="点击展开超纤细滑轨">
+          <div class="v1-icon-btn" id="iconV4" onclick="handleIconClickV4(event)"></div>
+
+          <div class="v4-tray" id="trayV4">
+            <div class="v1-track" id="trackV4" onmousedown="handleDragV4(event)" style="width:72px; height:4px;">
+              <div class="v1-fill" id="fillV4"></div>
+              <div class="v1-bead" id="beadV4" style="width:9px; height:9px;"></div>
+            </div>
+            <span class="v1-pct" id="pctV4" style="font-size:11px;">75%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="scheme-footer">
+        <b>方案 4 细节精修解析：</b><br>
+        1. <b>平时</b>：极限贴角纯图标，无边框；<br>
+        2. <b>点击展开</b>：向左滑出 4px 极细微光滑轨与紧凑百分比；<br>
+        3. <b>适合场景</b>：极客监看、空间占用最小化。
+      </div>
+
+      <button class="choose-btn" onclick="applyMasterScheme('方案 4（超纤细极窄流光条）')">
+        ✓ 采纳方案 4
+      </button>
+    </article>
+
+  </main>
+
+  <!-- Toast HUD -->
+  <div class="toast-hud" id="toast">提示信息</div>
+
+  <script>
+    // 动态音量声波图标生成器 (精准对应：静音斜杠、微声1道波、中声2道波、高声3道波)
+    function getSpeakerSvg(vol, size = 14) {
+      if (vol === 0) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>`;
+      } else if (vol <= 35) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+      } else if (vol <= 70) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+      } else {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M22 2a14 14 0 0 1 0 20"/></svg>`;
+      }
+    }
+
+    // 全局点击空白自动收起展开态
+    function handleTileBlankClick(e) {
+      if (e.target.closest('.zone-v1') || e.target.closest('.zone-v2') || e.target.closest('.zone-v3') || e.target.closest('.zone-v4') || e.target.closest('.choose-btn')) {
+        return;
+      }
+      collapseAll();
+    }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.zone-v1') && !e.target.closest('.zone-v2') && !e.target.closest('.zone-v3') && !e.target.closest('.zone-v4') && !e.target.closest('.choose-btn')) {
+        collapseAll();
+      }
+    });
+
+    function collapseAll() {
+      pillV1.classList.remove('is-expanded');
+      pillV2.classList.remove('is-expanded');
+      zoneV3.classList.remove('is-open');
+      pillV4.classList.remove('is-expanded');
+    }
+
+
+    // ==========================================
+    // 逻辑 1: 方案 1 (原位向左舒展无边框胶囊)
+    // ==========================================
+    let vol1 = 45;
+    let prevVol1 = 45;
+    const pillV1 = document.getElementById('pillV1');
+    const iconV1 = document.getElementById('iconV1');
+    const fillV1 = document.getElementById('fillV1');
+    const beadV1 = document.getElementById('beadV1');
+    const pctV1 = document.getElementById('pctV1');
+    const trackV1 = document.getElementById('trackV1');
+
+    function updateV1(val) {
+      vol1 = Math.max(0, Math.min(100, Math.round(val)));
+      fillV1.style.width = vol1 + '%';
+      beadV1.style.left = vol1 + '%';
+      pctV1.textContent = vol1 + '%';
+      iconV1.innerHTML = getSpeakerSvg(vol1, 14);
+
+      if (vol1 === 0) {
+        pillV1.classList.add('is-muted');
+      } else {
+        pillV1.classList.remove('is-muted');
+      }
+    }
+
+    function toggleExpandV1(e) {
+      // 点击容器本身展开
+      if (!pillV1.classList.contains('is-expanded')) {
+        collapseAll();
+        pillV1.classList.add('is-expanded');
+        showToast('方案 1：已点击展开无边框音量条与当前百分比');
+      }
+    }
+
+    function handleIconClickV1(e) {
+      // 如果已经展开，点击小喇叭快速切换静音/恢复
+      if (pillV1.classList.contains('is-expanded')) {
+        e.stopPropagation();
+        if (vol1 > 0) {
+          prevVol1 = vol1;
+          updateV1(0);
+          showToast('方案 1：已一键静音 (0%)');
+        } else {
+          updateV1(prevVol1 > 0 ? prevVol1 : 45);
+          showToast('方案 1：已恢复音量 (' + vol1 + '%)');
+        }
+      } else {
+        // 未展开时点击展开
+        toggleExpandV1(e);
+      }
+    }
+
+    function handleDragV1(e) {
+      e.stopPropagation();
+      const setFromE = (ev) => {
+        const rect = trackV1.getBoundingClientRect();
+        const pct = (ev.clientX - rect.left) / rect.width * 100;
+        updateV1(pct);
+      };
+      setFromE(e);
+      const onMove = (ev) => setFromE(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    // 滚轮联动
+    pillV1.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      let next = vol1 + (e.deltaY < 0 ? 5 : -5);
+      updateV1(next);
+      if (!pillV1.classList.contains('is-expanded')) {
+        pillV1.classList.add('is-expanded');
+      }
+      clearTimeout(pillV1._timer);
+      pillV1._timer = setTimeout(() => {
+        // 延时保持
+      }, 1500);
+      showToast('方案 1 滚轮调音: ' + vol1 + '%');
+    }, { passive: false });
+
+
+    // ==========================================
+    // 逻辑 2: 方案 2 (极致全流程零背景 · 纯浮动滑轨与百分比)
+    // ==========================================
+    let vol2 = 50;
+    let prevVol2 = 50;
+    const pillV2 = document.getElementById('pillV2');
+    const iconV2 = document.getElementById('iconV2');
+    const fillV2 = document.getElementById('fillV2');
+    const beadV2 = document.getElementById('beadV2');
+    const trackV2 = document.getElementById('trackV2');
+    const pctV2 = document.getElementById('pctV2');
+
+    function updateV2(val) {
+      vol2 = Math.max(0, Math.min(100, Math.round(val)));
+      fillV2.style.width = vol2 + '%';
+      if (beadV2) beadV2.style.left = vol2 + '%';
+      pctV2.textContent = vol2 + '%';
+      iconV2.innerHTML = getSpeakerSvg(vol2, 14);
+      if (vol2 === 0) {
+        pillV2.classList.add('is-muted');
+      } else {
+        pillV2.classList.remove('is-muted');
+      }
+    }
+
+    function handlePillClickV2(e) {
+      if (!pillV2.classList.contains('is-expanded')) {
+        collapseAll();
+        pillV2.classList.add('is-expanded');
+        showToast('方案 2：已展开全透明浮动滑轨与百分比');
+      }
+    }
+
+    function handleIconClickV2(e) {
+      if (pillV2.classList.contains('is-expanded')) {
+        e.stopPropagation();
+        if (vol2 > 0) {
+          prevVol2 = vol2;
+          updateV2(0);
+          showToast('方案 2：已一键静音 (0%)');
+        } else {
+          updateV2(prevVol2 > 0 ? prevVol2 : 50);
+          showToast('方案 2：已恢复音量 (' + vol2 + '%)');
+        }
+      } else {
+        handlePillClickV2(e);
+      }
+    }
+
+    function handleDragV2(e) {
+      if (!pillV2.classList.contains('is-expanded')) return;
+      e.stopPropagation();
+      const setFromE = (ev) => {
+        const rect = trackV2.getBoundingClientRect();
+        const pct = (ev.clientX - rect.left) / rect.width * 100;
+        updateV2(pct);
+      };
+      setFromE(e);
+      const onMove = (ev) => setFromE(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    pillV2.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      let next = vol2 + (e.deltaY < 0 ? 5 : -5);
+      updateV2(next);
+      if (!pillV2.classList.contains('is-expanded')) pillV2.classList.add('is-expanded');
+      showToast('方案 2 滚轮调音: ' + vol2 + '%');
+    }, { passive: false });
+
+
+    // ==========================================
+    // 逻辑 3: 方案 3 (独立图标 + 下弹无边框微卡)
+    // ==========================================
+    let vol3 = 65;
+    const zoneV3 = document.getElementById('zoneV3');
+    const iconV3 = document.getElementById('iconV3');
+    const fillV3 = document.getElementById('fillV3');
+    const beadV3 = document.getElementById('beadV3');
+    const pctV3 = document.getElementById('pctV3');
+    const trackV3 = document.getElementById('trackV3');
+
+    function updateV3(val) {
+      vol3 = Math.max(0, Math.min(100, Math.round(val)));
+      fillV3.style.width = vol3 + '%';
+      beadV3.style.left = vol3 + '%';
+      pctV3.textContent = vol3 + '%';
+      iconV3.innerHTML = getSpeakerSvg(vol3, 14);
+    }
+
+    function toggleV3Card(e) {
+      e.stopPropagation();
+      const open = zoneV3.classList.contains('is-open');
+      collapseAll();
+      if (!open) {
+        zoneV3.classList.add('is-open');
+        showToast('方案 3：已下弹无边框微卡');
+      }
+    }
+
+    function handleDragV3(e) {
+      e.stopPropagation();
+      const setFromE = (ev) => {
+        const rect = trackV3.getBoundingClientRect();
+        const pct = (ev.clientX - rect.left) / rect.width * 100;
+        updateV3(pct);
+      };
+      setFromE(e);
+      const onMove = (ev) => setFromE(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+
+    // ==========================================
+    // 逻辑 4: 方案 4 (超纤细侧边条)
+    // ==========================================
+    let vol4 = 75;
+    let prevVol4 = 75;
+    const pillV4 = document.getElementById('pillV4');
+    const iconV4 = document.getElementById('iconV4');
+    const fillV4 = document.getElementById('fillV4');
+    const beadV4 = document.getElementById('beadV4');
+    const pctV4 = document.getElementById('pctV4');
+    const trackV4 = document.getElementById('trackV4');
+
+    function updateV4(val) {
+      vol4 = Math.max(0, Math.min(100, Math.round(val)));
+      fillV4.style.width = vol4 + '%';
+      beadV4.style.left = vol4 + '%';
+      pctV4.textContent = vol4 + '%';
+      iconV4.innerHTML = getSpeakerSvg(vol4, 13);
+    }
+
+    function toggleExpandV4(e) {
+      if (!pillV4.classList.contains('is-expanded')) {
+        collapseAll();
+        pillV4.classList.add('is-expanded');
+      }
+    }
+
+    function handleIconClickV4(e) {
+      if (pillV4.classList.contains('is-expanded')) {
+        e.stopPropagation();
+        if (vol4 > 0) {
+          prevVol4 = vol4;
+          updateV4(0);
+        } else {
+          updateV4(prevVol4 > 0 ? prevVol4 : 75);
+        }
+      } else {
+        toggleExpandV4(e);
+      }
+    }
+
+    function handleDragV4(e) {
+      e.stopPropagation();
+      const setFromE = (ev) => {
+        const rect = trackV4.getBoundingClientRect();
+        const pct = (ev.clientX - rect.left) / rect.width * 100;
+        updateV4(pct);
+      };
+      setFromE(e);
+      const onMove = (ev) => setFromE(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+
+    // 初始化各方案数值与状态
+    updateV1(45);
+    updateV2(50);
+    updateV3(65);
+    updateV4(75);
+
+    // 采纳方案
+    function applyMasterScheme(name) {
+      showToast('🎉 已选定：<b>' + name + '</b>！随时在聊天窗口告诉我，立即为您落地到正式工程');
+    }
+
+    // Toast HUD
+    let toastTimer = null;
+    function showToast(html) {
+      const toast = document.getElementById('toast');
+      toast.innerHTML = html;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>

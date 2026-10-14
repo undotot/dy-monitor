@@ -97,17 +97,20 @@ dialog[data-dialog]::backdrop { background: #000; }
 .tile-status { position: absolute; left: 8px; top: 8px; z-index: 12; display: inline-flex; align-items: center; gap: 4px; width: auto; height: 20px; padding: 0 6px 0 4px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px; background: rgba(10, 12, 18, .5); backdrop-filter: blur(10px); cursor: grab; }
 .tile-status:active { cursor: grabbing; }
 .t-name { min-width: 0; max-width: 140px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 音量常驻钮保持紧凑，滑块在固定尺寸浮层内展开，拖动时不改变几何。 */
-.tile-audio-corner { position: absolute; right: 6px; top: 6px; z-index: 22; display: inline-flex; align-items: center; height: 18px; padding: 0 1px; border: 1px solid rgba(255,255,255,.12); border-radius: 99px; background: rgba(10,12,18,.62); backdrop-filter: blur(10px); }
-.tile-audio-corner .audio-btn { width: 18px; height: 16px; border: 0; border-radius: 99px; background: transparent; color: #5eead4; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
-.tile-audio-corner .audio-btn svg { width: 11px; height: 11px; }
-.tile-audio-corner.is-muted .audio-btn { color: var(--dim); }
+/* 右上角音量控件 (方案 1：平时纯图标彻底零背景 · 零边框 · 点击向左展开无边框高透托盘与实时数值) */
+.tile-audio-corner { position: absolute; right: 8px; top: 8px; z-index: 22; display: inline-flex; align-items: center; height: 28px; padding: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer; overflow: hidden; transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.tile-audio-corner:hover { background: transparent !important; box-shadow: none !important; }
+.tile-audio-corner .audio-btn { width: 24px; height: 24px; border: none !important; border-radius: 50%; background: transparent !important; color: #ffffff; display: grid; place-items: center; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.9)); transition: transform 0.16s ease, color 0.16s ease, filter 0.16s ease; }
+.tile-audio-corner .audio-btn:hover { transform: scale(1.15); filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 1)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)); }
+.tile-audio-corner .audio-btn svg { width: 14px; height: 14px; }
+.tile-audio-corner.is-muted .audio-btn { color: var(--dim); filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)); }
 .tile-audio-corner .audio-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
-.tile-volume-popover { position: absolute; right: -1px; top: calc(100% - 1px); display: flex; align-items: center; gap: 7px; width: var(--audio-popover-width,128px); padding: 9px 8px; border: 1px solid var(--line2); border-radius: 8px; background: #111c29; box-shadow: 0 6px 18px #0008; visibility: hidden; opacity: 0; pointer-events: none; }
-.tile-audio-corner:hover .tile-volume-popover, .tile-audio-corner:focus-within .tile-volume-popover, .tile-audio-corner.is-dragging-vol .tile-volume-popover { visibility: visible; opacity: 1; pointer-events: auto; }
-.tile-volume-popover .t-vol { flex: 1; width: 0; min-width: 0; margin: 0; touch-action: none; }
-.tile-volume-popover input[type=range].slider { height: 18px; background-size: 100% 3px; background-repeat: no-repeat; background-position: center; }
-.tile-volume-popover .t-vol-pct { flex-shrink: 0; min-width: 25px; font: 10px Consolas,monospace; text-align: right; color: var(--text); }
+.tile-audio-corner.is-expanded { background: rgba(14, 20, 32, 0.92) !important; backdrop-filter: blur(28px) saturate(200%) !important; -webkit-backdrop-filter: blur(28px) saturate(200%) !important; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65) !important; padding: 0 10px 0 4px !important; border-radius: 999px; border: none !important; }
+.tile-volume-tray { position: relative; max-width: 0; opacity: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; pointer-events: none; transition: max-width 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin-left 0.2s ease; }
+.tile-audio-corner.is-expanded .tile-volume-tray, .tile-audio-corner.is-dragging-vol .tile-volume-tray { max-width: 160px; opacity: 1; margin-left: 6px; pointer-events: auto; }
+.tile-volume-tray .t-vol { width: 78px; min-width: 78px; margin: 0; touch-action: none; appearance: none; -webkit-appearance: none; height: 5px; border-radius: 999px; background: linear-gradient(90deg, #ff5e1e var(--v, 100%), rgba(255, 255, 255, 0.2) var(--v, 100%)); outline: none; border: none !important; cursor: pointer; }
+.tile-volume-tray .t-vol::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 94, 30, 0.5); cursor: pointer; }
+.tile-volume-tray .t-vol-pct { flex-shrink: 0; min-width: 32px; font: 700 11.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; color: #ffffff; letter-spacing: -0.2px; }
 .add-panel.is-replacing .chk, .add-panel.is-replacing [data-groups-select-live] { display: none; }
 .add-panel.is-replacing .add-foot { justify-content: flex-start; }
 .add-panel[aria-busy=true] .add-list { opacity: .65; }

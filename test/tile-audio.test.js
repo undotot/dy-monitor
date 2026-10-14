@@ -108,3 +108,27 @@ test("画格跨窗口迁移后音量结束事件绑定新窗口，返回时恢�
     restored.tile.disconnectAudio();
   } finally { win.close(); pipWin.close(); }
 });
+
+test("方案1点击展开进度条与百分比，再次点击小喇叭切换静音，点击空白处自动收起", () => {
+  const win = new Window();
+  try {
+    const { tile } = setup(win);
+    assert.equal(tile.audioCorner.classList.contains("is-expanded"), false);
+    assert.equal(tile.muted, true);
+
+    // 首次点击纯图标：展开托盘，不改变静音状态
+    tile.muteBtn.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
+    assert.equal(tile.audioCorner.classList.contains("is-expanded"), true);
+    assert.equal(tile.muted, true);
+
+    // 展开状态下点击小喇叭：一键切换静音/恢复
+    tile.muteBtn.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
+    assert.equal(tile.muted, false);
+
+    // 点击空白处：自动收起回纯图标
+    win.dispatchEvent(new win.PointerEvent("pointerdown", { bubbles: true }));
+    assert.equal(tile.audioCorner.classList.contains("is-expanded"), false);
+
+    tile.disconnectAudio();
+  } finally { win.close(); }
+});

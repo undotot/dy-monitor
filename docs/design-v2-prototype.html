@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>斗鱼监控室 · 精致毛玻璃交互设计原型 (v2.0 终版)</title>
+  <style>
+    :root {
+      /* ===== 监控室专业深色基底（防眩光、保护视力、契合视频黑边） ===== */
+      --bg-base: #0b0f17;
+      
+      /* ===== macOS / Raycast 精致毛玻璃体系 ===== */
+      --glass-surface: rgba(18, 25, 38, 0.62);
+      --glass-surface-elevated: rgba(22, 31, 48, 0.72);
+      --glass-toolbar: rgba(15, 21, 33, 0.65);
+      
+      /* 经典苹果微光反光边缘 (Specular Hairline) */
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --glass-border-hover: rgba(255, 255, 255, 0.28);
+      --glass-specular: inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+      --glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+      
+      /* 斗鱼经典活力橙（唯一关键操作点缀色） */
+      --brand-orange: #ff5e1e;
+      --brand-orange-hover: #ff743b;
+      --brand-orange-glow: rgba(255, 94, 30, 0.35);
+      
+      /* 辅助状态指示色 */
+      --color-green: #34d399;
+      --color-blue: #38bdf8;
+      --color-amber: #fbbf24;
+      --color-red: #f87171;
+      
+      /* 选中态：极度淡化，仅标题名温润微粉白高亮（贴合原版） */
+      --name-selected: #ffb5cb;
+
+      --text-main: #f8fafc;
+      --text-sub: #cbd5e1;
+      --text-muted: #8494ab;
+      --text-faint: #566478;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+      
+      --blur-strength: blur(28px) saturate(210%);
+      --anim-smooth: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      --anim-fast: 0.15s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-base);
+      /* 注入微弱深空漫反射环境流光，使半透明毛玻璃在任何位置都能折射出细腻的光影漫反射 */
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.14) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(255, 94, 30, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(28, 38, 58, 0.5) 0px, transparent 100%);
+      background-attachment: fixed;
+      color: var(--text-sub);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    svg {
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    /* ===== 1. 全局可手动收缩顶栏 (macOS 毛玻璃长条) ===== */
+    .topbar-slot {
+      position: relative;
+      flex-shrink: 0;
+      z-index: 100;
+      transition: margin-top var(--anim-smooth);
+    }
+    .topbar-slot.is-collapsed {
+      margin-top: -48px; /* 顶栏平滑收折 */
+    }
+
+    .monitor-topbar {
+      height: 48px;
+      background: var(--glass-surface);
+      backdrop-filter: var(--blur-strength);
+      -webkit-backdrop-filter: var(--blur-strength);
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow), var(--glass-specular);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .tb-left, .tb-mid, .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 品牌 Logo */
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--brand-orange), #ff2a55);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 13.5px;
+      box-shadow: 0 2px 10px var(--brand-orange-glow);
+    }
+    .brand-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+    
+    /* 版本徽章 */
+    .ver-pill {
+      font-size: 10.5px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: var(--color-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: var(--radius-full);
+      padding: 1px 7px;
+      background: rgba(56, 189, 248, 0.08);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all var(--anim-fast);
+    }
+    .ver-pill:hover {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: var(--color-blue);
+    }
+    .ver-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--color-green);
+    }
+
+    /* 监看房间数统计 */
+    .status-capsule {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--glass-border);
+    }
+    .status-ok {
+      color: var(--color-green);
+      font-weight: 600;
+    }
+
+    /* 顶栏控制：声音模式、主增益 */
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px 9px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--glass-border);
+    }
+    .mac-select {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--glass-border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+    .mac-slider {
+      width: 76px;
+      accent-color: var(--brand-orange);
+      cursor: pointer;
+    }
+
+    /* 布局分段选择器 (Raycast 风格 Segmented Control) */
+    .ray-segmented {
+      display: flex;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 2px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--glass-border);
+      gap: 2px;
+    }
+    .ray-seg-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all var(--anim-fast);
+    }
+    .ray-seg-btn:hover {
+      color: var(--text-main);
+    }
+    .ray-seg-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+
+    /* 顶栏按钮 */
+    .mac-btn {
+      height: 28px;
+      padding: 0 11px;
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      box-shadow: var(--glass-specular);
+      transition: all var(--anim-fast);
+      white-space: nowrap;
+    }
+    .mac-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--glass-border-hover);
+    }
+    .mac-btn.primary {
+      background: linear-gradient(135deg, var(--brand-orange), #ff4718);
+      border-color: var(--brand-orange);
+      color: #fff;
+      box-shadow: 0 2px 10px var(--brand-orange-glow);
+    }
+    .mac-btn.primary:hover {
+      filter: brightness(1.08);
+      box-shadow: 0 4px 14px var(--brand-orange-glow);
+    }
+    .mac-btn.is-confirming-stop {
+      border-color: var(--color-amber) !important;
+      color: var(--color-amber) !important;
+      background: rgba(251, 191, 36, 0.18) !important;
+    }
+    .mac-btn.danger {
+      border-color: rgba(248, 113, 113, 0.3);
+      color: #fca5a5;
+    }
+    .mac-btn.danger:hover {
+      background: rgba(248, 113, 113, 0.15);
+      color: #fff;
+    }
+
+    /* ===== 1.1 顶部边缘感应带与呼出胶囊 (平时 100% 隐藏，顶栏收起时靠近屏幕边缘平滑下探) ===== */
+    .top-sensor-zone {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 18px;
+      z-index: 150;
+      display: none;
+      justify-content: center;
+      align-items: flex-start;
+      pointer-events: auto;
+    }
+    .topbar-slot.is-collapsed ~ .top-sensor-zone {
+      display: flex;
+    }
+
+    /* 唤出胶囊：平时完全隐形 (translateY(-100%) + opacity: 0)，鼠标移至屏幕最顶端才优雅下探 */
+    .top-peek-capsule {
+      height: 25px;
+      padding: 0 14px;
+      border-radius: 0 0 9px 9px;
+      background: rgba(14, 20, 32, 0.78);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-top: none;
+      color: var(--text-sub);
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-100%);
+      transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, background 0.15s ease, color 0.15s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+    .kbd-hint {
+      font-size: 9.5px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* 仅当鼠标滑入屏幕最顶端感应区或胶囊本身时，才温润滑出 */
+    .top-sensor-zone:hover .top-peek-capsule,
+    .top-peek-capsule:hover {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .top-peek-capsule:hover {
+      background: rgba(22, 31, 48, 0.95);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.32);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    .top-peek-capsule:hover .kbd-hint {
+      color: var(--brand-orange);
+      border-color: rgba(255, 94, 30, 0.4);
+    }
+
+    /* ===== 2. 主监看舞台 (画格墙：直角无缝平铺 + 仅留 1px 极细微光边缘) ===== */
+    .app-body {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-base);
+    }
+    .wall {
+      flex: 1;
+      height: 100%;
+      padding: 0; /* 彻底去除外边距，最大化监看面积 */
+      display: grid;
+      gap: 1px;   /* 极简 1 像素间隙，只有一条浅浅的边缘/边框 */
+      background: rgba(255, 255, 255, 0.08); /* 极细微光单线分割，柔和不刺眼 */
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      position: relative;
+    }
+
+    /* 自适应 L 墙布局 */
+    .wall.layout-l-focus {
+      grid-template-columns: 2.8fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+    }
+    .wall.layout-l-focus .tile:first-child {
+      grid-column: 1 / 2;
+      grid-row: 1 / 4;
+    }
+
+    /* 单画格卡片 (取消圆角，专业监看大屏直角拼接) */
+    .tile {
+      background: #070b12;
+      border-radius: 0 !important; /* 彻底取消圆角，直角不切视频边缘 */
+      border: none !important;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: none !important;
+      transition: background-color var(--anim-smooth);
+    }
+    .tile:hover {
+      background: #0a0f18; /* 悬停仅微调底色，绝不加发光边框 */
+    }
+
+    /* ===== 选中态：极度淡化，四周外框 100% 零变化无加粗无阴影，仅标题微亮！ ===== */
+    .tile.is-active {
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    /* 仅左上角主播名药丸变亮 */
+    .tile.is-active .tile-status-pill {
+      background: rgba(28, 38, 56, 0.92);
+      border-color: rgba(255, 255, 255, 0.28);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+    .tile.is-active .t-name {
+      color: var(--name-selected); /* 温润微粉白高亮 */
+      font-weight: 700;
+    }
+    .tile.is-active .dot-pulse {
+      background: var(--name-selected);
+      box-shadow: 0 0 6px var(--name-selected);
+    }
+
+    /* 视频画布（保持比例，允许黑边不拉伸，直角铺满） */
+    .tile-video-mock {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+      border-radius: 0 !important;
+    }
+
+    /* 左上角轻量标题药丸 (macOS 微磨砂胶囊) */
+    .tile-status-pill {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      z-index: 12;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 22px;
+      padding: 0 9px 0 7px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: var(--radius-full);
+      background: rgba(15, 22, 34, 0.55);
+      backdrop-filter: blur(16px) saturate(190%);
+      -webkit-backdrop-filter: blur(16px) saturate(190%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+      cursor: grab;
+      transition: all var(--anim-fast);
+    }
+    .dot-pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-green);
+    }
+    .t-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      white-space: nowrap;
+      transition: color var(--anim-fast);
+    }
+
+    /* ===== 右上角音量控件 (平时纯图标 · 彻底零背景 · 零边框 · 点击展开进度条与当前百分比) ===== */
+    .tile-audio-pill {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 !important;
+      border: none !important; /* 彻底去除边框！ */
+      border-radius: var(--radius-full);
+      background: transparent !important; /* 平时彻底零背景！仅一颗浮动图标 */
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      box-shadow: none !important;
+      cursor: pointer;
+      transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      position: relative;
+    }
+    .tile-audio-pill:hover {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .tile-audio-pill.is-expanded {
+      background: rgba(14, 20, 32, 0.94) !important;
+      backdrop-filter: blur(32px) saturate(220%) !important;
+      -webkit-backdrop-filter: blur(32px) saturate(220%) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65) !important;
+      padding: 0 12px 0 6px !important;
+      border: none !important;
+    }
+    .tile-audio-pill.is-solo {
+      border: none !important;
+    }
+
+    /* 喇叭触发图标 (彻底零背景 · 纯浮动图标按钮) */
+    .audio-badge-icon {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      border: none !important;
+      background: transparent !important;
+      outline: none;
+      flex-shrink: 0;
+      transition: transform 0.16s ease, color 0.16s ease, filter 0.16s ease;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+    }
+    .audio-badge-icon:hover {
+      transform: scale(1.16);
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 1)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.45));
+    }
+    .audio-badge-icon:active {
+      transform: scale(0.92);
+    }
+    .tile-audio-pill.is-muted .audio-badge-icon {
+      color: var(--text-muted);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+    }
+    .tile-audio-pill.is-solo .audio-badge-icon {
+      color: var(--color-blue);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(56, 189, 248, 0.4));
+    }
+
+    /* 点击后向左平滑展开的托盘 (进度条 + 实时百分比) */
+    .audio-expand-tray {
+      max-width: 0;
+      opacity: 0;
+      margin-left: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: max-width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease, margin-left 0.22s ease;
+    }
+    .tile-audio-pill.is-expanded .audio-expand-tray {
+      max-width: 170px;
+      opacity: 1;
+      margin-left: 8px;
+      pointer-events: auto;
+    }
+
+    /* 无边框流光滑轨 */
+    .audio-expand-groove {
+      position: relative;
+      width: 82px;
+      height: 5px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.18);
+      border: none !important;
+      cursor: pointer;
+    }
+    /* 饱满发光液态填充柱 */
+    .audio-expand-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #ff5e1e, #ff844b);
+      box-shadow: 0 0 8px var(--brand-orange-glow);
+      border-radius: var(--radius-full);
+      transition: width 0.04s linear;
+      pointer-events: none;
+    }
+    .tile-audio-pill.is-solo .audio-expand-fill {
+      background: linear-gradient(90deg, #38bdf8, #60a5fa);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+    }
+    /* 磁吸发光微珠点 (Thumb Bead) */
+    .audio-thumb-bead {
+      position: absolute;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 8px var(--brand-orange-glow);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: left 0.04s linear, transform var(--anim-fast);
+    }
+    .audio-expand-groove:hover .audio-thumb-bead {
+      transform: translate(-50%, -50%) scale(1.22);
+    }
+
+    /* 展开时显示的当前音量百分比 (如 45%) */
+    .audio-pct-val {
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, "SF Pro Text", Menlo, Consolas, monospace;
+      color: #ffffff;
+      min-width: 32px;
+      text-align: right;
+      letter-spacing: -0.3px;
+    }
+
+    /* ===== 3. 底部微型悬浮条 (Raycast 风格纯图标极简胶囊) ===== */
+    .tile-tools {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px 6px;
+      border-radius: var(--radius-md);
+      background: rgba(14, 20, 32, 0.6) !important;
+      backdrop-filter: blur(24px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.22) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      z-index: 20;
+    }
+    /* 鼠标移入画格底部时浮现 */
+    .tile:hover .tile-tools {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 纯图标控制按钮（无文字说明，纯粹干净） */
+    .ibtn {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      color: var(--text-sub);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      position: relative;
+    }
+    .ibtn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .ibtn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--color-blue);
+    }
+    .ibtn svg {
+      width: 14px;
+      height: 14px;
+      stroke-width: 1.8;
+    }
+    .tool-divider {
+      width: 1px;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.14);
+      margin: 0 2px;
+    }
+
+    /* 画质小下拉微气泡 */
+    .rate-select {
+      height: 22px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 0 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* 弹幕浮层 */
+    .dm-stage {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 6;
+    }
+    .dm-item {
+      position: absolute;
+      white-space: nowrap;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      animation: dmRoll linear infinite;
+    }
+    @keyframes dmRoll {
+      from { transform: translateX(500px); }
+      to { transform: translateX(-500px); }
+    }
+
+    /* ===== 4. 右侧设置抽屉 (macOS 磨砂侧边栏) ===== */
+    .drawer {
+      width: 320px;
+      background: rgba(18, 26, 42, 0.62) !important;
+      backdrop-filter: blur(28px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+      border-left: 1px solid rgba(255, 255, 255, 0.16) !important;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 120;
+      box-shadow: -15px 0 45px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+    }
+    .drawer.is-open {
+      transform: translateX(0);
+    }
+    /* 弹幕设置滑块拖动半透明透视 */
+    .drawer.is-scrubbing {
+      opacity: 0.35 !important;
+      backdrop-filter: blur(2px) !important;
+      -webkit-backdrop-filter: blur(2px) !important;
+    }
+
+    .drawer-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-head h2 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .drawer-sec {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 14px;
+    }
+    .drawer-sec:last-child {
+      border-bottom: none;
+    }
+    .drawer-sec h3 {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-sub);
+      cursor: pointer;
+    }
+    .switch-chk {
+      width: 32px;
+      height: 18px;
+      accent-color: var(--brand-orange);
+      cursor: pointer;
+    }
+
+    /* ===== 5. 添加房间面板 (macOS 居中磨砂弹窗) ===== */
+    .add-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 150;
+      display: none;
+      place-items: center;
+    }
+    .add-modal-overlay.is-open {
+      display: grid;
+    }
+    .add-card {
+      width: min(580px, calc(100% - 32px));
+      max-height: 82vh;
+      background: rgba(20, 28, 44, 0.68) !important;
+      backdrop-filter: blur(32px) saturate(210%) !important;
+      -webkit-backdrop-filter: blur(32px) saturate(210%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.18) !important;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .add-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .add-search-input {
+      flex: 1;
+      height: 32px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 0 10px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+      transition: all var(--anim-fast);
+    }
+    .add-search-input:focus {
+      border-color: var(--brand-orange);
+      box-shadow: 0 0 0 2px var(--brand-orange-glow);
+    }
+    .add-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.15);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .add-tab-btn {
+      padding: 4px 10px;
+      font-size: 11.5px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .add-tab-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--brand-orange);
+    }
+    .add-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 360px;
+    }
+    .add-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      transition: all 0.14s ease;
+    }
+    .add-row:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: var(--glass-border-hover);
+    }
+    .add-row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .add-row-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .add-row-info b {
+      display: block;
+      font-size: 12px;
+      color: var(--text-main);
+    }
+    .add-row-info span {
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+    .add-foot {
+      padding: 10px 16px;
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* ===== 6. 右键上下文菜单 (Context Menu) ===== */
+    .ctx-menu {
+      position: fixed;
+      display: none;
+      background: var(--glass-surface-elevated);
+      backdrop-filter: var(--blur-strength);
+      -webkit-backdrop-filter: var(--blur-strength);
+      border: 1px solid var(--glass-border-hover);
+      border-radius: var(--radius-md);
+      padding: 5px;
+      min-width: 155px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), var(--glass-specular);
+      z-index: 200;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .ctx-item {
+      padding: 6px 10px;
+      font-size: 11.5px;
+      color: var(--text-sub);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .ctx-item:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .ctx-item.danger {
+      color: #fca5a5;
+    }
+    .ctx-item.danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fff;
+    }
+    .ctx-sep {
+      height: 1px;
+      background: var(--glass-border);
+      margin: 3px 0;
+    }
+
+    /* Toast 反馈 (支持按钮撤销) */
+    .toast-hud {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--glass-toolbar);
+      backdrop-filter: var(--blur-strength);
+      -webkit-backdrop-filter: var(--blur-strength);
+      border: 1px solid var(--glass-border-hover);
+      padding: 7px 18px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: #fff;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
+      z-index: 300;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.2s ease;
+    }
+    .toast-hud.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 全局可手动伸缩顶栏 (macOS 磨砂长条) -->
+  <div class="topbar-slot" id="topbarSlot">
+    <header class="monitor-topbar">
+      
+      <div class="tb-left">
+        <div class="brand-wrap">
+          <div class="brand-logo">斗</div>
+          <span class="brand-name">监控室</span>
+          <div class="ver-pill" onclick="showToast('当前版本 v1.3.1 (已是最新)')" title="点击查看版本状态">
+            <span class="ver-dot"></span>
+            <span>v1.3.1</span>
+          </div>
+        </div>
+
+        <div class="status-capsule">
+          <span>4 间监看中</span>
+          <span class="status-ok">● 就绪</span>
+        </div>
+      </div>
+
+      <div class="tb-mid">
+        <!-- 声音模式 -->
+        <div class="control-item">
+          <span>声音</span>
+          <select class="mac-select" onchange="showToast('声音模式已切换：' + this.options[this.selectedIndex].text)">
+            <option value="mix" selected>全部混音</option>
+            <option value="solo">独奏选中</option>
+            <option value="mute">全部静音</option>
+          </select>
+        </div>
+
+        <!-- 主音量滑条 -->
+        <div class="control-item">
+          <span>主增益</span>
+          <input type="range" min="0" max="100" value="70" class="mac-slider" oninput="document.getElementById('volText').textContent = this.value + '%'">
+          <span style="font-size:10.5px; font-family:monospace; min-width:26px;" id="volText">70%</span>
+        </div>
+
+        <!-- 布局分段器 (继承原方案：1×1 / 2×2 / 3×3 / 4×4 / 自动，默认为自动模式) -->
+        <div class="ray-segmented" id="layoutSegmented">
+          <button class="ray-seg-btn" onclick="setLayout('1x1', this)">1×1</button>
+          <button class="ray-seg-btn" onclick="setLayout('2x2', this)">2×2</button>
+          <button class="ray-seg-btn" onclick="setLayout('3x3', this)">3×3</button>
+          <button class="ray-seg-btn" onclick="setLayout('4x4', this)">4×4</button>
+          <button class="ray-seg-btn active" id="btnAuto" onclick="setLayout('auto', this)">自动</button>
+        </div>
+      </div>
+
+      <div class="tb-right">
+        <button class="mac-btn" onclick="toggleDanmakuGlobal()" id="btnGlobalDm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg>
+          弹幕: 开
+        </button>
+        <button class="mac-btn" id="btnStopAll" onclick="handleStopAll(this)" title="二次确认防误触停止全部推流">
+          ⏸ 全部停止
+        </button>
+        <button class="mac-btn primary" onclick="openAddPanel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          添加房间
+        </button>
+        <button class="mac-btn" onclick="toggleDrawer()" title="打开设置抽屉">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          设置
+        </button>
+        <button class="mac-btn" id="btnCollapse" onclick="collapseTopbar()" title="收起顶部栏 (鼠标移至屏幕最顶端可随时唤出，或按快捷键 T)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 15l-6-6-6 6"/></svg>
+          收起顶栏
+        </button>
+        <button class="mac-btn danger" onclick="showToast('已确认退出监控室')">
+          退出监看
+        </button>
+      </div>
+    </header>
+  </div>
+
+  <!-- 1.1 顶部边缘感应带与呼出胶囊 (平时 100% 隐藏，顶栏收起时鼠标移至屏幕最顶端优雅下探) -->
+  <div class="top-sensor-zone" id="topSensorZone">
+    <button class="top-peek-capsule" onclick="expandTopbar()" title="点击固定展开顶栏 (快捷键: 按 T 键)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      <span>展开顶栏</span>
+      <kbd class="kbd-hint">T</kbd>
+    </button>
+  </div>
+
+  <!-- 2. 主画格区域 -->
+  <div class="app-body">
+    <main class="wall" id="wall">
+      
+      <!-- 画格 1 (当前选中：外框零变化，仅标题微粉白高亮) -->
+      <article class="tile is-active" onclick="selectTile(this)" oncontextmenu="openContextMenu(event, 'Doinb')">
+        <img class="tile-video-mock" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1000&q=80" alt="">
+        
+        <!-- 左上角标题胶囊：仅标题名变粉白色微亮 -->
+        <header class="tile-status-pill" title="拖拽可交换位置">
+          <i class="dot-pulse"></i>
+          <b class="t-name">Doinb 英雄联盟赛事二路</b>
+        </header>
+
+        <!-- 右上角音量控件 (纯图标常驻 · 无边框 · 点击展开进度条与当前百分比) -->
+        <div class="tile-audio-pill is-solo" id="tileAudio1" onclick="toggleExpandTile(1, event)" title="点击展开调节音量；滚轮亦可微调">
+          <span class="audio-badge-icon" onclick="handleIconClickTile(1, event)" id="tileIcon1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M22 2a14 14 0 0 1 0 20"/></svg>
+          </span>
+          <div class="audio-expand-tray">
+            <div class="audio-expand-groove" onmousedown="handleDragTileAudio(1, event)" id="grooveTile1">
+              <div class="audio-expand-fill" id="fillTile1" style="width: 100%;"></div>
+              <div class="audio-thumb-bead" id="beadTile1" style="left: 100%;"></div>
+            </div>
+            <span class="audio-pct-val" id="pctTile1">100%</span>
+          </div>
+        </div>
+
+        <div class="dm-stage">
+          <div class="dm-item" style="top:22%; animation-duration: 8s;">团战这波配合太顶了！！</div>
+          <div class="dm-item" style="top:48%; animation-duration: 10s; color:#facc15;">6666666666666</div>
+        </div>
+
+        <!-- 底部微型悬浮条：纯图标、无文字说明、包含刷新取流功能 -->
+        <div class="tile-tools">
+          <button class="ibtn" title="暂停/播放" onclick="event.stopPropagation(); togglePlay(this)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          
+          <!-- ★ 重新刷新取流 (Retry) ★ -->
+          <button class="ibtn" title="重新取流 / 刷新直播" onclick="event.stopPropagation(); refreshStream(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></svg>
+          </button>
+
+          <button class="ibtn active" title="独奏该路声音" onclick="event.stopPropagation(); toggleSolo(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1Zm16 0h-3v6h2a1 1 0 0 0 1-1Z"/></svg>
+          </button>
+
+          <button class="ibtn" title="开关弹幕" onclick="event.stopPropagation(); toggleTileDm(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg>
+          </button>
+
+          <span class="tool-divider"></span>
+
+          <!-- 画质微选择 -->
+          <select class="rate-select" title="清晰度切换" onclick="event.stopPropagation()" onchange="showToast('切换清晰度为: ' + this.value)">
+            <option>原画60f</option>
+            <option>高清</option>
+          </select>
+
+          <span class="tool-divider"></span>
+
+          <button class="ibtn" title="画中画 (PiP)" onclick="event.stopPropagation(); showToast('已开启画中画 (PiP)')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M12 11h6v6h-6Z"/></svg>
+          </button>
+
+          <button class="ibtn" title="网页全屏" onclick="event.stopPropagation(); showToast('全屏')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
+          </button>
+
+          <button class="ibtn" style="color:#f87171;" title="移除房间" onclick="event.stopPropagation(); removeTile(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M6 18 18 6"/></svg>
+          </button>
+        </div>
+      </article>
+
+      <!-- 画格 2 -->
+      <article class="tile" onclick="selectTile(this)" oncontextmenu="openContextMenu(event, '小桀')">
+        <img class="tile-video-mock" src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1000&q=80" alt="">
+        <header class="tile-status-pill">
+          <i class="dot-pulse" style="background:#64748b;"></i>
+          <b class="t-name">超级小桀 · 游戏日常</b>
+        </header>
+        <div class="tile-audio-pill is-muted" id="tileAudio2" onclick="toggleExpandTile(2, event)" title="点击展开调节音量；滚轮亦可微调">
+          <span class="audio-badge-icon" onclick="handleIconClickTile(2, event)" id="tileIcon2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          </span>
+          <div class="audio-expand-tray">
+            <div class="audio-expand-groove" onmousedown="handleDragTileAudio(2, event)" id="grooveTile2">
+              <div class="audio-expand-fill" id="fillTile2" style="width: 0%;"></div>
+              <div class="audio-thumb-bead" id="beadTile2" style="left: 0%;"></div>
+            </div>
+            <span class="audio-pct-val" id="pctTile2">0%</span>
+          </div>
+        </div>
+        <div class="tile-tools">
+          <button class="ibtn" title="播放" onclick="event.stopPropagation(); togglePlay(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7Z"/></svg></button>
+          <button class="ibtn" title="重新取流 / 刷新直播" onclick="event.stopPropagation(); refreshStream(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></svg></button>
+          <button class="ibtn" title="独奏" onclick="event.stopPropagation(); toggleSolo(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1Zm16 0h-3v6h2a1 1 0 0 0 1-1Z"/></svg></button>
+          <button class="ibtn" title="弹幕" onclick="event.stopPropagation(); toggleTileDm(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg></button>
+          <span class="tool-divider"></span>
+          <select class="rate-select" onclick="event.stopPropagation()"><option>蓝光4M</option><option>超清</option></select>
+          <span class="tool-divider"></span>
+          <button class="ibtn" title="画中画" onclick="event.stopPropagation(); showToast('已开启画中画')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M12 11h6v6h-6Z"/></svg></button>
+          <button class="ibtn" title="全屏" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+          <button class="ibtn" style="color:#f87171;" title="移除房间" onclick="event.stopPropagation(); removeTile(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        </div>
+      </article>
+
+      <!-- 画格 3 -->
+      <article class="tile" onclick="selectTile(this)" oncontextmenu="openContextMenu(event, '女流')">
+        <img class="tile-video-mock" src="https://images.unsplash.com/photo-1548681528-6a5c45b66b42?auto=format&fit=crop&w=1000&q=80" alt="">
+        <header class="tile-status-pill">
+          <i class="dot-pulse" style="background:#64748b;"></i>
+          <b class="t-name">女流66 · 主机故事会</b>
+        </header>
+        <div class="tile-audio-pill is-muted" id="tileAudio3" onclick="toggleExpandTile(3, event)" title="点击展开调节音量；滚轮亦可微调">
+          <span class="audio-badge-icon" onclick="handleIconClickTile(3, event)" id="tileIcon3">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          </span>
+          <div class="audio-expand-tray">
+            <div class="audio-expand-groove" onmousedown="handleDragTileAudio(3, event)" id="grooveTile3">
+              <div class="audio-expand-fill" id="fillTile3" style="width: 0%;"></div>
+              <div class="audio-thumb-bead" id="beadTile3" style="left: 0%;"></div>
+            </div>
+            <span class="audio-pct-val" id="pctTile3">0%</span>
+          </div>
+        </div>
+        <div class="tile-tools">
+          <button class="ibtn" title="播放" onclick="event.stopPropagation(); togglePlay(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7Z"/></svg></button>
+          <button class="ibtn" title="重新取流 / 刷新直播" onclick="event.stopPropagation(); refreshStream(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></svg></button>
+          <button class="ibtn" title="独奏" onclick="event.stopPropagation(); toggleSolo(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1Zm16 0h-3v6h2a1 1 0 0 0 1-1Z"/></svg></button>
+          <button class="ibtn" title="弹幕" onclick="event.stopPropagation(); toggleTileDm(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg></button>
+          <span class="tool-divider"></span>
+          <select class="rate-select" onclick="event.stopPropagation()"><option>超清</option></select>
+          <span class="tool-divider"></span>
+          <button class="ibtn" title="全屏" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+          <button class="ibtn" style="color:#f87171;" title="移除房间" onclick="event.stopPropagation(); removeTile(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        </div>
+      </article>
+
+      <!-- 画格 4 -->
+      <article class="tile" onclick="selectTile(this)" oncontextmenu="openContextMenu(event, 'CSGO赛事')">
+        <img class="tile-video-mock" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80" alt="">
+        <header class="tile-status-pill">
+          <i class="dot-pulse" style="background:#64748b;"></i>
+          <b class="t-name">CSGO 官方赛事主舞台</b>
+        </header>
+        <div class="tile-audio-pill is-muted" id="tileAudio4" onclick="toggleExpandTile(4, event)" title="点击展开调节音量；滚轮亦可微调">
+          <span class="audio-badge-icon" onclick="handleIconClickTile(4, event)" id="tileIcon4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          </span>
+          <div class="audio-expand-tray">
+            <div class="audio-expand-groove" onmousedown="handleDragTileAudio(4, event)" id="grooveTile4">
+              <div class="audio-expand-fill" id="fillTile4" style="width: 0%;"></div>
+              <div class="audio-thumb-bead" id="beadTile4" style="left: 0%;"></div>
+            </div>
+            <span class="audio-pct-val" id="pctTile4">0%</span>
+          </div>
+        </div>
+        <div class="tile-tools">
+          <button class="ibtn" title="播放" onclick="event.stopPropagation(); togglePlay(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7Z"/></svg></button>
+          <button class="ibtn" title="重新取流 / 刷新直播" onclick="event.stopPropagation(); refreshStream(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></svg></button>
+          <button class="ibtn" title="独奏" onclick="event.stopPropagation(); toggleSolo(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1Zm16 0h-3v6h2a1 1 0 0 0 1-1Z"/></svg></button>
+          <button class="ibtn" title="弹幕" onclick="event.stopPropagation(); toggleTileDm(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg></button>
+          <span class="tool-divider"></span>
+          <select class="rate-select" onclick="event.stopPropagation()"><option>原画60f</option></select>
+          <span class="tool-divider"></span>
+          <button class="ibtn" title="全屏" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+          <button class="ibtn" style="color:#f87171;" title="移除房间" onclick="event.stopPropagation(); removeTile(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        </div>
+      </article>
+
+    </main>
+
+    <!-- 4. 设置抽屉面板 (Settings Drawer，macOS 磨砂侧边栏) -->
+    <aside class="drawer" id="drawer">
+      <div class="drawer-head">
+        <h2>监控室设置</h2>
+        <button class="mac-btn" style="height:24px; padding:0 6px;" onclick="toggleDrawer()">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        
+        <!-- 播放设置 -->
+        <section class="drawer-sec">
+          <h3>播放设置</h3>
+          <label class="switch-row">
+            <span>请求 H.265 硬解编码</span>
+            <input type="checkbox" class="switch-chk">
+          </label>
+          <label class="switch-row">
+            <span>暂停斗鱼网页原播放器</span>
+            <input type="checkbox" class="switch-chk" checked>
+          </label>
+          <label class="switch-row">
+            <span>打开监控室时自动恢复房间</span>
+            <input type="checkbox" class="switch-chk" checked>
+          </label>
+        </section>
+
+        <!-- 全局弹幕设置 (支持拖拽实时半透视) -->
+        <section class="drawer-sec">
+          <h3>全局弹幕 (拖动滑块可透视预览)</h3>
+          <label class="switch-row">
+            <span>启用弹幕渲染</span>
+            <input type="checkbox" class="switch-chk" checked>
+          </label>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+            <span>弹幕不透明度</span>
+            <input type="range" min="10" max="100" value="85" style="width:100px;">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+            <span>弹幕字号缩放</span>
+            <input type="range" min="12" max="24" value="18" style="width:100px;">
+          </div>
+        </section>
+
+        <!-- 声音与开播提醒 -->
+        <section class="drawer-sec">
+          <h3>声音与开播提醒</h3>
+          <label class="switch-row">
+            <span>新房间打开时默认静音</span>
+            <input type="checkbox" class="switch-chk" checked>
+          </label>
+          <label class="switch-row">
+            <span>独奏时声音跟随焦点切换</span>
+            <input type="checkbox" class="switch-chk">
+          </label>
+          <label class="switch-row">
+            <span>关注主播开播声音提醒</span>
+            <input type="checkbox" class="switch-chk" checked>
+          </label>
+        </section>
+
+        <!-- 工作区预设与管理 -->
+        <section class="drawer-sec">
+          <h3>工作区预设</h3>
+          <div style="display:flex; gap:6px;">
+            <input type="text" placeholder="预设名称，如：日常挂机" style="flex:1; height:28px; background:rgba(0,0,0,0.25); border:1px solid var(--glass-border); border-radius:4px; padding:0 8px; font-size:11.5px; color:#fff;">
+            <button class="mac-btn primary" style="height:28px;" onclick="showToast('预设已保存')">保存当前</button>
+          </div>
+        </section>
+
+        <!-- 诊断日志 -->
+        <section class="drawer-sec">
+          <h3>运行诊断</h3>
+          <div style="display:flex; gap:6px; margin-bottom:6px;">
+            <button class="mac-btn" style="height:24px; font-size:11px;" onclick="showToast('已复制日志到剪贴板')">复制诊断</button>
+            <button class="mac-btn" style="height:24px; font-size:11px;" onclick="showToast('日志已清空')">清空</button>
+          </div>
+          <pre style="font-family:monospace; font-size:10px; color:var(--text-muted); background:rgba(0,0,0,0.3); padding:8px; border-radius:4px; max-height:80px; overflow:auto;">[15:10:01] 监控室系统初始化完成
+[15:10:03] 装载 macOS/Raycast 高斯磨砂渲染器
+[15:10:04] 成功挂载 4 个直播通道 (60fps)</pre>
+        </section>
+
+      </div>
+    </aside>
+  </div>
+
+  <!-- 5. 添加房间面板 (Add Panel Modal，macOS 磨砂弹窗) -->
+  <div class="add-modal-overlay" id="addModal" onclick="if(event.target===this) closeAddPanel()">
+    <div class="add-card">
+      <div class="add-head">
+        <span style="font-size:13.5px; font-weight:700; color:#fff;">添加房间</span>
+        <input type="text" class="add-search-input" placeholder="🔍 房号 / 斗鱼链接 / 主播名（回车直加）">
+        <button class="mac-btn" style="height:26px; padding:0 8px;" onclick="closeAddPanel()">✕</button>
+      </div>
+
+      <div class="add-tabs">
+        <button class="add-tab-btn active">关注 · 全部 (已开播)</button>
+        <button class="add-tab-btn">添加历史</button>
+        <button class="add-tab-btn">批量房号</button>
+      </div>
+
+      <div class="add-list">
+        <!-- 房间条目 -->
+        <div class="add-row">
+          <div class="add-row-left">
+            <input type="checkbox" checked style="accent-color:var(--brand-orange);">
+            <img class="add-row-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80">
+            <div class="add-row-info">
+              <b>Doinb (99999)</b>
+              <span>英雄联盟 · 正在直播</span>
+            </div>
+          </div>
+          <button class="mac-btn" style="height:24px; font-size:11px;" disabled>已在墙内</button>
+        </div>
+
+        <div class="add-row">
+          <div class="add-row-left">
+            <input type="checkbox" checked style="accent-color:var(--brand-orange);">
+            <img class="add-row-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80">
+            <div class="add-row-info">
+              <b>超级小桀 (74567)</b>
+              <span>游戏日常 · 正在直播</span>
+            </div>
+          </div>
+          <button class="mac-btn" style="height:24px; font-size:11px;" disabled>已在墙内</button>
+        </div>
+
+        <div class="add-row">
+          <div class="add-row-left">
+            <input type="checkbox" style="accent-color:var(--brand-orange);">
+            <img class="add-row-avatar" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=60&q=80">
+            <div class="add-row-info">
+              <b>YYF月夜枫 (58428)</b>
+              <span>DOTA2 · 正在直播</span>
+            </div>
+          </div>
+          <button class="mac-btn primary" style="height:24px; font-size:11px;" onclick="showToast('已添加 YYF 房间进墙')">+ 添加</button>
+        </div>
+
+        <div class="add-row">
+          <div class="add-row-left">
+            <input type="checkbox" style="accent-color:var(--brand-orange);">
+            <img class="add-row-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=60&q=80">
+            <div class="add-row-info">
+              <b>CSGO 官方赛事 (22222)</b>
+              <span>CS:GO · 正在直播</span>
+            </div>
+          </div>
+          <button class="mac-btn" style="height:24px; font-size:11px;" disabled>已在墙内</button>
+        </div>
+      </div>
+
+      <div class="add-foot">
+        <span style="font-size:11.5px; color:var(--text-muted);">已勾选 2 个房间</span>
+        <div style="display:flex; gap:8px;">
+          <button class="mac-btn" onclick="showToast('已全选在线关注列表')">全选当前开播</button>
+          <button class="mac-btn primary" onclick="showToast('已将选中房间添加进墙'); closeAddPanel();">添加选中</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 右键上下文菜单 (Context Menu) -->
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" onclick="showToast('已设为主画面')">★ 设为主画面</div>
+    <div class="ctx-item" onclick="showToast('独奏已切换')">🔊 独奏该路声音</div>
+    <div class="ctx-item" onclick="showToast('正在重新刷新取流...')">🔄 重新刷新取流</div>
+    <div class="ctx-item" onclick="showToast('已打开画中画')">⛶ 开启画中画</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="showToast('已复制房号')">📋 复制房间号</div>
+    <div class="ctx-item" onclick="showToast('已在新标签页打开斗鱼原站')">🔗 打开斗鱼直播原网页</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" onclick="showToast('已移除该房间')">✕ 移除本房间</div>
+  </div>
+
+  <!-- Toast HUD -->
+  <div class="toast-hud" id="toast">提示信息</div>
+
+  <script>
+    const topbarSlot = document.getElementById('topbarSlot');
+    const wall = document.getElementById('wall');
+    const drawer = document.getElementById('drawer');
+    const addModal = document.getElementById('addModal');
+    const ctxMenu = document.getElementById('ctxMenu');
+    const toast = document.getElementById('toast');
+
+    // 1. 顶栏收起与感应唤出机制
+    function collapseTopbar() {
+      topbarSlot.classList.add('is-collapsed');
+      showToast('顶栏已收起 · 鼠标移至屏幕最顶端或按 <b style="color:var(--brand-orange)">T</b> 键随时唤出');
+    }
+    function expandTopbar() {
+      topbarSlot.classList.remove('is-collapsed');
+      showToast('顶栏已展开并固定常驻');
+    }
+    function toggleTopbar() {
+      if (topbarSlot.classList.contains('is-collapsed')) {
+        expandTopbar();
+      } else {
+        collapseTopbar();
+      }
+    }
+    // 快捷键支持：按 T 键随时展开/收起顶栏
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.key === 't' || e.key === 'T') {
+        toggleTopbar();
+      }
+    });
+
+    // 2. 画格选中（外框 100% 零变化，仅标题名微亮）
+    function selectTile(tile) {
+      document.querySelectorAll('.tile').forEach(t => t.classList.remove('is-active'));
+      tile.classList.add('is-active');
+      const name = tile.querySelector('.t-name').textContent;
+      showToast('当前选中：' + name);
+    }
+
+    // 3. 布局切换 (引用原方案：1×1, 2×2, 3×3, 4×4, 自动，默认为自动模式)
+    let currentLayoutMode = 'auto';
+    function setLayout(mode, btn) {
+      currentLayoutMode = mode;
+      document.querySelectorAll('#layoutSegmented .ray-seg-btn').forEach(b => b.classList.remove('active'));
+      if (btn) {
+        btn.classList.add('active');
+      } else {
+        const targetBtn = document.getElementById(mode === 'auto' ? 'btnAuto' : 'btn' + mode);
+        if (targetBtn) targetBtn.classList.add('active');
+      }
+      wall.className = 'wall';
+      wall.style.gridTemplateColumns = '';
+      wall.style.gridTemplateRows = '';
+
+      if (mode === 'auto') {
+        // 自动模式：根据房间数量与视口自适应最适 16:9 行列组合 (当前 4 间默认为 2×2 平铺)
+        wall.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        wall.style.gridTemplateRows = 'repeat(2, 1fr)';
+        showToast('已切换至：自动模式 (按房间数量智能自适应最优 16:9 比例)');
+      } else if (mode === '1x1') {
+        wall.style.gridTemplateColumns = '1fr';
+        wall.style.gridTemplateRows = '1fr';
+        showToast('已切换至：1×1 单路全画幅平铺');
+      } else if (mode === '2x2') {
+        wall.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        wall.style.gridTemplateRows = 'repeat(2, 1fr)';
+        showToast('已切换至：2×2 四分屏平铺');
+      } else if (mode === '3x3') {
+        wall.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        wall.style.gridTemplateRows = 'repeat(3, 1fr)';
+        showToast('已切换至：3×3 九宫格平铺');
+      } else if (mode === '4x4') {
+        wall.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        wall.style.gridTemplateRows = 'repeat(4, 1fr)';
+        showToast('已切换至：4×4 十六分屏平铺');
+      }
+    }
+
+    // 4. 重新刷新取流 (Retry)
+    function refreshStream(btn) {
+      btn.style.transform = 'rotate(180deg)';
+      btn.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => {
+        btn.style.transform = 'none';
+        btn.style.transition = 'none';
+      }, 400);
+      showToast('正在重新请求直播流并重新装配播放器...');
+    }
+
+    // 5. 播放/暂停
+    function togglePlay(btn) {
+      btn.classList.toggle('active');
+      showToast('播放 / 暂停状态已切换');
+    }
+
+    // 6. 独奏切换
+    function toggleSolo(btn) {
+      btn.classList.toggle('active');
+      showToast(btn.classList.contains('active') ? '已独奏该房间声音' : '已取消独奏');
+    }
+
+    // 7. 弹幕开关
+    function toggleTileDm(btn) {
+      btn.classList.toggle('active');
+      showToast('当前房间弹幕已切换');
+    }
+    let dmAll = true;
+    function toggleDanmakuGlobal() {
+      dmAll = !dmAll;
+      document.getElementById('btnGlobalDm').innerHTML = dmAll ? 
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 4h18v13H9l-6 4ZM7 9h10M7 13h6"/></svg> 弹幕: 开' : 
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 3 18 18M3 7v14l6-4h5M8 3h10a3 3 0 0 1 3 3v8M10 8h7"/></svg> 弹幕: 关';
+      document.querySelectorAll('.dm-stage').forEach(dm => dm.style.display = dmAll ? 'block' : 'none');
+      showToast(dmAll ? '全局弹幕已开启' : '全局弹幕已关闭');
+    }
+
+    // 8. 借鉴 dy_monitor_ux: 全部停止 3 秒行内二次确认防误触
+    let stopAllTimer = null;
+    let isConfirmingStop = false;
+    function handleStopAll(btn) {
+      if (!isConfirmingStop) {
+        isConfirmingStop = true;
+        btn.classList.add('is-confirming-stop');
+        btn.textContent = '⚠️ 确定全部停止？(3s)';
+        stopAllTimer = setTimeout(() => {
+          isConfirmingStop = false;
+          btn.classList.remove('is-confirming-stop');
+          btn.textContent = '⏸ 全部停止';
+        }, 3000);
+      } else {
+        clearTimeout(stopAllTimer);
+        isConfirmingStop = false;
+        btn.classList.remove('is-confirming-stop');
+        btn.textContent = '⏸ 全部停止';
+        showToast('已确认停止全部推流');
+      }
+    }
+
+    // 9. 借鉴 dy_monitor_ux: 移除房间支持 5 秒 Toast 撤销
+    let lastRemovedTile = null;
+    function removeTile(btn) {
+      const tile = btn.closest('.tile');
+      lastRemovedTile = tile;
+      tile.style.display = 'none';
+      showToast('已移除该房间 <button style="margin-left:8px; background:rgba(255,255,255,0.2); border:0; color:#fff; border-radius:4px; padding:2px 8px; cursor:pointer;" onclick="undoRemove()">撤销</button>');
+    }
+    window.undoRemove = function() {
+      if (lastRemovedTile) {
+        lastRemovedTile.style.display = 'flex';
+        showToast('已恢复被移除的房间！');
+        lastRemovedTile = null;
+      }
+    };
+
+    // 10. 右上角音量胶囊 (macOS Sonoma 沉降式流光槽，零数字干扰，原位展开)
+    function getDynamicSpeakerSvg(vol, size = 13) {
+      if (vol === 0) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>`;
+      } else if (vol <= 35) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+      } else if (vol <= 70) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+      } else {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M22 2a14 14 0 0 1 0 20"/></svg>`;
+      }
+    }
+
+    const tileAudios = {
+      1: { vol: 100, prevVol: 100 },
+      2: { vol: 0, prevVol: 50 },
+      3: { vol: 0, prevVol: 40 },
+      4: { vol: 0, prevVol: 65 }
+    };
+
+    function updateTileAudio(id, val) {
+      const state = tileAudios[id];
+      if (!state) return;
+      state.vol = Math.max(0, Math.min(100, Math.round(val)));
+      const pill = document.getElementById('tileAudio' + id);
+      const icon = document.getElementById('tileIcon' + id);
+      const fill = document.getElementById('fillTile' + id);
+      const bead = document.getElementById('beadTile' + id);
+      const pct = document.getElementById('pctTile' + id);
+
+      if (fill) fill.style.width = state.vol + '%';
+      if (bead) bead.style.left = state.vol + '%';
+      if (pct) pct.textContent = state.vol + '%';
+      if (icon) icon.innerHTML = getDynamicSpeakerSvg(state.vol, 14);
+
+      if (state.vol === 0) {
+        pill.classList.add('is-muted');
+      } else {
+        pill.classList.remove('is-muted');
+      }
+    }
+
+    function toggleExpandTile(id, e) {
+      const pill = document.getElementById('tileAudio' + id);
+      if (!pill) return;
+      if (!pill.classList.contains('is-expanded')) {
+        collapseAllTileAudios();
+        pill.classList.add('is-expanded');
+        showToast('画格 ' + id + '：已展开音量条与当前百分比');
+      }
+    }
+
+    function handleIconClickTile(id, e) {
+      e.stopPropagation();
+      const pill = document.getElementById('tileAudio' + id);
+      if (!pill) return;
+      if (pill.classList.contains('is-expanded')) {
+        toggleMuteTile(id, e);
+      } else {
+        toggleExpandTile(id, e);
+      }
+    }
+
+    function collapseAllTileAudios() {
+      document.querySelectorAll('.tile-audio-pill.is-expanded').forEach(p => {
+        p.classList.remove('is-expanded');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.tile-audio-pill')) {
+        collapseAllTileAudios();
+      }
+    });
+
+    function toggleMuteTile(id, e) {
+      if (e) e.stopPropagation();
+      const state = tileAudios[id];
+      if (!state) return;
+      if (state.vol > 0) {
+        state.prevVol = state.vol;
+        updateTileAudio(id, 0);
+        showToast('画格 ' + id + '：已静音 (0%)');
+      } else {
+        updateTileAudio(id, state.prevVol > 0 ? state.prevVol : 50);
+        showToast('画格 ' + id + '：已恢复声音 (' + state.vol + '%)');
+      }
+    }
+
+    function handleDragTileAudio(id, e) {
+      if (e) e.stopPropagation();
+      const groove = document.getElementById('grooveTile' + id);
+      if (!groove) return;
+      const setFromE = (ev) => {
+        const rect = groove.getBoundingClientRect();
+        const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+        updateTileAudio(id, pct);
+      };
+      setFromE(e);
+      const onMove = (ev) => setFromE(ev);
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    [1, 2, 3, 4].forEach(id => {
+      const pill = document.getElementById('tileAudio' + id);
+      if (!pill) return;
+      pill.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const state = tileAudios[id];
+        let next = state.vol + (e.deltaY < 0 ? 5 : -5);
+        updateTileAudio(id, next);
+        if (!pill.classList.contains('is-expanded')) {
+          pill.classList.add('is-expanded');
+        }
+        showToast('画格 ' + id + ' 滚轮微调: ' + state.vol + '%');
+      }, { passive: false });
+    });
+
+    // 页面初始化时装配各画格声音图标与数值
+    [1, 2, 3, 4].forEach(id => updateTileAudio(id, tileAudios[id].vol));
+
+    // 11. 借鉴 dy_monitor_ux: 弹幕设置滑块拖动半透明透视底层
+    document.querySelectorAll('.drawer input[type="range"]').forEach(range => {
+      range.addEventListener('mousedown', () => drawer.classList.add('is-scrubbing'));
+      range.addEventListener('mouseup', () => drawer.classList.remove('is-scrubbing'));
+      range.addEventListener('touchstart', () => drawer.classList.add('is-scrubbing'));
+      range.addEventListener('touchend', () => drawer.classList.remove('is-scrubbing'));
+    });
+
+    // 12. 设置抽屉
+    function toggleDrawer() {
+      drawer.classList.toggle('is-open');
+    }
+
+    // 13. 添加房间面板
+    function openAddPanel() {
+      addModal.classList.add('is-open');
+    }
+    function closeAddPanel() {
+      addModal.classList.remove('is-open');
+    }
+
+    // 14. 右键菜单
+    function openContextMenu(e, name) {
+      e.preventDefault();
+      ctxMenu.style.left = e.clientX + 'px';
+      ctxMenu.style.top = e.clientY + 'px';
+      ctxMenu.style.display = 'flex';
+    }
+    document.addEventListener('click', () => {
+      ctxMenu.style.display = 'none';
+    });
+
+    // 15. Toast 反馈 (支持 HTML 按钮)
+    let toastTimer = null;
+    function showToast(html) {
+      toast.innerHTML = html;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

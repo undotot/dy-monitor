@@ -14,6 +14,13 @@ export const calculateUniformFocusLayout = ({ width, height, mainRatio = DEFAULT
   const gapX = Math.min(0.5, width / (count + 3), height / (count + 3));
   const gapY = gapX / DEFAULT_RATIO;
   const viewportArea = width * height;
+  // 副窗可操作下限：常态 120px（沿用 FOCUS_LIMITS.smallMin），窄墙/极扁墙自适应收缩。
+  // 下限只拒绝退化细条，绝不阻止「全部房间同屏」这一硬约束——800×220 配 16 房
+  // 需要约 97px 格子，width/8=100 会误拒，width/10=80 才留有余量。
+  const cellFloor = Math.min(120, width / 10, height * DEFAULT_RATIO / 10);
+  // 主窗跨度上界：由「格子不小于下限」推出主窗最多能横向铺几格，再留 2 格余量。
+  // 旧上限 max(4,count) 会把 2~3 房的最优主窗直接截断，白白损失墙面。
+  const scaleMax = Math.min(32, Math.ceil(width / Math.max(1, cellFloor)) + 2);
   let best = null, stable = null;
   const handleCandidate = (leftCols, rightCols, sideRows, bottomRows, sideCount, scale, position) => {
     const sideCols = leftCols + rightCols;
@@ -22,8 +29,10 @@ export const calculateUniformFocusLayout = ({ width, height, mainRatio = DEFAULT
     if (sideRows) limits.push((height + gapY) * DEFAULT_RATIO / (sideRows + bottomRows) - gapX);
     const cellWidth = Math.min(...limits), cellHeight = cellWidth / DEFAULT_RATIO;
     if (cellWidth <= 0 || cellHeight <= 0) return;
-    if (count && (cellWidth < Math.min(120, width / 10) || cellHeight < Math.min(60, height / 10))) return;
+    if (count && cellWidth < cellFloor) return;
     const mainWidth = scale * (cellWidth + gapX) - gapX, mainHeight = mainWidth / DEFAULT_RATIO;
+    // 主窗明显大于副窗：跨度下限 2 即主窗宽度至少两格。
+    if (count && mainWidth < 2 * cellWidth - 1e-9) return;
     const containerW = mainWidth + sideCols * (cellWidth + gapX);
     const topHeight = Math.max(mainHeight, sideRows ? sideRows * cellHeight + (sideRows - 1) * gapY : 0);
     const containerH = topHeight + bottomRows * (cellHeight + gapY);
@@ -50,7 +59,9 @@ export const calculateUniformFocusLayout = ({ width, height, mainRatio = DEFAULT
     }
     if (slots.length !== count) return;
     const mainVideo = fitVideo(mainWidth, mainHeight, mainRatio);
-    if (count && (areaOf(mainVideo) < cellWidth * cellHeight * 1.5 || areaOf(main) < viewportArea * 0.2)) return;
+    // 主窗显著大于副窗：视频面积至少 1.5 倍。不再用「占视口 20%」门槛——
+    // 窄高墙（350×1000 配 16 房）下该门槛数学上不可达，会把所有候选拒掉而返回 null。
+    if (count && areaOf(mainVideo) < cellWidth * cellHeight * 1.5) return;
     let videoArea = areaOf(mainVideo);
     for (let index = 0; index < count; index++) videoArea += areaOf(fitVideo(cellWidth, cellHeight, secondaryRatios[index]));
     const score = videoArea / viewportArea;
@@ -74,12 +85,12 @@ export const calculateUniformFocusLayout = ({ width, height, mainRatio = DEFAULT
           const lastSideRows = sideCols ? Math.min(count,firstSideRows + 1) : 0;
           for (let sideRows = firstSideRows; sideRows <= lastSideRows; sideRows++) {
             const scales = new Set([2,sideRows]);
-            for (let scale = 2; scale <= Math.max(4,count); scale += 0.5) scales.add(scale);
+            for (let scale = 2; scale <= scaleMax; scale += 0.5) scales.add(scale);
             // 宽高限制相交处，以及底行恰好装满的位置，都是重要候选。
             if (Math.abs(viewportRatio - 1) > 1e-7) scales.add((sideCols - viewportRatio * bottomRows) / (viewportRatio - 1));
             scales.add(viewportRatio * (sideRows + bottomRows) - sideCols);
             if (bottomCount) scales.add(Math.ceil(bottomCount / bottomRows) - sideCols);
-            for (const scale of scales) if (Number.isFinite(scale) && scale >= 2 && scale <= Math.max(4,count + 2)) handleCandidate(leftCols,rightCols,sideRows,bottomRows,sideCount,scale,position);
+            for (const scale of scales) if (Number.isFinite(scale) && scale >= 2 && scale <= scaleMax) handleCandidate(leftCols,rightCols,sideRows,bottomRows,sideCount,scale,position);
           }
         }
       }

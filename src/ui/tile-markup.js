@@ -10,9 +10,9 @@ export const tileMarkup = () => `
   <i class="dot gr" data-dot role="img" aria-label="未播放"></i>
   <b class="t-name" data-name>直播间</b>
 </header>
-<div class="tile-audio-corner" data-audio-corner title="声音控制">
+<div class="tile-audio-corner" data-audio-corner title="声音控制（点击展开）">
   <button data-t-mute type="button" class="ibtn audio-btn" aria-label="声音控制"></button>
-  <div class="tile-volume-popover">
+  <div class="tile-volume-tray tile-volume-popover" data-vol-tray>
   <input data-t-vol type="range" min="0" max="1" step="0.01" value="1" class="slider t-vol" aria-label="该直播间音量">
   <b data-t-vol-pct class="t-vol-pct">100%</b>
   </div>
