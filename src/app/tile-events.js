@@ -89,6 +89,10 @@ export function bindTileEvents(ctx, tile) {
   root.addEventListener("click", (event) => {
     if (event.target.closest("button, input, select, textarea, label, a")) return;
     ctx.select(tile);
+    // 移动端/触屏适配：轻点画格唤出控制条，3.5 秒后自动淡出
+    root.classList.add("tools-visible");
+    clearTimeout(tile.toolsTimer);
+    tile.toolsTimer = setTimeout(() => root.classList.remove("tools-visible"), 3500);
   });
 
   root.addEventListener("dblclick", (event) => {

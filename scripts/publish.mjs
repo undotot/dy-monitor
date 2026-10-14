@@ -126,8 +126,9 @@ async function main() {
 
   // 2. 严格质量门验收
   console.log(`\n--- 阶段一：全自动化质量门验收 ---`);
-  if (!run(process.execPath, ["scripts/build.mjs"], "打包构建 dist/douyu-monitor.user.js")) rollback();
-  if (!run(process.execPath, ["--check", "dist/douyu-monitor.user.js"], "语法合规性检查 (node --check)")) rollback();
+  if (!run(process.execPath, ["scripts/build.mjs"], "打包构建双版本 (桌面通用版 + iPad Stay版)")) rollback();
+  if (!run(process.execPath, ["--check", "dist/douyu-monitor.user.js"], "桌面版语法合规性检查 (node --check)")) rollback();
+  if (!run(process.execPath, ["--check", "dist/douyu-monitor.stay.user.js"], "iPad Stay版语法合规性检查 (node --check)")) rollback();
 
   if (!skipTests) {
     if (!run("npm", ["test"], "全量单元测试与集成冒烟 (npm test)")) rollback();
@@ -137,8 +138,10 @@ async function main() {
 
   // 3. 文案规范合规性校验
   const bundlePath = join(root, "dist", "douyu-monitor.user.js");
+  const stayBundlePath = join(root, "dist", "douyu-monitor.stay.user.js");
   const bundleContent = readFileSync(bundlePath, "utf8");
-  if (bundleContent.includes("监看台") || bundleContent.includes("监看墙")) {
+  const stayBundleContent = readFileSync(stayBundlePath, "utf8");
+  if (bundleContent.includes("监看台") || bundleContent.includes("监看墙") || stayBundleContent.includes("监看台") || stayBundleContent.includes("监看墙")) {
     console.error(`❌ 错误：构建产物中仍检测到废弃文案“监看台 / 监看墙”，必须统一使用“监控室”。`);
     rollback();
   }
@@ -159,9 +162,10 @@ async function main() {
     console.warn(`⚠ 更新 CHANGELOG 警告：${err.message}`);
   }
 
-  // 5. 输出本地发版交付物至 D:/PROJECT/mom/
-  console.log(`\n--- 阶段二：本地交付物归档与快照 ---`);
+  // 5. 输出本地发版交付物至 D:/PROJECT/mom/ (双版本)
+  console.log(`\n--- 阶段二：本地交付物归档与快照 (双版本) ---`);
   try {
+    // 桌面通用版
     const deliverUserJs = join(momRoot, "监控室.user.js");
     const deliverTxt = join(momRoot, `监控室-${version}.txt`);
     const distTxt = join(root, "dist", "监控室.txt");
@@ -169,8 +173,19 @@ async function main() {
     copyFileSync(bundlePath, deliverUserJs);
     copyFileSync(bundlePath, deliverTxt);
     copyFileSync(bundlePath, distTxt);
-    console.log(`✓ 已同步更新本地生产文件: ${deliverUserJs}`);
-    console.log(`✓ 已生成版本快照归档: ${deliverTxt}`);
+    console.log(`✓ [桌面通用版] 已同步更新本地生产文件: ${deliverUserJs}`);
+    console.log(`✓ [桌面通用版] 已生成版本快照归档: ${deliverTxt}`);
+
+    // iPad Safari Stay 专属版
+    const deliverStayUserJs = join(momRoot, "监控室.stay.user.js");
+    const deliverStayTxt = join(momRoot, `监控室-stay-${version}.txt`);
+    const distStayTxt = join(root, "dist", "监控室.stay.txt");
+
+    copyFileSync(stayBundlePath, deliverStayUserJs);
+    copyFileSync(stayBundlePath, deliverStayTxt);
+    copyFileSync(stayBundlePath, distStayTxt);
+    console.log(`✓ [iPad Stay版] 已同步更新本地生产文件: ${deliverStayUserJs}`);
+    console.log(`✓ [iPad Stay版] 已生成版本快照归档: ${deliverStayTxt}`);
 
     // 同步工程内与外层的交互预览 HTML 文件
     const innerPreview = join(root, "focus-scheme-a-preview.html");
@@ -188,30 +203,33 @@ async function main() {
     return;
   }
 
-  // 6. 提交与推送至纯分发仓库 undotot/monitor-js
-  console.log(`\n--- 阶段三：推送纯分发仓库 (monitor-js) ---`);
+  // 6. 提交与推送至纯分发仓库 undotot/monitor-js (双版本)
+  console.log(`\n--- 阶段三：推送纯分发仓库 (monitor-js, 双版本) ---`);
   const deployTmpDir = join(root, ".deploy-temp");
   try {
     if (existsSync(deployTmpDir)) rmSync(deployTmpDir, { recursive: true, force: true });
     mkdirSync(deployTmpDir, { recursive: true });
 
+    // 复制 4 个产物文件
     copyFileSync(join(root, "dist", "douyu-monitor.user.js"), join(deployTmpDir, "douyu-monitor.user.js"));
     copyFileSync(join(root, "dist", "douyu-monitor.meta.js"), join(deployTmpDir, "douyu-monitor.meta.js"));
+    copyFileSync(join(root, "dist", "douyu-monitor.stay.user.js"), join(deployTmpDir, "douyu-monitor.stay.user.js"));
+    copyFileSync(join(root, "dist", "douyu-monitor.stay.meta.js"), join(deployTmpDir, "douyu-monitor.stay.meta.js"));
 
-    const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n### 一键安装链接\n- **jsDelivr CDN 直链（推荐）**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **jsDelivr 精准 Tag 直链（免缓存）**：[douyu-monitor.user.js (v${version})](https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n**当前版本**：v${version}\n`;
+    const distReadme = `# 斗鱼监控室 · 纯静态分发镜像\n\n> 本仓库仅用于托管斗鱼监控室编译后的 Userscript 产物与 CDN 镜像分发。\n> 源码开发工程存放在 [undotot/dy-monitor](https://github.com/undotot/dy-monitor)。\n\n**当前版本**：v${version}\n\n## 🖥️ 桌面通用版 (Tampermonkey / Violentmonkey / ScriptCat)\n- **jsDelivr CDN 直链（推荐）**：[douyu-monitor.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js)\n- **jsDelivr 精准 Tag 直链（免缓存）**：[douyu-monitor.user.js (v${version})](https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js)\n- **版本检查元数据**：[douyu-monitor.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js)\n\n## 📱 iPad Safari 专属版 (Stay 插件专用)\n- **jsDelivr CDN 直链（推荐）**：[douyu-monitor.stay.user.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.stay.user.js)\n- **jsDelivr 精准 Tag 直链（免缓存）**：[douyu-monitor.stay.user.js (v${version})](https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.stay.user.js)\n- **版本检查元数据**：[douyu-monitor.stay.meta.js](https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.stay.meta.js)\n`;
     writeFileSync(join(deployTmpDir, "README.md"), distReadme, "utf8");
 
     run("git", ["init"], "初始化产物仓库", deployTmpDir);
     run("git", ["branch", "-M", "main"], "切换 main 分支", deployTmpDir);
     run("git", ["add", "-A"], "暂存编译产物", deployTmpDir);
-    run("git", ["commit", "-m", `"release: v${version} (build artifact)"`], "提交产物", deployTmpDir);
+    run("git", ["commit", "-m", `"release: v${version} (dual-build artifacts)"`], "提交产物", deployTmpDir);
     run("git", ["tag", "-f", `v${version}`], `创建产物标签 v${version}`, deployTmpDir);
 
     const pushDist = run("git", ["push", "-f", DIST_REPO_URL, "main"], "推送到 monitor-js:main", deployTmpDir);
     run("git", ["push", "-f", DIST_REPO_URL, `v${version}`], `推送 tag v${version} 到 monitor-js`, deployTmpDir);
 
     if (pushDist) {
-      console.log(`✓ 纯分发仓库 monitor-js 同步成功！`);
+      console.log(`✓ 纯分发仓库 monitor-js 双版本同步成功！`);
     } else {
       console.warn(`⚠ 推送到 monitor-js 失败，请检查网络连接。`);
     }
@@ -221,14 +239,20 @@ async function main() {
     try { rmSync(deployTmpDir, { recursive: true, force: true }); } catch {}
   }
 
-  // 7. 刷新 jsDelivr CDN 边缘缓存节点
-  console.log(`\n--- 阶段四：刷新 jsDelivr CDN 节点缓存 ---`);
+  // 7. 刷新 jsDelivr CDN 边缘缓存节点 (双版本 8 个 URL)
+  console.log(`\n--- 阶段四：刷新 jsDelivr CDN 节点缓存 (双版本) ---`);
   try {
-    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"`], "刷新 CDN 元数据缓存");
-    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js"`], "刷新 CDN 脚本缓存");
-    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.meta.js"`], "刷新 CDN tag 元数据缓存");
-    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js"`], "刷新 CDN tag 脚本缓存");
-    console.log(`✓ jsDelivr CDN 节点已发送秒级刷新指令。`);
+    // 桌面版
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.meta.js"`], "刷新桌面版 CDN 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js"`], "刷新桌面版 CDN 脚本缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.meta.js"`], "刷新桌面版 Tag CDN 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js"`], "刷新桌面版 Tag CDN 脚本缓存");
+    // Stay 版
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.stay.meta.js"`], "刷新 iPad Stay版 CDN 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.stay.user.js"`], "刷新 iPad Stay版 CDN 脚本缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.stay.meta.js"`], "刷新 iPad Stay版 Tag CDN 元数据缓存");
+    run("curl", ["-s", `"https://purge.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.stay.user.js"`], "刷新 iPad Stay版 Tag CDN 脚本缓存");
+    console.log(`✓ jsDelivr CDN 双版本节点已发送秒级刷新指令。`);
   } catch (err) {
     console.warn(`⚠ 刷新 CDN 请求警告: ${err.message}`);
   }
@@ -248,18 +272,23 @@ async function main() {
     console.warn(`⚠ 源码推送到 dy-monitor 遇到网络抖动，可稍后重试 git push origin main。`);
   }
 
-  // 9. 最终输出汇总卡片
+  // 9. 最终输出汇总卡片 (双版本)
   console.log(`\n======================================================`);
-  console.log(`🎉 发布完成！版本：v${version}`);
-  console.log(`📁 本地交付物:   D:/PROJECT/mom/监控室.user.js`);
-  console.log(`📁 本地历史快照: D:/PROJECT/mom/监控室-${version}.txt`);
-  console.log(`📦 纯分发仓库:   https://github.com/undotot/monitor-js`);
-  console.log(`🛠️ 源码仓库:     https://github.com/undotot/dy-monitor`);
-  console.log(`🚀 jsDelivr CDN 直链 (油猴一键更新, 免分支缓存):`);
-  console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js`);
-  console.log(`👉 https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js (主分支滚动版)`);
-  console.log(`⚡ GitHub Raw 实时直链 (100% 零缓存直连):`);
-  console.log(`👉 https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js`);
+  console.log(`🎉 双版本同步发布完成！版本：v${version}`);
+  console.log(`------------------------------------------------------`);
+  console.log(`🖥️ 【桌面通用版】(Tampermonkey / Violentmonkey / ScriptCat):`);
+  console.log(`  📁 本地生产交付物: D:/PROJECT/mom/监控室.user.js`);
+  console.log(`  📁 本地历史快照:   D:/PROJECT/mom/监控室-${version}.txt`);
+  console.log(`  🚀 jsDelivr Tag:   https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.user.js`);
+  console.log(`  🚀 jsDelivr Main:  https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.user.js`);
+  console.log(`  ⚡ GitHub Raw:     https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.user.js`);
+  console.log(`------------------------------------------------------`);
+  console.log(`📱 【iPad Safari 专属版】(Stay 插件专用):`);
+  console.log(`  📁 本地生产交付物: D:/PROJECT/mom/监控室.stay.user.js`);
+  console.log(`  📁 本地历史快照:   D:/PROJECT/mom/监控室-stay-${version}.txt`);
+  console.log(`  🚀 jsDelivr Tag:   https://cdn.jsdelivr.net/gh/undotot/monitor-js@v${version}/douyu-monitor.stay.user.js`);
+  console.log(`  🚀 jsDelivr Main:  https://cdn.jsdelivr.net/gh/undotot/monitor-js@main/douyu-monitor.stay.user.js`);
+  console.log(`  ⚡ GitHub Raw:     https://raw.githubusercontent.com/undotot/monitor-js/main/douyu-monitor.stay.user.js`);
   console.log(`======================================================\n`);
 }
 

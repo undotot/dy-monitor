@@ -1,4 +1,5 @@
 import { THEMES, DEFAULT_THEME, normalizeTheme } from "../core/settings.js";
+import { onUrlChange, isFollowPage } from "../platform/router.js";
 
 // 打开 / 关闭生命周期：官方播放器暂停与恢复、继续播放提示、入口按钮定位、页面事件与菜单命令。
 export function initShell(ctx) {
@@ -127,7 +128,7 @@ export function initShell(ctx) {
   /* --- 入口按钮定位 --- */
   const entry = query("[data-entry]");
   let entryTitle = null, entryFrame = 0;
-  const onFollowPage = () => location.pathname.replace(/\/+$/, "") === "/directory/myFollow";
+  const onFollowPage = () => isFollowPage();
   const positionEntry = () => {
     entryFrame = 0;
     if (!onFollowPage()) {
@@ -156,14 +157,16 @@ export function initShell(ctx) {
   window.addEventListener("resize", scheduleEntry);
   window.addEventListener("scroll", scheduleEntry, { passive: true, capture: true });
   const ensureHost = () => {
-    if (!ctx.host.isConnected) document.documentElement.append(ctx.host);
+    const parent = document.body || document.documentElement;
+    if (parent && !ctx.host.isConnected) parent.append(ctx.host);
     scheduleEntry();
   };
   ctx.ensureHost = ensureHost;
   scheduleEntry();
-  window.addEventListener("urlchange", ensureHost);
+  onUrlChange(ensureHost);
   const observer = new MutationObserver(ensureHost);
-  observer.observe(document.documentElement, { childList: true });
+  const observeTarget = document.body || document.documentElement;
+  if (observeTarget) observer.observe(observeTarget, { childList: true });
   try {
     GM_registerMenuCommand("打开监控室", ctx.handleOpen);
     GM_registerMenuCommand("添加房间", () => {

@@ -17,7 +17,7 @@ export const tileMarkup = () => `
   <b data-t-vol-pct class="t-vol-pct">100%</b>
   </div>
 </div>
-<video muted playsinline class="tile-video" aria-label="直播画面"></video>
+<video muted playsinline webkit-playsinline class="tile-video" aria-label="直播画面"></video>
 <canvas aria-hidden="true" class="tile-dm"></canvas>
 <div class="tile-dm-stage" data-dm-stage hidden aria-hidden="true"></div>
 
