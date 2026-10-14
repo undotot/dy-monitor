@@ -1,6 +1,7 @@
 import { setIconButton } from "../ui/icons.js";
 import { MAX_TILES } from "../core/settings.js";
 import { roomDisplayName } from "../core/room-name.js";
+import { syncDanmakuButtons } from "./tile-danmaku.js";
 
 // 状态点承载直播状态，文字说明通过悬停与无障碍标签提供。三态语义固定配色：
 // 直播中=绿、轮播中=琥珀、未开播=灰；取流排队等瞬态用蓝点，不与三态混淆；异常=红。
@@ -64,6 +65,8 @@ export function initStatus(ctx) {
     tile.soloBtn.setAttribute("aria-pressed", String(ctx.audio.mode === "solo" && tile.id === ctx.soloTargetId()));
     setIconButton(tile.danmakuBtn, tile.danmaku.enabled ? "chat" : "chatOff", tile.danmaku.enabled ? "关闭弹幕" : "开启弹幕");
     tile.danmakuBtn.setAttribute("aria-pressed", String(tile.danmaku.enabled));
+    syncDanmakuButtons(tile);
+    ctx.syncGlobalDanmakuActions?.();
     setIconButton(tile.resumeBtn, tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 继续" : "暂停");
   };
 
@@ -76,5 +79,6 @@ export function initStatus(ctx) {
     ctx.els.health.textContent = failed ? `${failed} 路异常` : list.length ? "● 运行正常" : "";
     ctx.els.health.className = `meta-health ${failed ? "bad" : "ok"}`;
     ctx.refreshSoloButtons();
+    ctx.syncGlobalDanmakuActions?.();
   };
 }

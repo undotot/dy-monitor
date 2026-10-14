@@ -1,5 +1,7 @@
 import { API_BASE } from "../core/settings.js";
 import { iconMarkup } from "../ui/icons.js";
+import { closeTileSettingsPanels } from "./tile-events.js";
+import { closeTileMore } from "./tile-tools.js";
 
 // 右键菜单：每画格 10 项操作 + 分隔线 + 移除；点击外部关闭菜单与画格设置浮层。
 export function initContextMenu(ctx) {
@@ -20,12 +22,7 @@ export function initContextMenu(ctx) {
       ["pip", "弹幕画中画", () => void ctx.handlePip(tile)],
       ["full", "全屏", () => ctx.findAction(tile, "full")],
       ["external", "去该房间发弹幕", () => window.open(`${API_BASE}/${tile.rid}`, "_blank", "noopener,noreferrer")],
-      ["edit", "修改房号", () => {
-        tile.settingsEl.hidden = false;
-        tile.settingsBtn.setAttribute("aria-expanded", "true");
-        tile.root.querySelector("[data-edit-input]").value = tile.rid;
-        tile.root.querySelector("[data-edit-input]").focus();
-      }],
+      ["edit", "修改房号", () => ctx.openAdd(tile)],
       ["layers", ctx.focused === tile.id ? "恢复平铺" : "放大该房间", () => ctx.toggleFocus(tile)]
     ];
     for (const [icon, label, onClick] of items) {
@@ -67,9 +64,9 @@ export function initContextMenu(ctx) {
     const path = event.composedPath();
     if (!ctx.els.ctx.hidden && !path.includes(ctx.els.ctx)) ctx.closeContextMenu();
     for (const tile of ctx.tiles.values()) {
-      if (tile.settingsEl.hidden || path.includes(tile.settingsEl) || path.includes(tile.settingsBtn)) continue;
-      tile.settingsEl.hidden = true;
-      tile.settingsBtn.setAttribute("aria-expanded", "false");
+      if (!path.includes(tile.root.querySelector("[data-t-more-menu]")) && !path.includes(tile.root.querySelector("[data-t-more]"))) closeTileMore(tile.root);
     }
+    if (path.some((node) => node?.matches?.("[data-tile-settings], [data-t-dm-settings], [data-audio-corner]"))) return;
+    closeTileSettingsPanels(ctx.wrapper);
   });
 }

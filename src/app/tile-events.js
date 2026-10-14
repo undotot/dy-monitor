@@ -1,5 +1,27 @@
-import { clamp01 } from "../core/settings.js";
-import { parseRoom } from "../core/room.js";
+import { bindTileAudio } from "./tile-audio.js";
+import { bindTileTools, closeTileMore } from "./tile-tools.js";
+
+export const closeTileSettingsPanels = (scope, except = null) => {
+  for (const panel of scope.querySelectorAll("[data-tile-settings]")) {
+    if (panel === except || panel.hidden) continue;
+    panel.hidden = true;
+    panel.classList.remove("is-room-flyout");
+    const root = panel.closest(".tile-shell");
+    root?.classList.remove("dm-settings-open");
+    for (const button of root?.querySelectorAll("[data-t-dm-settings]") || []) button.setAttribute("aria-expanded", "false");
+  }
+};
+
+export const setTileDanmakuSettings = (tile, visible = true) => {
+  if (visible) closeTileSettingsPanels(tile.root.getRootNode(), tile.settingsEl);
+  if (visible) closeTileMore(tile.root);
+  tile.settingsEl.hidden = !visible;
+  tile.settingsEl.classList.toggle("is-room-flyout", visible && (tile.root.clientWidth < 420 || tile.root.clientHeight < 340));
+  tile.root.classList.toggle("dm-settings-open", visible);
+  const entry = tile.root.querySelector("[data-t-dm-settings]");
+  entry?.setAttribute("aria-expanded", String(visible));
+  (visible ? tile.root.querySelector("[data-dm-toggle]") : tile.root.querySelector("[data-t-more]") || entry)?.focus();
+};
 
 export function bindTileEvents(ctx, tile) {
   const root = tile.root;
@@ -27,51 +49,11 @@ export function bindTileEvents(ctx, tile) {
 
   find("[data-t-stop]")?.addEventListener("click", () => ctx.stop(tile));
 
-  tile.muteBtn?.addEventListener("click", () => ctx.toggleMute(tile));
-
-  tile.audioCorner?.addEventListener("wheel", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const delta = event.deltaY < 0 ? 0.05 : -0.05;
-    tile.vol = clamp01(Number((tile.vol + delta).toFixed(2)));
-    if (tile.muted && delta > 0) tile.muted = false;
-    tile.volSlider.value = String(tile.vol);
-    ctx.paintSlider(tile.volSlider);
-    ctx.applyAudio(tile);
-    ctx.updateTileChrome(tile);
-    ctx.save();
-  }, { passive: false });
-
+  bindTileAudio(ctx, tile);
+  bindTileTools(tile);
   tile.soloBtn?.addEventListener("click", () => ctx.toggleSolo(tile));
-
-  tile.volSlider?.addEventListener("pointerdown", () => {
-    tile.audioCorner?.classList.add("is-dragging-vol");
-    const onPointerUp = () => {
-      tile.audioCorner?.classList.remove("is-dragging-vol");
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
-    };
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
-  });
-
-  tile.volSlider?.addEventListener("input", (event) => {
-    tile.vol = clamp01(event.target.value, tile.vol);
-    if (tile.muted && tile.vol > 0) {
-      tile.muted = false;
-      ctx.updateTileChrome(tile);
-    }
-    ctx.paintSlider(event.target);
-    ctx.applyAudio(tile);
-    if (tile.volPct) tile.volPct.textContent = `${Math.round(tile.vol * 100)}%`;
-  });
-
-  tile.volSlider?.addEventListener("change", () => ctx.save());
-
-  tile.settingsBtn?.addEventListener("click", () => {
-    tile.settingsEl.hidden = !tile.settingsEl.hidden;
-    tile.settingsBtn.setAttribute("aria-expanded", String(!tile.settingsEl.hidden));
-  });
+  find("[data-t-dm-settings]")?.addEventListener("click", () => setTileDanmakuSettings(tile, tile.settingsEl.hidden));
+  find("[data-settings-close]")?.addEventListener("click", () => setTileDanmakuSettings(tile, false));
 
   find("[data-t-pip]")?.addEventListener("click", () => void ctx.handlePip(tile));
 
@@ -96,34 +78,6 @@ export function bindTileEvents(ctx, tile) {
     if (!["stopped", "failed", "waiting"].includes(tile.state)) void ctx.handleStart(tile);
   });
 
-  /* --- 房号修改表单 --- */
-  find("[data-edit-form]")?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    tile.dmStatus.textContent = "";
-    try {
-      const next = parseRoom(find("[data-edit-input]").value);
-      if ([...ctx.tiles.values()].some((other) => other !== tile && other.rid === next)) {
-        throw new Error("该房间已存在");
-      }
-      ctx.stop(tile);
-      tile.rid = next;
-      tile.nameRequest?.abort();
-      tile.name = "";
-      tile.nameStatus = "loading";
-      ctx.updateTileChrome(tile);
-      tile.settingsEl.hidden = true;
-      ctx.save();
-      void ctx.handleStart(tile);
-    } catch (error) {
-      tile.dmStatus.textContent = error.message || String(error);
-    }
-  });
-
-  find("[data-edit-cancel]")?.addEventListener("click", () => {
-    tile.settingsEl.hidden = true;
-    tile.settingsBtn.setAttribute("aria-expanded", "false");
-  });
-
   /* --- 点击选择 / 放大 / 右键 --- */
   root.addEventListener("click", (event) => {
     if (event.target.closest("button, input, select, textarea, label, a")) return;
@@ -131,7 +85,7 @@ export function bindTileEvents(ctx, tile) {
   });
 
   root.addEventListener("dblclick", (event) => {
-    if (event.target.closest("button, input, select, textarea, label, a")) return;
+    if (event.target.closest("button, input, select, textarea, label, a, [data-dm-sidebar]")) return;
     ctx.toggleFocus(tile);
   });
 

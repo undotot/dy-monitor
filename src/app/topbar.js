@@ -58,5 +58,11 @@ export function initTopbar(ctx) {
   query("[data-stop-all]").addEventListener("click", () => {
     for (const tile of ctx.tiles.values()) ctx.stop(tile);
   });
+  query("[data-dm-global-open]").addEventListener("click", () => {
+    ctx.handleDrawer(true, { focus: false });
+    const section = query("[data-dm-global]");
+    section.scrollIntoView({ block: "start", behavior: "smooth" });
+    section.focus({ preventScroll: true });
+  });
   query("[data-exit]").addEventListener("click", ctx.showExitConfirm);
 }

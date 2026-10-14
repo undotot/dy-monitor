@@ -1,7 +1,7 @@
-import { calculateFocusLayout } from "../core/focus-layout.js";
+import { calculateFocusLayout as defaultFocusLayout } from "../core/focus-layout.js";
 import { clearTileGeometry } from "../ui/tile-geometry.js";
 
-export function initLayout(ctx) {
+export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, allowSingleFocus = false } = {}) {
   const doc = ctx.wall.ownerDocument;
   const clock = doc.defaultView;
   const regions = {};
@@ -60,7 +60,7 @@ export function initLayout(ctx) {
 
   ctx.handleLayout = () => {
     const list = [...ctx.tiles.values()];
-    const focusedMode = Boolean(ctx.focused && ctx.tiles.has(ctx.focused) && list.length > 1);
+    const focusedMode = Boolean(ctx.focused && ctx.tiles.has(ctx.focused) && (list.length > 1 || allowSingleFocus));
     ctx.wall.classList.toggle("is-focused", focusedMode);
     hint.hidden = true;
     if (!focusedMode) {
@@ -125,6 +125,24 @@ export function initLayout(ctx) {
     const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf), previous: ctx.focusLayout?.signature });
     if (!plan) return;
     ctx.focusLayout = plan;
+    if (plan.absolute) {
+      ctx.wall.style.gap = "0";
+      ctx.wall.style.gridTemplateColumns = "minmax(0,1fr)";
+      ctx.wall.style.gridTemplateRows = "minmax(0,1fr)";
+      regions.right.root.hidden = true;
+      regions.bottom.root.hidden = true;
+      const rooms = [{ tile: mainTile, box: plan.main }, ...plan.placements.map((box) => ({ tile: secondaries[box.index], box }))];
+      for (const { tile, box } of rooms) {
+        const root = gridRootOf(tile);
+        moveRoot(ctx.wall, root);
+        clearTileGeometry(root);
+        Object.assign(root.style, { position: "absolute", left: `${box.x}px`, top: `${box.y}px`, width: `${box.width}px`, height: `${box.height}px` });
+      }
+      for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
+      hint.hidden = !plan.constrained;
+      ctx.syncLayoutRadios();
+      return;
+    }
     ctx.wall.style.gap = "";
     ctx.wall.style.columnGap = `${plan.gapX ?? plan.gap}px`;
     ctx.wall.style.rowGap = `${plan.gapY ?? plan.gap}px`;
@@ -137,8 +155,8 @@ export function initLayout(ctx) {
     for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
     regions.right.root.hidden = !plan.rightWidth;
     regions.bottom.root.hidden = !plan.bottomHeight;
-    Object.assign(regions.right.root.style, { gridColumn: "2", gridRow: "1 / -1" });
-    Object.assign(regions.bottom.root.style, { gridColumn: "1", gridRow: "2" });
+    Object.assign(regions.right.root.style, { gridColumn: "2", gridRow: plan.bottomSpansWall ? "1" : "1 / -1" });
+    Object.assign(regions.bottom.root.style, { gridColumn: plan.bottomSpansWall ? "1 / -1" : "1", gridRow: "2" });
     regions.right.content.style.height = `${plan.rightContentHeight}px`;
     regions.bottom.content.style.height = `${plan.bottomContentHeight}px`;
     for (const placement of plan.placements) {

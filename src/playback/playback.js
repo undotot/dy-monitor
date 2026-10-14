@@ -57,9 +57,11 @@ export function initPlayback(ctx) {
     tile.renderer.stop();
     tile.renderer.update(tile.danmaku, { sidebarEl: tile.dmSidebar, sidebarListEl: tile.dmSidebarList });
     if (!tile.danmaku.enabled || !tile.player) {
+      tile.renderer.stop();
       const msg = tile.danmaku.enabled ? "播放后连接弹幕" : "弹幕已关闭";
       tile.dmStatus.textContent = msg;
       if (tile.dmSidebarStatus) tile.dmSidebarStatus.textContent = msg;
+      ctx.updateTileChrome(tile);
       return;
     }
     tile.renderer.start();
@@ -68,6 +70,7 @@ export function initPlayback(ctx) {
       if (tile.dmSidebarStatus) tile.dmSidebarStatus.textContent = message;
     });
     tile.danmakuClient.start();
+    ctx.updateTileChrome(tile);
   };
 
   ctx.handleStart = async (tile, recovering = false) => {

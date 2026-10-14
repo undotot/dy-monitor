@@ -7,9 +7,11 @@ import { loadHistory, recordHistory } from "../api/history.js";
 import { addRowMarkup } from "../ui/tile-markup.js";
 import { normalizeRoomName, roomDisplayName } from "../core/room-name.js";
 import { mountGroupsFeature } from "../features/groups/index.js";
+import { replaceTileRoom } from "./replace-room.js";
+import { closeTileSettingsPanels } from "./tile-events.js";
 
 // 添加房间面板：关注 / 历史 / 搜索 / 手动四个标签页，批量勾选与状态探测。
-export function initAddPanel(ctx) {
+export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = searchRooms, followRooms = fetchFollowRooms } = {}) {
   const addState = ctx.addState;
   const els = ctx.els;
   const query = (selector) => ctx.wrapper.querySelector(selector);
@@ -17,8 +19,9 @@ export function initAddPanel(ctx) {
   ctx.hasRoom = (rid) => [...ctx.tiles.values()].some((tile) => tile.rid === String(rid));
 
   ctx.roomStateFor = (room) => {
+    if (addState.replaceTileId && ctx.tiles.get(addState.replaceTileId)?.rid === String(room.rid)) return { disabled: true, badge: "当前房间", badgeClass: "rbadge rbadge-add" };
     if (ctx.hasRoom(room.rid)) return { disabled: true, badge: "已添加", badgeClass: "rbadge rbadge-add" };
-    if (ctx.tiles.size >= MAX_TILES) return { disabled: true, badge: "已满", badgeClass: "rbadge rbadge-off" };
+    if (!addState.replaceTileId && ctx.tiles.size >= MAX_TILES) return { disabled: true, badge: "已满", badgeClass: "rbadge rbadge-off" };
     if (!room.liveStatus) return { disabled: false, badge: "检查中", badgeClass: "rbadge rbadge-check" };
     if (room.liveStatus === "live") return { disabled: false, badge: "直播中", badgeClass: "rbadge rbadge-live" };
     if (room.liveStatus === "carousel") return { disabled: false, badge: "轮播中", badgeClass: "rbadge rbadge-loop" };
@@ -46,8 +49,18 @@ export function initAddPanel(ctx) {
       box.className = "manual-box";
       box.innerHTML = `<textarea data-manual-input class="p-textarea" placeholder="每行一个：房号或斗鱼直播间链接&#10;例如：223344&#10;https://www.douyu.com/223344"></textarea><div class="frow"><button data-manual-add class="btn primary">解析并添加</button><span class="fhint">支持房号与完整链接，不支持分享短链</span></div>`;
       els.addList.append(box);
+      if (addState.replaceTileId) {
+        box.querySelector("[data-manual-input]").placeholder = "输入一个房号或完整斗鱼直播间链接";
+        box.querySelector("[data-manual-add]").textContent = "确认替换";
+      }
       box.querySelector("[data-manual-add]").addEventListener("click", () => {
         const lines = box.querySelector("[data-manual-input]").value.split(/[\n,，\s]+/).map((line) => line.trim()).filter(Boolean);
+        if (addState.replaceTileId) {
+          if (lines.length !== 1) { els.addStatus.textContent = "修改房号时，请只输入一个房号或链接"; return; }
+          try { void ctx.replaceRoomFromPanel({ rid: parseRoom(lines[0]), name: "" }); }
+          catch (error) { els.addStatus.textContent = safeMessage(error); }
+          return;
+        }
         let added = 0, failed = 0;
         for (const line of lines) {
           let rid;
@@ -77,7 +90,7 @@ export function initAddPanel(ctx) {
     }
     for (const room of addState.rooms) {
       const wrap = document.createElement("div");
-      wrap.innerHTML = addRowMarkup(room, ctx.roomStateFor(room), addState.selected.has(room.rid));
+      wrap.innerHTML = addRowMarkup(room, ctx.roomStateFor(room), addState.selected.has(room.rid), addState.replaceTileId ? "替换" : "添加");
       els.addList.append(wrap.firstElementChild);
     }
     if (!addState.rooms.length) {
@@ -102,7 +115,7 @@ export function initAddPanel(ctx) {
       while (index < targets.length && !signal.aborted) {
         const room = targets[index++];
         try {
-          const probe = await fetchProbe(room.rid, signal);
+          const probe = await probeRoom(room.rid, signal);
           if (addState.tab === "all" && isExcludedFollowRoom(probe.name)) {
             addState.rooms = addState.rooms.filter((entry) => entry.rid !== room.rid);
             addState.selected.delete(room.rid);
@@ -157,7 +170,7 @@ export function initAddPanel(ctx) {
       if (!rooms) {
         // 挂到 addState.controller：切页 / 搜索会 abort 它，迟到的响应作废。
         addState.controller = new AbortController();
-        rooms = await fetchFollowRooms(addState.controller.signal, {
+        rooms = await followRooms(addState.controller.signal, {
           onProgress: ({ page, count, isFinal }) => {
             if (generation !== addState.generation) return;
             if (page > 1 && !isFinal) {
@@ -203,13 +216,63 @@ export function initAddPanel(ctx) {
     }
   };
 
-  ctx.openAdd = () => {
+  const handleReplacementBusy = (busy) => {
+    els.addList.inert = busy;
+    els.addSearch.disabled = busy;
+    query(".add-tabs").inert = busy;
+    const groups = query("[data-groups-box]");
+    if (groups) groups.inert = busy;
+    els.addPanel.setAttribute("aria-busy", String(busy));
+  };
+  ctx.replaceRoomFromPanel = async (room) => {
+    if (addState.replaceController) return;
+    const tile = ctx.tiles.get(addState.replaceTileId);
+    if (!tile) { els.addStatus.textContent = "原直播间已移除，请重新选择"; return; }
+    const generation = addState.generation;
+    const previousRid = tile.rid;
+    const controller = new AbortController();
+    addState.replaceController = controller;
+    handleReplacementBusy(true);
+    els.addStatus.textContent = "正在检查新直播间，原直播继续播放…";
+    try {
+      const rid = parseRoom(String(room.rid));
+      if (ctx.hasRoom(rid)) throw new Error(rid === tile.rid ? "这是当前直播间" : "该直播间已在监控室中");
+      const probe = await probeRoom(rid, controller.signal);
+      if (controller.signal.aborted || generation !== addState.generation || tile.rid !== previousRid || !ctx.opened) return;
+      replaceTileRoom(ctx, tile, { ...room, ...probe });
+      recordHistory(tile.rid, tile.name, probe.avatar || "");
+      ctx.closeAdd();
+      ctx.showToast(`已切换至${roomDisplayName(tile)}，保留画格位置与音画设置`, [], 4e3);
+    } catch (error) {
+      if (!controller.signal.aborted && generation === addState.generation) els.addStatus.textContent = `替换失败：${safeMessage(error)}；原直播未改变`;
+    } finally {
+      if (addState.replaceController === controller) {
+        addState.replaceController = null;
+        handleReplacementBusy(false);
+      }
+    }
+  };
+  ctx.openAdd = (replacement = null) => {
+    if (!els.addPanel.hidden) ctx.closeAdd();
+    closeTileSettingsPanels(ctx.wrapper);
+    addState.replaceTileId = replacement?.id && ctx.tiles.get(replacement.id) === replacement ? replacement.id : null;
+    addState.selected.clear();
+    els.addPanel.classList.toggle("is-replacing", !!addState.replaceTileId);
+    query("[data-add-title]").textContent = addState.replaceTileId ? `修改房号 · ${roomDisplayName(replacement)}` : "添加房间";
+    query("[data-add-rate-wrap]").hidden = !!addState.replaceTileId;
+    for (const selector of ["[data-add-selected]", "[data-add-select-all]"]) query(selector).hidden = !!addState.replaceTileId;
+    els.addPanel.setAttribute("aria-label", addState.replaceTileId ? "修改房号" : "添加房间");
+    query("[data-add-close]").setAttribute("aria-label", addState.replaceTileId ? "关闭修改房号面板" : "关闭添加面板");
     els.addPanel.hidden = false;
     void ctx.loadAddTab(query("[name=add-tab]:checked")?.value || "all");
     els.addSearch.focus();
   };
 
   ctx.closeAdd = () => {
+    addState.replaceController?.abort();
+    addState.replaceController = null;
+    handleReplacementBusy(false);
+    addState.replaceTileId = null;
     els.addPanel.hidden = true;
     addState.selected.clear();
     addState.generation++;
@@ -235,11 +298,11 @@ export function initAddPanel(ctx) {
     ctx.renderAddList();
     els.addStatus.textContent = "正在搜索…";
     try {
-      const rooms = await searchRooms(text, addState.controller.signal, fetchProbe);
+      const rooms = await searchForRooms(text, addState.controller.signal, probeRoom);
       if (generation !== addState.generation) return;
       addState.rooms = rooms;
       ctx.renderAddList();
-      els.addStatus.textContent = `找到 ${rooms.length} 个直播间，勾选后批量添加，或点击“添加”`;
+      els.addStatus.textContent = `找到 ${rooms.length} 个直播间，${addState.replaceTileId ? "选择一个房间替换当前画格" : "勾选后批量添加，或点击“添加”"}`;
       ctx.probeRoomsStatus(rooms.filter((room) => !normalizeRoomName(room.name, room.rid)), () => {
         if (generation === addState.generation) ctx.renderAddList();
       });
@@ -261,7 +324,10 @@ export function initAddPanel(ctx) {
       updateAddFooter();
       return;
     }
-    if (event.target.closest("[data-add-one]")) ctx.addRoomFromPanel(room);
+    if (event.target.closest("[data-add-one]")) {
+      if (addState.replaceTileId) void ctx.replaceRoomFromPanel(room);
+      else ctx.addRoomFromPanel(room);
+    }
   });
 
   // 回车才发起搜索，输入过程不搜；空输入回车与清空输入都回到当前标签页列表。
@@ -272,7 +338,9 @@ export function initAddPanel(ctx) {
     const text = els.addSearch.value.trim();
     if (/^\d+$/.test(text) || /^https?:/i.test(text)) {
       try {
-        ctx.addRoomFromPanel({ rid: parseRoom(text), name: "" });
+        const room = { rid: parseRoom(text), name: "" };
+        if (addState.replaceTileId) { void ctx.replaceRoomFromPanel(room); return; }
+        ctx.addRoomFromPanel(room);
         els.addSearch.value = "";
       } catch (error) {
         els.addStatus.textContent = safeMessage(error);
@@ -300,7 +368,7 @@ export function initAddPanel(ctx) {
     submitSearch();
   });
   for (const input of ctx.wrapper.querySelectorAll("[name=add-tab]")) input.addEventListener("change", () => void ctx.loadAddTab(input.value));
-  query("[data-add-open]").addEventListener("click", ctx.openAdd);
+  query("[data-add-open]").addEventListener("click", () => ctx.openAdd());
   query("[data-add-close]").addEventListener("click", ctx.closeAdd);
   els.addPanel.addEventListener("pointerdown", (event) => {
     if (event.target === els.addPanel) ctx.closeAdd();

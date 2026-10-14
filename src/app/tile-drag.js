@@ -23,6 +23,7 @@ export function bindTileDrag(ctx, tile) {
   root.addEventListener("dragstart", (event) => {
     if (
       !event.dataTransfer ||
+      tile.audioInteractionActive ||
       event.target.closest("button, input, select, textarea, label, a") ||
       ctx.pipSession?.tile === tile
     ) {

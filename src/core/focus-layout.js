@@ -1,7 +1,7 @@
 // 方案 A 放大模式布局引擎：
 // 1. 所有画面严格 16:9（主窗与所有小窗均为 16:9，画面内部 0 黑边，无拉伸无裁切）；
 // 2. 所有小窗大小严格一致（完全等宽等高）；
-// 3. 大屏与小屏保持合理的黄金比例：大屏宽高等于小屏宽高的 S 倍（S=2 或 S=3，面积为 4 或 9 倍）；
+// 3. 主窗采用2~4格跨度，依据整体画面面积选择右列、底行或L形组合；
 // 4. 整个监控墙组合容器在视口中居中，多余宽度/高度在容器外留黑（视口四周留黑，直播间内零黑边）。
 
 export const FOCUS_LIMITS = Object.freeze({ mainMin: 640, mainMinHeight: 360, smallMin: 120, mainAreaRatio: 1.5 });
@@ -29,7 +29,7 @@ export const SCHEME_A_SPECS = Object.freeze({
   2: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }] },
   3: { S: 2, cols: 3, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }] },
   4: { S: 3, cols: 4, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }] },
-  5: { S: 2, cols: 4, rows: 2, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 3, r: 0 }, { c: 3, r: 1 }] },
+  5: { S: 4, cols: 5, rows: 4, smalls: [{ c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }, { c: 4, r: 3 }] },
   6: { S: 2, cols: 3, rows: 3, smalls: [{ c: 2, r: 0 }, { c: 2, r: 1 }, { c: 0, r: 2 }, { c: 1, r: 2 }, { c: 2, r: 2 }] },
   7: { S: 3, cols: 5, rows: 3, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 4, r: 0 }, { c: 4, r: 1 }, { c: 4, r: 2 }] },
   8: { S: 3, cols: 4, rows: 4, smalls: [{ c: 3, r: 0 }, { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 0, r: 3 }, { c: 1, r: 3 }, { c: 2, r: 3 }, { c: 3, r: 3 }] },
@@ -45,12 +45,60 @@ export const SCHEME_A_SPECS = Object.freeze({
 
 const qualityOf = (width, height) => Math.min(1, width / FOCUS_LIMITS.mainMin, height / FOCUS_LIMITS.mainMinHeight);
 
+const signatureOf = (spec, count) => `A:${spec.S}:${spec.cols}x${spec.rows}:${count}`;
+const chooseFocusSpec = (total, width, height, gap, previous) => {
+  const base = SCHEME_A_SPECS[total] || SCHEME_A_SPECS[16];
+  const count = total - 1;
+  const candidates = new Map([[signatureOf(base, count), base]]);
+  // 枚举紧凑的L墙：右侧上部、主窗下部、右下角依次装配。
+  // 所有候选使用同一16:9模数，直接复用现有右/下分区和媒体节点。
+  for (let S = 2; S <= 4; S++) {
+    const extra = Math.ceil(count / S);
+    for (let cols = S; cols <= S + extra; cols++) {
+      for (let rows = S; rows <= S + extra; rows++) {
+        if (cols * rows - S * S < count) continue;
+        const slots = [];
+        for (let c = S; c < cols; c++) for (let r = 0; r < S; r++) slots.push({ c, r });
+        for (let r = S; r < rows; r++) for (let c = 0; c < S; c++) slots.push({ c, r });
+        for (let r = S; r < rows; r++) for (let c = S; c < cols; c++) slots.push({ c, r });
+        const smalls = slots.slice(0, count);
+        const actualCols = Math.max(S, ...smalls.map((slot) => slot.c + 1));
+        const actualRows = Math.max(S, ...smalls.map((slot) => slot.r + 1));
+        const spec = { S, cols: actualCols, rows: actualRows, smalls };
+        candidates.set(signatureOf(spec, count), spec);
+      }
+    }
+  }
+  const cellWidthOf = (spec) => Math.min((width - (spec.cols - 1) * gap) / spec.cols, (height * DEFAULT_RATIO - (spec.rows - 1) * gap) / spec.rows);
+  const heightCoverageOf = (spec) => (spec.rows * cellWidthOf(spec) + (spec.rows - 1) * gap) / DEFAULT_RATIO / height;
+  const scoreOf = (spec) => {
+    const cellWidth = cellWidthOf(spec);
+    if (cellWidth <= 0) return -Infinity;
+    const mainWidth = spec.S * cellWidth + (spec.S - 1) * gap;
+    const mainArea = mainWidth * mainWidth / DEFAULT_RATIO;
+    const occupiedArea = mainArea + count * cellWidth * cellWidth / DEFAULT_RATIO;
+    const viewportArea = width * height;
+    // 同时衡量实际画面面积、主窗大小与纵向覆盖。
+    // 对接近16:9的窗口减少上下黑边，可接受少量侧边或L墙空槽作为权衡。
+    const coverage = occupiedArea / viewportArea;
+    const mainShare = mainArea / viewportArea;
+    const heightCoverage = heightCoverageOf(spec);
+    return coverage * 0.9 + mainShare * 0.1 + heightCoverage * 0.4;
+  };
+  const specs = [...candidates.values()];
+  const best = specs.reduce((current, candidate) => scoreOf(candidate) > scoreOf(current) * (1 + 1e-9) ? candidate : current);
+  const existing = candidates.get(previous);
+  // 临界尺寸保留原布局；能明显缩短上下留黑时立即切换，避免旧布局被锁住。
+  const keepExisting = existing && scoreOf(existing) >= scoreOf(best) * 0.98 && heightCoverageOf(best) - heightCoverageOf(existing) < 0.05;
+  return keepExisting ? existing : best;
+};
+
 export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO, secondaryRatios = [], previous = null }) => {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) return null;
 
   const count = secondaryRatios.length;
   const totalRooms = count + 1;
-  const gap = Math.min(1, width / (totalRooms + 2), height / (totalRooms + 2));
+  const gap = Math.min(0.5, width / (totalRooms + 2), height / (totalRooms + 2));
 
   if (!count) {
     const mainRatioVal = DEFAULT_RATIO;
@@ -83,6 +131,7 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
       mainVisible: 1,
       fillRatio: 1,
       layoutFillRatio: 1,
+      viewportFillRatio: fitW * fitH / (width * height),
       dominant: true,
       bothRegions: false,
       quality,
@@ -95,7 +144,7 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
     };
   }
 
-  const spec = SCHEME_A_SPECS[totalRooms] || SCHEME_A_SPECS[16];
+  const spec = chooseFocusSpec(totalRooms, width, height, gap, previous);
   const { S, cols, rows, smalls } = spec;
 
   // 保证大屏与小屏在包含 gap 间距时均 100.00% 保持 16:9
@@ -107,7 +156,7 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
   const maxH_by_height = (height - (rows - 1) * gapY) / rows;
   const maxW_by_height = maxH_by_height * DEFAULT_RATIO;
 
-  const cw = Math.max(1, Math.min(maxW_by_width, maxW_by_height));
+  const cw = Math.max(Number.EPSILON, Math.min(maxW_by_width, maxW_by_height));
   const ch = cw / DEFAULT_RATIO;
 
   // 主屏宽与高（S 倍单元格 + 内部缝隙），由于 gapY = gapX * 9 / 16，mainW / mainH 严格为 16:9
@@ -171,7 +220,8 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
     rightContentHeight,
     bottomContentHeight,
     placements,
-    signature: `A:${S}:${cols}x${rows}:${count}`,
+    signature: signatureOf(spec, count),
+    S, cols, rows,
     gap,
     gapX,
     gapY,
@@ -184,6 +234,7 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
     mainVisible: (mainVideo.width * mainVideo.height) / mainArea,
     fillRatio: totalContentArea / containerArea,
     layoutFillRatio: totalContentArea / containerArea,
+    viewportFillRatio: totalContentArea / (width * height),
     dominant: mainArea >= FOCUS_LIMITS.mainAreaRatio * cellArea - 1e-6,
     bothRegions: rightSmalls.length > 0 && bottomSmalls.length > 0,
     quality,

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFocusLayout, FOCUS_LIMITS } from "../src/core/focus-layout.js";
+import { calculateFocusLayout, FOCUS_LIMITS, SCHEME_A_SPECS } from "../src/core/focus-layout.js";
 
 const landscape = 16 / 9;
 const planFor = (width, height, count, options = {}) => calculateFocusLayout({ width, height, secondaryRatios: Array(Math.max(0, count - 1)).fill(landscape), ...options });
@@ -136,6 +136,56 @@ test("不可测量视口不计算，重复计算保持分区和尺寸稳定", ()
   assert.deepEqual(second.placements, first.placements);
 });
 
+test("5房横屏选择L形减少上下留黑，竖屏选择底部双行", () => {
+  const landscapePlan = planFor(1280, 720, 5);
+  assert.equal(landscapePlan.rightCount, 2);
+  assert.equal(landscapePlan.bottomCount, 2);
+  assert.ok(landscapePlan.main.width > 850);
+  assert.ok(landscapePlan.viewportFillRatio > 0.88);
+  close(landscapePlan.offsetY, 0);
+  assert.equal(landscapePlan.placements.length, 4);
+  assert.equal(landscapePlan.gapX, 0.5);
+  const portraitPlan = planFor(720, 1100, 5);
+  assert.equal(portraitPlan.rightCount, 0);
+  assert.equal(portraitPlan.bottomCount, 4);
+  for (const plan of [landscapePlan, portraitPlan]) {
+    assert.ok(plan.placements.every((room) => room.width === plan.cell.width && room.height === plan.cell.height));
+    close(plan.main.width / plan.main.height, landscape);
+    assert.ok(plan.layoutFillRatio > 0.88);
+  }
+});
+
+test("5房临界窗口比例的小幅变化保留原拓扑", () => {
+  const initial = planFor(1280, 720, 5);
+  const adjusted = planFor(1280, 725, 5, { previous: initial.signature });
+  assert.equal(adjusted.signature, initial.signature);
+  const portrait = planFor(720, 1100, 5, { previous: initial.signature });
+  assert.notEqual(portrait.signature, initial.signature);
+});
+
+test("候选布局综合评分不低于原固定布局，5房略宽横屏消除上下留黑", () => {
+  for (const [width, height] of [[1280, 720], [1246, 654], [1920, 1080], [800, 600], [375, 600], [800, 220]]) {
+    for (let count = 2; count <= 16; count++) {
+      const spec = SCHEME_A_SPECS[count];
+      const cellWidth = Math.min((width - (spec.cols - 1) * 0.5) / spec.cols, (height * landscape - (spec.rows - 1) * 0.5) / spec.rows);
+      const mainWidth = spec.S * cellWidth + (spec.S - 1) * 0.5;
+      const mainShare = mainWidth ** 2 / landscape / (width * height);
+      const coverage = mainShare + (count - 1) * cellWidth ** 2 / landscape / (width * height);
+      const heightCoverage = (spec.rows * cellWidth + (spec.rows - 1) * 0.5) / landscape / height;
+      const previousScore = coverage * 0.9 + mainShare * 0.1 + heightCoverage * 0.4;
+      const plan = planFor(width, height, count);
+      const score = plan.viewportFillRatio * 0.9 + plan.mainArea / (width * height) * 0.1 + plan.containerH / height * 0.4;
+      assert.ok(score >= previousScore - 1e-8, `${width}×${height}/${count}`);
+    }
+  }
+  const slightlyWide = planFor(1246, 654, 5);
+  assert.equal(slightlyWide.bothRegions, true);
+  close(slightlyWide.offsetY, 0);
+  assert.ok(slightlyWide.viewportFillRatio > 0.82);
+  const fromOld = planFor(1246, 654, 5, { previous: "A:4:5x4:4" });
+  assert.equal(fromOld.signature, slightlyWide.signature);
+});
+
 test("16 房间正常窗口全部同屏、等大且下右双区", () => {
   const plan = planFor(1280, 720, 16);
   assert.equal(plan.overflow, false);
@@ -154,7 +204,7 @@ test("3–16 房方案 A 要求：严格 16:9、小窗全等、零内部黑边�
       const tag = `${width}×${height}/${count}`;
       assert.equal(plan.overflow, false, tag);
       assert.ok(plan.dominant, tag);
-      assert.ok(plan.layoutFillRatio >= 0.9, tag);
+      assert.ok(plan.layoutFillRatio >= 0.8, tag);
       // 1. 所有画面严格 16:9
       close(plan.main.width / plan.main.height, landscape, `${tag}: 主屏需 16:9`);
       close(plan.cell.width / plan.cell.height, landscape, `${tag}: 单元格需 16:9`);

@@ -86,7 +86,7 @@ export const parseDiamondMonths = (msg) => {
   return diaf > 0 ? 1 : 0;
 };
 
-export const renderDanmakuTokens = (msg) => {
+export const renderDanmakuTokens = (msg, showSender = true, sidebar = false) => {
   const parts = [];
 
   // 1. 粉丝徽章体系 (置首)
@@ -137,7 +137,8 @@ export const renderDanmakuTokens = (msg) => {
   }
   const colClass = getDanmakuColorClass(msg.col);
 
-  parts.push(`<span class="${userClass}">${escapeHtml(nn)}:</span>`);
+  if (showSender) parts.push(`<span class="${userClass}">${escapeHtml(nn)}:</span>`);
+  if (sidebar) parts.push('</div><div class="sidebar-message-body">');
   parts.push(`<span class="${colClass}">${escapeHtml(txt)}</span>`);
 
   // 6. 客户端来源标识 (末尾)
@@ -146,12 +147,12 @@ export const renderDanmakuTokens = (msg) => {
     `<span class="ct-tail-icon ${client.className}" title="${client.name}">${client.svg}</span>`
   );
 
-  return parts.join(" ");
+  return sidebar ? `<div class="sidebar-identity">${parts.join(" ")}</div>` : parts.join(" ");
 };
 
 export const renderDanmakuTokensHtml = renderDanmakuTokens;
 
-export const renderSimpleBarrageHtml = (msg, count = 1) => {
+export const renderSimpleBarrageHtml = (msg, count = 1, showSender = true) => {
   const nn = String(msg.nn || "水友").trim();
   const txt = String(msg.txt || "").trim();
   const colClass = getDanmakuColorClass(msg.col);
@@ -162,14 +163,15 @@ export const renderSimpleBarrageHtml = (msg, count = 1) => {
   else if (noble?.rank >= 5) senderColor = "#f97316";
 
   const aggHtml = count > 1 ? `<span class="dm-badge-aggregate">x ${count}</span>` : "";
-  return `<span class="dm-sender" style="color:${senderColor};font-weight:700;">${escapeHtml(nn)}:</span> <span class="${colClass}">${escapeHtml(txt)}</span>${aggHtml}`;
+  const senderHtml = showSender ? `<span class="dm-sender" style="color:${senderColor};font-weight:700;">${escapeHtml(nn)}:</span> ` : "";
+  return `${senderHtml}<span class="${colClass}">${escapeHtml(txt)}</span>${aggHtml}`;
 };
 
-export const renderNormalCapsuleHtml = (msg, count = 1) => {
+export const renderNormalCapsuleHtml = (msg, count = 1, showSender = true) => {
   const noble = getNobleTag(msg.nl);
   const bl = Number(msg.bl) || 0;
   const diamondMonths = parseDiamondMonths(msg);
-  const tokensHtml = renderDanmakuTokens(msg);
+  const tokensHtml = renderDanmakuTokens(msg, showSender);
   const aggHtml = count > 1 ? `<span class="dm-badge-aggregate">x ${count}</span>` : "";
 
   // 1:1 官方特效胶囊封装
@@ -182,6 +184,6 @@ export const renderNormalCapsuleHtml = (msg, count = 1) => {
   return `<div class="official-capsule">${tokensHtml}${aggHtml}</div>`;
 };
 
-export const renderSidebarRowHtml = (msg) => {
-  return `<div class="sidebar-item-row">${renderDanmakuTokens(msg)}</div>`;
+export const renderSidebarRowHtml = (msg, showSender = true) => {
+  return `<div class="sidebar-item-row">${renderDanmakuTokens(msg, showSender, true)}</div>`;
 };

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import { initLayout } from "../src/app/layout.js";
 import { clearTileGeometry } from "../src/ui/tile-geometry.js";
+import { calculateUniformFocusLayout } from "../src/core/focus-uniform-layout.js";
 
 test("聚焦、画中画占位与平铺复用原节点并恢复位置和顺序", () => {
   const win = new Window();
@@ -60,4 +61,42 @@ test("聚焦、画中画占位与平铺复用原节点并恢复位置和顺序",
     assert.ok([...tiles.values()].every((tile) => tile.root.parentElement === wall && !tile.root.style.width && !tile.root.style.position));
     assert.deepEqual([...wall.children].filter((child) => [...tiles.values()].some((tile) => tile.root === child)), [...tiles.values()].map((tile) => tile.root));
   } finally { win.close(); }
+});
+
+test("左右下围绕布局复用媒体与画中画占位，恢复平铺清理绝对坐标", () => {
+  const win=new Window();
+  try {
+    const wall=win.document.createElement("main");
+    win.document.body.append(wall);
+    wall.getBoundingClientRect=()=>({width:2552,height:1177});
+    const tiles=new Map();
+    for(let index=0;index<8;index++){
+      const root=win.document.createElement("article"),video=win.document.createElement("video");
+      root.append(video);wall.append(root);tiles.set(String(index),{id:String(index),root,video});
+    }
+    const ctx={wall,tiles,wrapper:win.document.body,els:{},layoutMode:"auto",applyAudioAll:()=>{}};
+    initLayout(ctx,{calculateFocusLayout:(options)=>calculateUniformFocusLayout({...options,anchor:"center"})});
+    const media=[...tiles.values()].map(tile=>tile.video);
+    ctx.setFocus("0");
+    const main=tiles.get("0");
+    assert.equal(main.root.style.position,"absolute");
+    assert.ok(parseFloat(main.root.style.left)>0);
+    for(const tile of tiles.values())assert.equal(tile.root.parentElement,wall);
+    const placeholder=win.document.createElement("div"),pip=win.document.createElement("div");
+    main.root.replaceWith(placeholder);pip.append(main.root);win.document.body.append(pip);
+    clearTileGeometry(main.root);
+    ctx.pipSession={tile:main,placeholder};
+    ctx.handleLayout();
+    assert.equal(main.root.parentElement,pip);
+    assert.equal(main.root.style.width,"");
+    assert.equal(placeholder.style.position,"absolute");
+    ctx.setFocus("1");
+    assert.equal(tiles.get("1").root.classList.contains("is-focused"),true);
+    assert.deepEqual([...tiles.values()].map(tile=>tile.video),media);
+    placeholder.replaceWith(main.root);ctx.pipSession=null;ctx.handleLayout();
+    assert.equal(main.root.parentElement,wall);
+    ctx.setFocus(null);
+    for(const tile of tiles.values()) {assert.equal(tile.root.style.position,"");assert.equal(tile.root.style.left,"");assert.equal(tile.root.style.width,"");}
+    assert.deepEqual([...wall.children].filter(root=>[...tiles.values()].some(tile=>tile.root===root)),[...tiles.values()].map(tile=>tile.root));
+  } finally {win.close();}
 });

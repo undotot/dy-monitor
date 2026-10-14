@@ -1,5 +1,11 @@
 import { getTileScale } from "./tile-scale.js";
-import { getNobleTag, renderSidebarRowHtml, parseDiamondMonths } from "./danmaku-tokens.js";
+import {
+  getNobleTag,
+  renderSidebarRowHtml,
+  renderNormalCapsuleHtml,
+  renderSimpleBarrageHtml,
+  parseDiamondMonths
+} from "./danmaku-tokens.js";
 
 export const truncateSender = (nickname, maxLen = 8) => {
   if (!nickname || typeof nickname !== "string") return "";
@@ -87,6 +93,7 @@ export const DanmakuRenderer = class {
   constructor(canvas, options, domRefs = {}) {
     this.canvas = canvas;
     this.options = normalizeDanmaku(options);
+    this.stageEl = domRefs.stageEl || null;
     this.sidebarEl = domRefs.sidebarEl || null;
     this.sidebarListEl = domRefs.sidebarListEl || null;
     this.items = [];
@@ -96,24 +103,63 @@ export const DanmakuRenderer = class {
     this.applyModeVisibility();
   }
   applyModeVisibility() {
-    if (this.canvas && this.canvas.style) {
-      this.canvas.style.display = this.options.mode === "sidebar" ? "none" : "";
+    // 侧栏占据真实布局列，视频、音量与工具条共享独立的视频视口。
+    this.sidebarEl?.closest?.(".tile-shell")?.classList.toggle("dm-sidebar-open", this.options.enabled && this.options.mode === "sidebar");
+    if (!this.options.enabled) {
+      if (this.canvas && this.canvas.style) this.canvas.style.display = "none";
+      if (this.stageEl) this.stageEl.hidden = true;
+      if (this.sidebarEl) this.sidebarEl.hidden = true;
+      this.clearItems();
+      return;
     }
-    if (this.sidebarEl) {
-      this.sidebarEl.hidden = !(this.options.enabled && this.options.mode === "sidebar");
+    if (this.options.mode === "sidebar") {
+      if (this.canvas && this.canvas.style) this.canvas.style.display = "none";
+      if (this.stageEl) this.stageEl.hidden = true;
+      if (this.sidebarEl) this.sidebarEl.hidden = false;
+      this.clearItems();
+      return;
+    }
+    // Mode scroll:
+    if (this.sidebarEl) this.sidebarEl.hidden = true;
+    if (this.stageEl) {
+      this.stageEl.hidden = false;
+      if (this.canvas && this.canvas.style) this.canvas.style.display = "none";
+    } else {
+      if (this.canvas && this.canvas.style) this.canvas.style.display = "";
     }
   }
+  clearItems() {
+    for (const item of this.items) {
+      if (item.domEl && typeof item.domEl.remove === "function") {
+        item.domEl.remove();
+      }
+    }
+    if (this.stageEl && typeof this.stageEl.replaceChildren === "function") {
+      this.stageEl.replaceChildren();
+    }
+    this.items = [];
+    this.nextLane = 0;
+    this.aggregates.clear();
+    this.canvas?.getContext?.("2d")?.clearRect?.(0, 0, this.canvas.width || 0, this.canvas.height || 0);
+  }
+  clear() {
+    this.clearItems();
+    this.sidebarListEl?.replaceChildren?.();
+    const empty = this.sidebarEl?.querySelector?.("[data-dm-sb-empty]");
+    if (empty) empty.hidden = false;
+  }
   resize() {
-    const width = Math.round(this.canvas.clientWidth || 0), height = Math.round(this.canvas.clientHeight || 0);
+    const width = Math.round(this.canvas?.clientWidth || (this.stageEl?.clientWidth || 0)), height = Math.round(this.canvas?.clientHeight || (this.stageEl?.clientHeight || 0));
     if (width === this.width && height === this.height) return;
     this.width = width;
     this.height = height;
     this.scale = getTileScale(width, height);
     this.fontSize = this.options.size * this.scale;
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.items = [];
-    this.nextLane = 0;
+    if (this.canvas) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+    }
+    this.clearItems();
   }
   add(message) {
     if (!this.options.enabled || !this.frame) return;
@@ -124,17 +170,20 @@ export const DanmakuRenderer = class {
     // Mode A: 右侧悬浮栏模式 (追加至侧栏瀑布流列表)
     if (this.options.mode === "sidebar") {
       if (this.sidebarListEl) {
-        if (typeof document !== "undefined" && typeof document.createElement === "function") {
-          const row = document.createElement("div");
-          row.innerHTML = renderSidebarRowHtml(message);
+        const doc = this.sidebarListEl.ownerDocument || (typeof document !== "undefined" ? document : null);
+        if (doc && typeof doc.createElement === "function") {
+          const row = doc.createElement("div");
+          row.innerHTML = renderSidebarRowHtml(message, this.options.showSender);
           const itemEl = row.firstElementChild || row;
           this.sidebarListEl.appendChild(itemEl);
+          const empty = this.sidebarEl?.querySelector?.("[data-dm-sb-empty]");
+          if (empty) empty.hidden = true;
           if (this.sidebarListEl.children?.length > 150) {
             this.sidebarListEl.removeChild(this.sidebarListEl.firstElementChild);
           }
           this.sidebarListEl.scrollTop = this.sidebarListEl.scrollHeight;
         } else if (typeof this.sidebarListEl.appendChild === "function") {
-          this.sidebarListEl.appendChild({ html: renderSidebarRowHtml(message) });
+          this.sidebarListEl.appendChild({ html: renderSidebarRowHtml(message, this.options.showSender) });
         }
       }
       return;
@@ -145,9 +194,10 @@ export const DanmakuRenderer = class {
     this.resize();
     const width = this.width || 0, height = this.height || 0;
     if (!width || !height) return;
-    const context = this.canvas.getContext ? this.canvas.getContext("2d") : null;
-    if (!context) return;
-    context.font = `${this.fontSize}px sans-serif`;
+    const context = this.canvas?.getContext ? this.canvas.getContext("2d") : null;
+    if (context) {
+      context.font = `${this.fontSize}px sans-serif`;
+    }
 
     // 同质化刷屏合并 (2.5 秒滑窗内相同正文追加计数微标 x N)
     const now = Date.now();
@@ -156,8 +206,24 @@ export const DanmakuRenderer = class {
       if (existing) {
         existing.count = (existing.count || 1) + 1;
         existing.aggregateText = ` x ${existing.count}`;
-        existing.aggregateWidth = context.measureText(existing.aggregateText).width;
-        existing.width = existing.baseWidth + existing.aggregateWidth + 6 * this.scale;
+        if (existing.domEl) {
+          const badge = existing.domEl.querySelector?.(".dm-badge-aggregate");
+          if (badge) {
+            badge.textContent = `x ${existing.count}`;
+          } else {
+            const doc = existing.domEl.ownerDocument || this.stageEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
+            if (doc && typeof doc.createElement === "function") {
+              const span = doc.createElement("span");
+              span.className = "dm-badge-aggregate";
+              span.textContent = `x ${existing.count}`;
+              existing.domEl.appendChild(span);
+            }
+          }
+        }
+        if (context) {
+          existing.aggregateWidth = context.measureText(existing.aggregateText).width;
+          existing.width = existing.baseWidth + existing.aggregateWidth + 6 * this.scale;
+        }
         return;
       }
     }
@@ -187,20 +253,63 @@ export const DanmakuRenderer = class {
           // 精简版：严格仅保留发弹幕的人(昵称)与冒号
           sender = `${cleanSender}: `;
         }
-        senderWidth = context.measureText(sender).width;
+        if (context) senderWidth = context.measureText(sender).width;
       }
     }
 
-    const textWidth = context.measureText(text).width;
-    const baseWidth = senderWidth + textWidth;
-    const totalWidth = baseWidth;
+    const textWidth = context ? context.measureText(text).width : (text.length * this.fontSize * 0.6);
+    let baseWidth = senderWidth + textWidth;
+    let itemEl = null;
 
+    // DOM 飘屏图层创建 (支持正常版 1:1 特效胶囊与精简版高对比度文字)
+    const doc = this.stageEl?.ownerDocument || this.canvas?.ownerDocument || (typeof document !== "undefined" ? document : null);
+    if (this.stageEl && doc && typeof doc.createElement === "function") {
+      itemEl = doc.createElement("div");
+      itemEl.className = `tile-dm-item ${this.options.scrollStyle === "normal" ? "dm-item-normal" : "dm-item-simple dm-style-simple"}`;
+      itemEl.innerHTML = this.options.scrollStyle === "normal"
+        ? renderNormalCapsuleHtml(message, 1, this.options.showSender)
+        : renderSimpleBarrageHtml(message, 1, this.options.showSender);
+      itemEl.style.fontSize = `${this.fontSize}px`;
+      itemEl.style.setProperty("--dm-scale", String(this.fontSize / 18));
+      if (this.options.opacity != null && this.options.opacity !== 1) {
+        itemEl.style.opacity = String(this.options.opacity);
+      }
+      this.stageEl.appendChild(itemEl);
+      const measured = itemEl.offsetWidth || itemEl.getBoundingClientRect?.().width;
+      if (measured && measured > 0) {
+        baseWidth = measured;
+      }
+    }
+
+    const totalWidth = baseWidth;
     const speed = (120 + width / 6) * this.options.speed;
-    const lanes = Math.max(1, Math.floor((Math.min(height - 44 * this.scale, height * (this.options.area || 1)) - 6 * this.scale) / (this.fontSize + 8 * this.scale)));
-    const lane = Array.from({ length: lanes }, (_, index) => (this.nextLane + index) % lanes).find((index) => this.items.every((item) => item.lane !== index || item.x + item.width + 30 < width && (speed <= item.speed || (width - item.x - item.width - 30) / (speed - item.speed) > (item.x + item.width) / item.speed)));
-    if (lane === void 0) return;
+    const laneHeight = this.options.scrollStyle === "normal"
+      ? Math.max(24, Math.round(44 * this.fontSize / 18))
+      : Math.round(this.fontSize + 8 * this.scale);
+    const maxAreaHeight = Math.min(height - 44 * this.scale, height * (this.options.area || 1)) - 6 * this.scale;
+    const lanes = Math.max(1, Math.floor(maxAreaHeight / laneHeight));
+    const lane = Array.from({ length: lanes }, (_, index) => (this.nextLane + index) % lanes).find((index) =>
+      this.items.every((item) =>
+        item.lane !== index ||
+        (item.x + item.width + 30 < width &&
+          (speed <= item.speed || (width - item.x - item.width - 30) / (speed - item.speed) > (item.x + item.width) / item.speed))
+      )
+    );
+
+    if (lane === void 0) {
+      if (itemEl && typeof itemEl.remove === "function") itemEl.remove();
+      return;
+    }
+
     this.nextLane = (lane + 1) % lanes;
+    const top = lane * laneHeight + 6 * this.scale;
+    if (itemEl) {
+      itemEl.style.top = `${top}px`;
+      itemEl.style.transform = `translate3d(${width}px, 0, 0)`;
+    }
+
     this.items.push({
+      domEl: itemEl,
       sender,
       senderWidth,
       senderColor,
@@ -222,7 +331,7 @@ export const DanmakuRenderer = class {
     if (this.options.mode === "sidebar") return;
     this.resize();
     const width = this.width, height = this.height;
-    const context = this.canvas.getContext ? this.canvas.getContext("2d") : null;
+    const context = this.canvas?.getContext ? this.canvas.getContext("2d") : null;
     if (context && width && height) {
       context.globalAlpha = 1;
       context.clearRect(0, 0, width, height);
@@ -231,8 +340,14 @@ export const DanmakuRenderer = class {
       context.textBaseline = "top";
       context.lineWidth = 3 * this.scale;
       context.strokeStyle = "#000000";
-      for (const item of this.items) {
-        item.x -= item.speed * delta;
+    }
+
+    for (const item of this.items) {
+      item.x -= item.speed * delta;
+      if (item.domEl) {
+        item.domEl.style.transform = `translate3d(${Math.round(item.x)}px, 0, 0)`;
+      } else if (context && width && height) {
+        // 无 DOM 节点时的 Canvas 降级绘制 (单元测试或无 DOM 宿主环境)
         const y = item.lane * (this.fontSize + 8 * this.scale) + 6 * this.scale;
         if (item.sender) {
           context.strokeText(item.sender, item.x, y);
@@ -263,15 +378,23 @@ export const DanmakuRenderer = class {
           }
         }
       }
-      this.items = this.items.filter((item) => item.x + item.width > 0);
     }
+
+    // 移除已滑出左边界的弹幕
+    this.items = this.items.filter((item) => {
+      if (item.x + item.width <= -50) {
+        if (item.domEl && typeof item.domEl.remove === "function") {
+          item.domEl.remove();
+        }
+        return false;
+      }
+      return true;
+    });
   }
   start() {
     if (this.frame) return;
     this.frame = true;
-    if (this.sidebarEl) {
-      this.sidebarEl.hidden = !(this.options.enabled && this.options.mode === "sidebar");
-    }
+    this.applyModeVisibility();
     if (this.options.mode === "scroll") {
       registerRenderer(this);
     }
@@ -283,20 +406,30 @@ export const DanmakuRenderer = class {
     }
     if (this.sidebarEl) {
       this.sidebarEl.hidden = true;
+      this.sidebarEl.closest?.(".tile-shell")?.classList.remove("dm-sidebar-open");
     }
-    this.items = [];
-    this.nextLane = 0;
-    this.canvas.getContext?.("2d")?.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
+    if (this.stageEl) this.stageEl.hidden = true;
+    if (this.canvas?.style) this.canvas.style.display = "none";
+    this.clear();
   }
   update(options, domRefs = null) {
     if (domRefs) {
+      if (domRefs.stageEl) this.stageEl = domRefs.stageEl;
       if (domRefs.sidebarEl) this.sidebarEl = domRefs.sidebarEl;
       if (domRefs.sidebarListEl) this.sidebarListEl = domRefs.sidebarListEl;
     }
+    const previousMode = this.options.mode;
     this.options = normalizeDanmaku({ ...this.options, ...(options || {}) });
     this.fontSize = (this.options.size || 20) * (this.scale || 1);
-    this.items = [];
-    this.nextLane = 0;
+    this.clearItems();
+    if (!this.options.enabled || previousMode !== this.options.mode) this.clear();
+    if (this.sidebarListEl?.style) {
+      this.sidebarListEl.style.fontSize = `${Math.max(11, this.options.size * 0.75)}px`;
+      this.sidebarListEl.style.opacity = String(this.options.opacity);
+    }
     this.applyModeVisibility();
+    // 侧栏不需要动画时钟；切回飘屏时恢复注册，保持现有连接。
+    if (this.frame && this.options.enabled && this.options.mode === "scroll") registerRenderer(this);
+    else unregisterRenderer(this);
   }
 };

@@ -27,7 +27,8 @@ export function createContext() {
     cooldownUntil: 0, pipSession: null, pipOpening: false, toastTimer: 0,
     addState: {
       tab: "all", mode: "tab", query: "", rooms: [], selected: new Map(),
-      generation: 0, controller: null, followRooms: null, probeController: null
+      generation: 0, controller: null, followRooms: null, probeController: null,
+      replaceTileId: null, replaceController: null
     },
   };
 }

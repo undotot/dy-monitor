@@ -3,6 +3,8 @@ import { setIconButton } from "../ui/icons.js";
 import { safeMessage } from "../core/settings.js";
 import { clearTileGeometry } from "../ui/tile-geometry.js";
 import { roomDisplayName } from "../core/room-name.js";
+import { bindTileAudio } from "../app/tile-audio.js";
+import { observeTileControls } from "../core/tile-scale.js";
 
 // Document Picture-in-Picture：画格迁入独立窗口播放，网页原位留占位。
 export function initPip(ctx) {
@@ -10,7 +12,11 @@ export function initPip(ctx) {
     if (ctx.pipSession !== session) return;
     ctx.pipSession = null;
     session.tile.renderer.stop();
+    session.tile.disconnectAudio?.();
+    session.tile.disconnectControls?.();
     session.placeholder.replaceWith(session.tile.root);
+    bindTileAudio(ctx, session.tile);
+    session.tile.disconnectControls = observeTileControls(session.tile.root);
     session.tile.root.classList.toggle("is-selected", session.tile.id === ctx.selectedId);
     setIconButton(session.tile.pipButton, "pip", "弹幕画中画");
     if (session.tile.player && session.tile.danmaku.enabled) session.tile.renderer.start();
@@ -62,11 +68,15 @@ export function initPip(ctx) {
       marker.textContent = `${roomDisplayName(tile)} · 画中画播放中`;
       placeholder.append(marker);
       tile.renderer.stop();
+      tile.disconnectAudio?.();
+      tile.disconnectControls?.();
       tile.root.replaceWith(placeholder);
       tile.root.className = "tile-shell";
       clearTileGeometry(tile.root);
       container.append(tile.root);
       pipDocument.body.append(container);
+      bindTileAudio(ctx, tile);
+      tile.disconnectControls = observeTileControls(tile.root);
       const session = { tile, window: pipWindow, placeholder };
       ctx.pipSession = session;
       ctx.handleLayout();

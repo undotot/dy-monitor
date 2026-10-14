@@ -1,4 +1,5 @@
-import { normalizeDanmaku } from "../core/danmaku-render.js";
+import { bindGlobalDanmaku } from "./global-danmaku.js";
+import { closeTileSettingsPanels } from "./tile-events.js";
 import { PRESET_KEY, SCRIPT_VERSION } from "../core/settings.js";
 import { storage } from "../platform/storage.js";
 import { clearHistory } from "../api/history.js";
@@ -10,6 +11,7 @@ export function initDrawer(ctx) {
   const query = (selector) => ctx.wrapper.querySelector(selector);
 
   ctx.handleDrawer = (visible, { focus = true, remember = true } = {}) => {
+    if (visible) closeTileSettingsPanels(ctx.wrapper);
     els.drawer.hidden = !visible;
     ctx.appShell.classList.toggle("drawer-open", visible);
     ctx.appShell.classList.remove("edge-near");
@@ -35,76 +37,7 @@ export function initDrawer(ctx) {
   els.controlsButton.addEventListener("click", () => ctx.handleDrawer(els.drawer.hidden));
   query("[data-controls-collapse]").addEventListener("click", () => ctx.handleDrawer(false));
 
-  /* --- 弹幕默认值 --- */
-  ctx.syncDrawerDanmaku = () => {
-    if (query("[data-dm-defaults-mode]")) {
-      query("[data-dm-defaults-mode]").value = ctx.danmakuDefaults.mode || "scroll";
-    }
-    if (query("[data-dm-defaults-style]")) {
-      query("[data-dm-defaults-style]").value = ctx.danmakuDefaults.scrollStyle || "simple";
-    }
-    if (query("[data-dm-defaults-aggregate]")) {
-      query("[data-dm-defaults-aggregate]").checked = ctx.danmakuDefaults.aggregate !== false;
-    }
-    query("[data-dm-size]").value = String(ctx.danmakuDefaults.size);
-    query("[data-dm-speed]").value = String(ctx.danmakuDefaults.speed);
-    query("[data-dm-opacity]").value = String(ctx.danmakuDefaults.opacity);
-    ctx.paintSlider(query("[data-dm-opacity]"));
-    query("[data-dm-area]").value = String(ctx.danmakuDefaults.area);
-    if (query("[data-dm-defaults-sender]")) {
-      query("[data-dm-defaults-sender]").checked = ctx.danmakuDefaults.showSender !== false;
-    }
-    query("[data-dm-blocked]").value = ctx.danmakuDefaults.blockedWords.join("\n");
-  };
-  const readDrawerDanmaku = () => normalizeDanmaku({
-    enabled: true,
-    mode: query("[data-dm-defaults-mode]") ? query("[data-dm-defaults-mode]").value : "scroll",
-    scrollStyle: query("[data-dm-defaults-style]") ? query("[data-dm-defaults-style]").value : "simple",
-    aggregate: query("[data-dm-defaults-aggregate]") ? query("[data-dm-defaults-aggregate]").checked : true,
-    showSender: query("[data-dm-defaults-sender]") ? query("[data-dm-defaults-sender]").checked : true,
-    size: Number(query("[data-dm-size]").value),
-    speed: Number(query("[data-dm-speed]").value),
-    opacity: Number(query("[data-dm-opacity]").value),
-    area: Number(query("[data-dm-area]").value),
-    blockedWords: query("[data-dm-blocked]").value.split(/[\n,，]/).map((word) => word.trim()).filter(Boolean)
-  });
-  query("[data-dm-defaults-sender]")?.addEventListener("change", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-  });
-  query("[data-dm-defaults-aggregate]")?.addEventListener("change", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-  });
-  for (const selector of ["[data-dm-defaults-mode]", "[data-dm-defaults-style]", "[data-dm-size]", "[data-dm-speed]", "[data-dm-area]"]) query(selector)?.addEventListener("change", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-  });
-  query("[data-dm-opacity]").addEventListener("input", (event) => {
-    ctx.paintSlider(event.target);
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-  });
-  query("[data-dm-blocked]").addEventListener("change", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-  });
-  query("[data-dm-defaults-save]").addEventListener("click", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    ctx.save();
-    ctx.showToast("弹幕默认值已保存；新房间将继承", [], 4e3);
-  });
-  query("[data-dm-apply-all]").addEventListener("click", () => {
-    ctx.danmakuDefaults = readDrawerDanmaku();
-    for (const tile of ctx.tiles.values()) {
-      tile.danmaku = normalizeDanmaku({ ...ctx.danmakuDefaults, enabled: tile.danmaku.enabled });
-      ctx.syncDanmakuFields(tile);
-      ctx.handleDanmaku(tile);
-      ctx.updateTileChrome(tile);
-    }
-    ctx.save();
-    ctx.showToast("弹幕默认值已应用到全部房间", [], 4e3);
-  });
+  bindGlobalDanmaku(ctx);
 
   /* --- 播放与提醒 --- */
   query("[data-capacity]").addEventListener("change", () => {

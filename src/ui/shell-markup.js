@@ -1,6 +1,7 @@
 import { SCRIPT_VERSION, DOWNLOAD_USER_URL } from "../core/settings.js";
 import { iconMarkup } from "./icons.js";
-import { rateOptions, sizeOptions, speedOptions, areaOptions, capacityOptions } from "./options.js";
+import { rateOptions, capacityOptions } from "./options.js";
+import { danmakuControlsMarkup } from "./danmaku-controls.js";
 
 // 整个监控室外壳的 HTML：入口徽标、对话框、顶栏、画格墙、设置抽屉、
 // 添加面板、右键菜单、吐司与恢复提示浮层。
@@ -45,6 +46,7 @@ export function shellMarkup() {
             </span></span>
           </div>
           <div class="tb-right">
+            <button data-dm-global-open type="button" class="btn">${iconMarkup("chat")}弹幕设置</button>
             <button data-start-all class="btn">全部播放</button>
             <button data-stop-all class="btn">全部停止</button>
             <button data-add-open class="btn primary">${iconMarkup("search")}添加房间</button>
@@ -73,21 +75,8 @@ export function shellMarkup() {
                   <input type="radio" name="resume-mode" value="never" id="rm-never"><label for="rm-never">直接面板</label>
                 </span></div>
               </section>
-              <section class="sec"><h3>弹幕默认值 · 新房间继承，单格可覆盖</h3>
-                <div class="frow">
-                  <label class="fitem">模式 <select data-dm-defaults-mode class="sel sel-sm"><option value="scroll">画面飘屏</option><option value="sidebar">右侧悬浮栏</option></select></label>
-                  <label class="fitem">版式 <select data-dm-defaults-style class="sel sel-sm"><option value="simple">精简版</option><option value="normal">正常版</option></select></label>
-                  <label class="fitem">字号 <select data-dm-size class="sel sel-sm">${sizeOptions}</select></label>
-                  <label class="fitem">速度 <select data-dm-speed class="sel sel-sm">${speedOptions}</select></label>
-                  <label class="fitem">透明度 <input data-dm-opacity type="range" min="0.1" max="1" step="0.1" class="slider" style="width:96px"></label>
-                  <label class="fitem">区域 <select data-dm-area class="sel sel-sm">${areaOptions}</select></label>
-                </div>
-                <div class="frow" style="margin-top:7px">
-                  <label class="switchrow inline"><span>显示发送者昵称</span><span class="switch"><input data-dm-defaults-sender type="checkbox" checked><i></i></span></label>
-                  <label class="switchrow inline"><span>同质刷屏合并</span><span class="switch"><input data-dm-defaults-aggregate type="checkbox" checked><i></i></span></label>
-                </div>
-                <textarea data-dm-blocked class="p-textarea" maxlength="2048" rows="2" placeholder="屏蔽词，每行一个，或用逗号分隔" style="margin-top:9px"></textarea>
-                <div class="frow" style="margin-top:9px"><button data-dm-defaults-save class="btn mini">保存为默认</button><button data-dm-apply-all class="btn mini">应用到全部房间</button></div>
+              <section class="sec dm-global-controls" data-dm-global tabindex="-1" aria-label="全局弹幕设置"><h3>弹幕设置</h3>
+                ${danmakuControlsMarkup(true)}
               </section>
               <section class="sec"><h3>声音与提醒</h3>
                 <label class="switchrow"><span>新房间打开时静音</span><span class="switch"><input data-automute type="checkbox" checked><i></i></span></label>
@@ -114,9 +103,9 @@ export function shellMarkup() {
         <section data-add-panel class="add-panel" hidden aria-label="添加房间">
           <div class="add-card">
             <div class="add-head">
-              <h2>添加房间</h2>
+              <h2 data-add-title>添加房间</h2>
               <label class="field">${iconMarkup("search")}<input data-add-search aria-label="房号、链接或主播名" autocomplete="off" maxlength="2048" placeholder="房号 / 斗鱼链接 / 主播名（回车搜索）"></label>
-              <label class="fitem"><span class="tb-label">新房间画质</span><select data-default-rate class="sel sel-sm">${rateOptions}</select></label>
+              <label class="fitem" data-add-rate-wrap><span class="tb-label">新房间画质</span><select data-default-rate class="sel sel-sm">${rateOptions}</select></label>
               <button data-add-close type="button" class="ibtn" title="关闭" aria-label="关闭添加面板">${iconMarkup("close")}</button>
             </div>
             <div class="add-tabs">

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { Window } from "happy-dom";
 import { normalizeDanmaku, truncateSender, DanmakuRenderer } from "../src/core/danmaku-render.js";
 import { PacketReader, encodePacket, parseFields } from "../src/core/danmaku-protocol.js";
 import { DanmakuClient } from "../src/api/danmaku-client.js";
@@ -361,4 +362,113 @@ test("DanmakuClient 消息派发不受 rid 类型 (数字 vs 字符串) 或靓�
       resolve();
     }, 20);
   });
+});
+
+test("DanmakuRenderer DOM 飘屏图层渲染与特效胶囊验证", () => {
+  const win = new Window();
+  const doc = win.document;
+  const dummyStage = doc.createElement("div");
+  Object.defineProperty(dummyStage, "clientWidth", { value: 1280, writable: true });
+  Object.defineProperty(dummyStage, "clientHeight", { value: 720, writable: true });
+  dummyStage.hidden = true;
+
+  const dummySidebar = doc.createElement("aside");
+  dummySidebar.hidden = true;
+  const dummyList = doc.createElement("div");
+  const mockCanvas = {
+    clientWidth: 1280,
+    clientHeight: 720,
+    width: 1280,
+    height: 720,
+    style: {},
+    getContext: () => ({
+      measureText: (text) => ({ width: text.length * 10 }),
+      clearRect: () => {},
+      strokeText: () => {},
+      fillText: () => {}
+    })
+  };
+
+  // 1. 正常版特效胶囊测试
+  const renderer = new DanmakuRenderer(mockCanvas, normalizeDanmaku({
+    enabled: true,
+    mode: "scroll",
+    scrollStyle: "normal",
+    aggregate: true
+  }), {
+    stageEl: dummyStage,
+    sidebarEl: dummySidebar,
+    sidebarListEl: dummyList
+  });
+
+  assert.equal(dummyStage.hidden, false);
+  assert.equal(dummySidebar.hidden, true);
+  assert.equal(mockCanvas.style.display, "none");
+
+  renderer.start();
+  // 添加高阶幻神/钻粉弹幕
+  renderer.add({
+    nn: "茜茜",
+    txt: "登顶全服！",
+    nl: 9, // 幻神
+    bnn: "猴粉",
+    bl: 60, // 满级粉丝牌
+    diaf: 12, // 12个月钻粉
+    level: 120,
+    col: 6 // 粉色
+  });
+
+  assert.equal(renderer.items.length, 1);
+  const item = renderer.items[0];
+  assert.ok(item.domEl, "DOM 节点已成功创建");
+  assert.ok(item.domEl.className.includes("dm-item-normal"), "应具有正常版类名");
+  assert.ok(item.domEl.innerHTML.includes("official-diamond-capsule"), "高阶身份应包裹顶奢钻粉极光胶囊");
+  assert.ok(item.domEl.innerHTML.includes("official-diamond-avatar-ring"), "应包含皇冠头像光圈");
+  assert.ok(item.domEl.innerHTML.includes("dy-medal-56"), "60级粉丝牌应应用至尊极光勋章类名");
+  assert.ok(item.domEl.innerHTML.includes("💎"), "应包含钻石图标");
+  assert.ok(item.domEl.innerHTML.includes("12月"), "应包含钻粉12月");
+  assert.ok(item.domEl.innerHTML.includes("✨ 幻神"), "应包含幻神微标");
+  assert.ok(item.domEl.innerHTML.includes("Lv.120"), "应包含等级微标");
+  assert.ok(!item.domEl.innerHTML.includes("至尊"), "严格不含至尊等级");
+
+  // 2. 刷屏同质化聚合测试
+  renderer.add({
+    nn: "水友A",
+    txt: "登顶全服！",
+    col: 0
+  });
+  assert.equal(renderer.items.length, 1, "相同内容应被聚合");
+  assert.equal(renderer.items[0].count, 2, "计数应递增为 2");
+  assert.ok(renderer.items[0].domEl.innerHTML.includes("dm-badge-aggregate"), "DOM 节点应动态注入聚合徽标");
+  assert.ok(renderer.items[0].domEl.innerHTML.includes("x 2"), "徽标应展示 x 2");
+
+  // 3. 精简版测试
+  renderer.update({ scrollStyle: "simple" });
+  renderer.add({
+    nn: "普通水友",
+    txt: "666666",
+    nl: 6,
+    bnn: "猴粉",
+    bl: 50
+  });
+  assert.equal(renderer.items.length, 1);
+  const simpleItem = renderer.items[0];
+  assert.ok(simpleItem.domEl.className.includes("dm-item-simple"), "精简版应具有 dm-item-simple 类名");
+  assert.ok(simpleItem.domEl.className.includes("dm-style-simple"), "精简版应具有 dm-style-simple 描边类名");
+  assert.ok(!simpleItem.domEl.innerHTML.includes("official-capsule"), "精简版不应包含胶囊底板");
+  assert.ok(!simpleItem.domEl.innerHTML.includes("dy-medal"), "精简版不应包含粉丝牌");
+  assert.ok(simpleItem.domEl.innerHTML.includes("普通水友:"), "精简版应包含昵称");
+  assert.ok(simpleItem.domEl.innerHTML.includes("666666"), "精简版应包含正文");
+
+  // 4. 互斥测试
+  renderer.update({ mode: "sidebar" });
+  assert.equal(dummyStage.hidden, true, "切换到侧栏模式时飘屏舞台应隐藏");
+  assert.equal(dummySidebar.hidden, false, "切换到侧栏模式时侧栏应显示");
+
+  // 5. 关闭测试
+  renderer.update({ enabled: false });
+  assert.equal(dummyStage.hidden, true, "关闭时飘屏舞台隐藏");
+  assert.equal(dummySidebar.hidden, true, "关闭时侧栏隐藏");
+
+  renderer.stop();
 });

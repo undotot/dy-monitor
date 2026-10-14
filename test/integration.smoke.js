@@ -42,7 +42,7 @@ assert.ok(/\.tile-status\s*\{[^}]*width:\s*auto/.test(bundle), "胶囊宽度显�
 assert.ok(!/\.tile-status\s*\{[^}]*max-width/.test(bundle), "胶囊不设 max-width 固定上限，宽度纯 auto");
 assert.ok(!/\.style\.width\s*=/.test(bundle), "全产物不写内联 width：胶囊宽度只能来自样式表的 auto");
 assert.ok(!bundle.includes("tile-header-mask"), "胶囊只含状态点与直播间名，不再有顶部遮罩");
-assert.ok(/\.wall\s*\{[^}]*gap:\s*1px/.test(bundle) && /rgba\(56, 138, 240/.test(bundle), "画墙缝隙为 1px 冷蓝数据线");
+assert.ok(/\.wall\s*\{[^}]*gap:\s*0\.5px/.test(bundle) && /rgba\(56, 138, 240/.test(bundle), "画墙缝隙为 0.5px 冷蓝数据线");
 assert.ok(/getSearchRecV2\?kw=\$\{encodeURIComponent/.test(bundle), "添加直播间搜索固定走 getSearchRecV2 接口，kw 为搜索关键词");
 assert.ok(/videoLoop/.test(bundle) && /\.isLoop/.test(bundle), "轮播标志 videoLoop/isLoop 参与三态映射（轮播中/直播中/未开播）");
 assert.ok(/tile-audio-corner/.test(bundle), "右上角包含常驻声音控制胶囊");

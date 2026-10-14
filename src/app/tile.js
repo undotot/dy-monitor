@@ -4,7 +4,7 @@ import { recordHistory, loadHistory } from "../api/history.js";
 import { fetchProbe } from "../api/probe.js";
 import { normalizeRoomName } from "../core/room-name.js";
 import { tileMarkup } from "../ui/tile-markup.js";
-import { rateOptions, sizeOptions, speedOptions, areaOptions } from "../ui/options.js";
+import { rateOptions } from "../ui/options.js";
 import { setIconButton } from "../ui/icons.js";
 import { observeTileControls } from "../core/tile-scale.js";
 import { syncDanmakuFields, readDanmakuFields, bindTileDanmaku } from "./tile-danmaku.js";
@@ -34,6 +34,7 @@ export function initTile(ctx) {
     ctx.stop(tile);
     tile.nameRequest?.abort();
     tile.disconnectControls?.();
+    tile.disconnectAudio?.();
     ctx.tiles.delete(tile.id);
     tile.root.remove();
     if (ctx.focused === tile.id) ctx.focused = null;
@@ -87,29 +88,30 @@ export function initTile(ctx) {
       loadingEl: find("[data-loading]"), loadingText: find("[data-loading-text]"),
       muteBtn: find("[data-t-mute]"), volSlider: find("[data-t-vol]"), volPct: find("[data-t-vol-pct]"), audioCorner: find("[data-audio-corner]"),
       resumeBtn: find("[data-t-resume]"), soloBtn: find("[data-t-solo]"), danmakuBtn: find("[data-t-danmaku]"),
-      rateSel: find("[data-t-rate]"), pipButton: find("[data-t-pip]"), settingsBtn: find("[data-t-settings]"),
+      rateSel: find("[data-t-rate]"), pipButton: find("[data-t-pip]"),
       settingsEl: find("[data-tile-settings]"), dmStatus: find("[data-dm-status]"),
+      dmStage: find("[data-dm-stage]"),
       dmSidebar: find("[data-dm-sidebar]"), dmSidebarList: find("[data-dm-sb-list]"), dmSidebarStatus: find("[data-dm-sb-status]")
     };
     if (audioRestore) {
       tile.vol = clamp01(audioRestore.volume);
       tile.muted = audioRestore.muted !== false;
     }
-    tile.renderer = new DanmakuRenderer(tile.canvas, tile.danmaku, { sidebarEl: tile.dmSidebar, sidebarListEl: tile.dmSidebarList });
+    tile.renderer = new DanmakuRenderer(tile.canvas, tile.danmaku, {
+      stageEl: tile.dmStage,
+      sidebarEl: tile.dmSidebar,
+      sidebarListEl: tile.dmSidebarList
+    });
     find("[data-t-rate]").innerHTML = rateOptions;
     find("[data-t-rate]").value = String(rate);
-    find("[data-dm-size]").innerHTML = sizeOptions;
-    find("[data-dm-speed]").innerHTML = speedOptions;
-    find("[data-dm-area]").innerHTML = areaOptions;
     ctx.syncDanmakuFields(tile);
     for (const [selector, icon, label] of [
       ["[data-t-resume]", "play", "播放 / 暂停"], ["[data-t-reload]", "retry", "重新取流"],
       ["[data-t-solo]", "solo", "独奏该房间"], ["[data-t-danmaku]", "chat", "弹幕开关"],
-      ["[data-t-settings]", "sliders", "房间设置"], ["[data-t-pip]", "pip", "弹幕画中画"],
+      ["[data-t-pip]", "pip", "弹幕画中画"],
       ["[data-t-full]", "full", "全屏"], ["[data-t-external]", "external", "去该房间发弹幕"],
       ["[data-t-remove]", "trash", "移除该房间"], ["[data-t-mute]", "muted", "静音"],
-      ["[data-t-retry-now]", "retry", "立即重试"], ["[data-edit-cancel]", "close", "取消修改"],
-      ["[data-edit-form] button[type=submit]", "check", "确认修改房号"]
+      ["[data-t-retry-now]", "retry", "立即重试"]
     ]) {
       const button = find(selector);
       if (button) setIconButton(button, icon, label);
