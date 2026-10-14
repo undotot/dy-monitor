@@ -25,7 +25,7 @@ export const normalizeDanmaku = (value = {}) => {
     size: Math.max(12, Math.min(36, Number(value.size) || 20)),
     speed: [0.5, 0.75, 1, 1.25, 1.5, 2].includes(value.speed) ? value.speed : 1,
     opacity: Number.isFinite(Number(value.opacity)) ? Math.max(0.1, Math.min(1, Number(value.opacity))) : 1,
-    area: [0.25, 0.5, 0.75, 1].includes(value.area) ? value.area : 1,
+    area: [0.25, 0.5, 0.75, 1].includes(Number(value.area)) ? Number(value.area) : 1,
     blockedWords: (Array.isArray(value.blockedWords) ? value.blockedWords : []).filter((word) => typeof word === "string").map((word) => word.trim().slice(0, 40)).filter(Boolean).slice(0, 50)
   };
 };

@@ -18,9 +18,10 @@ export const setTileDanmakuSettings = (tile, visible = true) => {
   tile.settingsEl.hidden = !visible;
   tile.settingsEl.classList.toggle("is-room-flyout", visible && (tile.root.clientWidth < 420 || tile.root.clientHeight < 340));
   tile.root.classList.toggle("dm-settings-open", visible);
-  const entry = tile.root.querySelector("[data-t-dm-settings]");
-  entry?.setAttribute("aria-expanded", String(visible));
-  (visible ? tile.root.querySelector("[data-dm-toggle]") : tile.root.querySelector("[data-t-more]") || entry)?.focus();
+  for (const entry of tile.root.querySelectorAll("[data-t-dm-settings], [data-t-dm-settings-bar], [data-t-dm-settings-sidebar]")) {
+    entry.setAttribute("aria-expanded", String(visible));
+  }
+  (visible ? tile.root.querySelector("[data-dm-toggle]") : tile.root.querySelector("[data-t-dm-settings-bar]") || tile.root.querySelector("[data-t-dm-settings]") || tile.root.querySelector("[data-t-more]"))?.focus();
 };
 
 export function bindTileEvents(ctx, tile) {
@@ -54,7 +55,9 @@ export function bindTileEvents(ctx, tile) {
   bindTileAudio(ctx, tile);
   bindTileTools(tile);
   tile.soloBtn?.addEventListener("click", () => ctx.toggleSolo(tile));
-  find("[data-t-dm-settings]")?.addEventListener("click", () => setTileDanmakuSettings(tile, tile.settingsEl.hidden));
+  for (const btn of root.querySelectorAll("[data-t-dm-settings], [data-t-dm-settings-bar], [data-t-dm-settings-sidebar]")) {
+    btn.addEventListener("click", () => setTileDanmakuSettings(tile, tile.settingsEl.hidden));
+  }
   find("[data-settings-close]")?.addEventListener("click", () => setTileDanmakuSettings(tile, false));
 
   find("[data-t-pip]")?.addEventListener("click", () => void ctx.handlePip(tile));

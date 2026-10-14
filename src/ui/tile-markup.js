@@ -30,6 +30,7 @@ export const tileMarkup = () => `
     <button data-t-reload-bar type="button" class="ibtn" title="重新取流 / 刷新直播" aria-label="重新取流"></button>
     <button data-t-solo type="button" class="ibtn" title="独奏该路声音" aria-label="独奏该路声音" aria-pressed="false"></button>
     <button data-t-danmaku type="button" class="ibtn" title="开关弹幕" aria-label="开关弹幕" aria-pressed="false"></button>
+    <button data-t-dm-settings-bar type="button" class="ibtn" title="弹幕设置 (范围/版式/方式)" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("sliders")}</button>
     <span class="tool-divider" aria-hidden="true"></span>
     <span data-tool-quality-anchor><span class="tool-quality"><select data-t-rate class="rate-select sel" title="清晰度切换" aria-label="画质"></select></span></span>
     <span class="tool-divider" aria-hidden="true"></span>
@@ -63,7 +64,10 @@ export const tileMarkup = () => `
 <aside class="tile-dm-sidebar" data-dm-sidebar aria-label="当前房间弹幕栏" hidden>
   <div class="tile-dm-sidebar-head">
     <div class="dm-sidebar-heading"><span class="dm-sb-title">实时弹幕</span><span class="dm-sb-status" data-dm-sb-status role="status">连线中</span></div>
-    <button data-dm-sidebar-close type="button" class="ibtn" aria-label="关闭弹幕栏并关闭弹幕" title="关闭弹幕">${iconMarkup("close")}</button>
+    <div class="dm-sidebar-actions">
+      <button data-t-dm-settings-sidebar type="button" class="ibtn" aria-label="弹幕设置" title="弹幕设置">${iconMarkup("sliders")}</button>
+      <button data-dm-sidebar-close type="button" class="ibtn" aria-label="关闭弹幕栏并关闭弹幕" title="关闭弹幕">${iconMarkup("close")}</button>
+    </div>
   </div>
   <div class="tile-dm-sidebar-list" data-dm-sb-list tabindex="0" aria-label="弹幕消息列表"></div>
   <p class="dm-sidebar-empty" data-dm-sb-empty>${iconMarkup("chat")}<b>等待新弹幕</b><span>新消息会出现在这里</span></p>

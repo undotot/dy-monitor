@@ -33,16 +33,21 @@ test("单房仅三类控制，模式切换不重连且侧栏无版式设置", ()
   try {
     const ctx = createControls(win);
     const tile = ctx.tiles.get("a");
-    assert.equal(tile.root.querySelectorAll("[data-dm-choice]").length, 4);
+    assert.equal(tile.root.querySelectorAll("[data-dm-choice]").length, 8);
     assert.equal(tile.root.querySelector("[data-dm-blocked]"), null);
     assert.equal(tile.root.querySelector("[data-dm-size]"), null);
+    tile.root.querySelector('[data-dm-choice="area"][data-value="0.25"]').click();
+    assert.equal(tile.danmaku.area, 0.25);
+    assert.equal(ctx.danmakuDefaults.area, 0.25, "单房设置飘屏范围后自动记忆偏好");
     tile.root.querySelector('[data-dm-choice="style"][data-value="normal"]').click();
     tile.root.querySelector('[data-dm-choice="mode"][data-value="sidebar"]').click();
     assert.equal(tile.danmaku.enabled, true);
     assert.equal(tile.danmaku.mode, "sidebar");
     assert.equal(tile.root.querySelector("[data-dm-style-wrap]").hidden, true);
+    assert.equal(tile.root.querySelector("[data-dm-area-wrap]").hidden, true);
     tile.root.querySelector('[data-dm-choice="mode"][data-value="scroll"]').click();
     assert.equal(tile.danmaku.scrollStyle, "normal");
+    assert.equal(tile.danmaku.area, 0.25);
     assert.equal(ctx.reconnects, 0);
     tile.root.querySelector("[data-dm-toggle]").click();
     assert.equal(tile.danmaku.enabled, false);

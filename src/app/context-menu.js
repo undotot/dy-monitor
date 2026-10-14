@@ -1,9 +1,9 @@
 import { API_BASE } from "../core/settings.js";
 import { iconMarkup } from "../ui/icons.js";
-import { closeTileSettingsPanels } from "./tile-events.js";
+import { closeTileSettingsPanels, setTileDanmakuSettings } from "./tile-events.js";
 import { closeTileMore } from "./tile-tools.js";
 
-// 右键菜单：每画格 10 项操作 + 分隔线 + 移除；点击外部关闭菜单与画格设置浮层。
+// 右键菜单：画格快捷操作 + 弹幕设置 + 分隔线 + 移除；点击外部关闭菜单与画格设置浮层。
 export function initContextMenu(ctx) {
   ctx.closeContextMenu = () => {
     ctx.els.ctx.hidden = true;
@@ -19,6 +19,7 @@ export function initContextMenu(ctx) {
       ["solo", ctx.audio.mode === "solo" && ctx.soloTargetId() === tile.id ? "取消独奏" : "独奏该房间", () => ctx.toggleSolo(tile)],
       [tile.muted ? "volume" : "muted", tile.muted ? "开启声音" : "静音", () => ctx.toggleMute(tile)],
       [tile.danmaku.enabled ? "chatOff" : "chat", tile.danmaku.enabled ? "关闭弹幕" : "开启弹幕", () => ctx.findAction(tile, "danmaku")],
+      ["sliders", "弹幕设置…", () => setTileDanmakuSettings(tile, true)],
       ["pip", "弹幕画中画", () => void ctx.handlePip(tile)],
       ["full", "全屏", () => ctx.findAction(tile, "full")],
       ["external", "去该房间发弹幕", () => window.open(`${API_BASE}/${tile.rid}`, "_blank", "noopener,noreferrer")],
@@ -66,7 +67,7 @@ export function initContextMenu(ctx) {
     for (const tile of ctx.tiles.values()) {
       if (!path.includes(tile.root.querySelector("[data-t-more-menu]")) && !path.includes(tile.root.querySelector("[data-t-more]"))) closeTileMore(tile.root);
     }
-    if (path.some((node) => node?.matches?.("[data-tile-settings], [data-t-dm-settings], [data-audio-corner]"))) return;
+    if (path.some((node) => node?.matches?.("[data-tile-settings], [data-t-dm-settings], [data-t-dm-settings-bar], [data-t-dm-settings-sidebar], [data-audio-corner]"))) return;
     closeTileSettingsPanels(ctx.wrapper);
   });
 }
