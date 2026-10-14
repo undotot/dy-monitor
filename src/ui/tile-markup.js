@@ -29,8 +29,8 @@ export const tileMarkup = () => `
     <button data-t-resume type="button" class="ibtn" title="暂停/播放" aria-label="播放 / 暂停"></button>
     <button data-t-reload-bar type="button" class="ibtn" title="重新取流 / 刷新直播" aria-label="重新取流"></button>
     <button data-t-solo type="button" class="ibtn" title="独奏该路声音" aria-label="独奏该路声音" aria-pressed="false"></button>
-    <button data-t-danmaku type="button" class="ibtn" title="开关弹幕" aria-label="开关弹幕" aria-pressed="false"></button>
-    <button data-t-dm-settings-bar type="button" class="ibtn" title="弹幕设置 (范围/版式/方式)" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("sliders")}</button>
+    <button data-t-danmaku type="button" class="ibtn" title="开关弹幕（右侧齿轮设置范围/版式）" aria-label="开关弹幕" aria-pressed="false"></button>
+    <button data-t-dm-settings-bar type="button" class="ibtn" title="弹幕设置 (飘屏范围/版式/方式)" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("settings")}</button>
     <span class="tool-divider" aria-hidden="true"></span>
     <span data-tool-quality-anchor><span class="tool-quality"><select data-t-rate class="rate-select sel" title="清晰度切换" aria-label="画质"></select></span></span>
     <span class="tool-divider" aria-hidden="true"></span>
@@ -46,7 +46,7 @@ export const tileMarkup = () => `
     <button data-tool-action="solo" type="button" role="menuitem" class="tool-menu-item tool-mini-action" data-tool-label="独奏声音" aria-label="独奏声音">${iconMarkup("solo")}</button>
     <button data-tool-action="full" type="button" role="menuitem" class="tool-menu-item tool-mini-action" data-tool-label="全屏" aria-label="全屏">${iconMarkup("full")}</button>
     <button data-t-reload type="button" role="menuitem" class="tool-menu-item" data-tool-label="重新取流"></button>
-    <button data-t-dm-settings type="button" role="menuitem" class="tool-menu-item dm-settings-entry" data-tool-label="弹幕设置" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("sliders")}</button>
+    <button data-t-dm-settings type="button" role="menuitem" class="tool-menu-item dm-settings-entry" data-tool-label="弹幕设置" aria-label="弹幕设置" aria-expanded="false">${iconMarkup("settings")}</button>
     <button data-t-pip-menu type="button" role="menuitem" class="tool-menu-item" data-tool-label="画中画" data-tool-action="pip"></button>
     <button data-t-external type="button" role="menuitem" class="tool-menu-item" data-tool-label="打开直播间"></button>
     <span class="tool-menu-divider" role="separator"></span>
@@ -54,7 +54,7 @@ export const tileMarkup = () => `
   </div>
   <section class="tile-settings" data-tile-settings aria-label="弹幕设置" hidden>
     <div class="tile-settings-head">
-      <b>弹幕设置</b>
+      <b>该直播间 · 弹幕设置</b>
       <button data-settings-close type="button" class="ibtn" aria-label="关闭弹幕设置">${iconMarkup("close")}</button>
     </div>
     <div class="p-danmaku" data-settings-danmaku>${danmakuControlsMarkup()}</div>
@@ -65,7 +65,7 @@ export const tileMarkup = () => `
   <div class="tile-dm-sidebar-head">
     <div class="dm-sidebar-heading"><span class="dm-sb-title">实时弹幕</span><span class="dm-sb-status" data-dm-sb-status role="status">连线中</span></div>
     <div class="dm-sidebar-actions">
-      <button data-t-dm-settings-sidebar type="button" class="ibtn" aria-label="弹幕设置" title="弹幕设置">${iconMarkup("sliders")}</button>
+      <button data-t-dm-settings-sidebar type="button" class="ibtn" aria-label="弹幕设置" title="该房间弹幕设置">${iconMarkup("settings")}</button>
       <button data-dm-sidebar-close type="button" class="ibtn" aria-label="关闭弹幕栏并关闭弹幕" title="关闭弹幕">${iconMarkup("close")}</button>
     </div>
   </div>

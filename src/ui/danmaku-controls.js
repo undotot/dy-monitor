@@ -15,4 +15,5 @@ export const danmakuControlsMarkup = (global = false) => `
     ${danmakuSegments("style", [["simple", "简单"], ["normal", "正常"]], global)}
   </div>
   <p ${global ? "data-dm-global-status" : "data-dm-status"} class="dm-connection-status" role="status">${global ? "调整即时应用到现有房间，单房可独立修改。" : "弹幕已关闭"}</p>
+  ${global ? '<div class="dm-global-tip">💡 <b>单房专属设置指引</b>：悬停在任意画格画面，底部控制栏的 ⚙️ 图标即为该房间专属弹幕设置；或在画格任意处<b>右键</b>选择【弹幕设置】。</div>' : ""}
 `;

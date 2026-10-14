@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import { tileMarkup } from "../src/ui/tile-markup.js";
 import { shellMarkup } from "../src/ui/shell-markup.js";
+import { danmakuControlsMarkup } from "../src/ui/danmaku-controls.js";
 import { DanmakuRenderer, normalizeDanmaku } from "../src/core/danmaku-render.js";
 import { bindTileDanmaku, syncDanmakuFields } from "../src/app/tile-danmaku.js";
 import { bindGlobalDanmaku } from "../src/app/global-danmaku.js";
@@ -116,3 +117,17 @@ test("弹幕栏是视频视口的兄弟节点，互斥切换和关闭完整恢�
     assert.equal(sidebar.querySelector("[data-dm-sb-empty]").hidden, false);
   } finally { win.close(); }
 });
+
+test("单房弹幕设置在控制栏、侧栏与右键菜单均有明显入口，全局面板包含单房引导", () => {
+  const win = new Window();
+  try {
+    const root = win.document.createElement("article");
+    root.className = "tile-shell";
+    root.innerHTML = tileMarkup();
+    assert.ok(root.querySelector("[data-t-dm-settings-bar]"), "底部控制栏包含独立弹幕设置按钮");
+    assert.ok(root.querySelector("[data-t-dm-settings-sidebar]"), "侧栏包含独立弹幕设置按钮");
+    assert.ok(root.querySelector("[data-t-dm-settings]"), "菜单包含独立弹幕设置入口");
+    assert.ok(danmakuControlsMarkup(true).includes("dm-global-tip"), "全局弹幕面板包含单房专属设置指引");
+  } finally { win.close(); }
+});
+

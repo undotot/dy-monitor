@@ -19,7 +19,7 @@ export function initContextMenu(ctx) {
       ["solo", ctx.audio.mode === "solo" && ctx.soloTargetId() === tile.id ? "取消独奏" : "独奏该房间", () => ctx.toggleSolo(tile)],
       [tile.muted ? "volume" : "muted", tile.muted ? "开启声音" : "静音", () => ctx.toggleMute(tile)],
       [tile.danmaku.enabled ? "chatOff" : "chat", tile.danmaku.enabled ? "关闭弹幕" : "开启弹幕", () => ctx.findAction(tile, "danmaku")],
-      ["sliders", "弹幕设置…", () => setTileDanmakuSettings(tile, true)],
+      ["settings", "弹幕设置 (飘屏范围/版式)…", () => setTileDanmakuSettings(tile, true)],
       ["pip", "弹幕画中画", () => void ctx.handlePip(tile)],
       ["full", "全屏", () => ctx.findAction(tile, "full")],
       ["external", "去该房间发弹幕", () => window.open(`${API_BASE}/${tile.rid}`, "_blank", "noopener,noreferrer")],
