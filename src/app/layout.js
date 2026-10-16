@@ -65,6 +65,8 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     hint.hidden = true;
     if (!focusedMode) {
       ctx.focusLayout = null;
+      delete ctx.wall.dataset.focusLayout;
+      delete ctx.wall.dataset.focusFallback;
       ctx.wall.style.gap = "";
       ctx.wall.style.columnGap = "";
       ctx.wall.style.rowGap = "";
@@ -122,9 +124,22 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     const mainTile = ctx.tiles.get(ctx.focused);
     const secondaries = list.filter((tile) => tile.id !== ctx.focused);
     const ratioOf = (tile) => tile.video.videoWidth && tile.video.videoHeight ? tile.video.videoWidth / tile.video.videoHeight : 16 / 9;
-    const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf), previous: ctx.focusLayout?.signature });
+    const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf),
+      mainRoomId: mainTile.id, secondaryRoomIds: secondaries.map((tile) => tile.id), previous: ctx.focusLayout });
     if (!plan) return;
+    // 混合副窗比例无法同时等大且无内部黑边；清理旧坐标并明确恢复平铺。
+    if (plan.status === "infeasible") {
+      ctx.focused = null;
+      ctx.handleLayout();
+      ctx.applyAudioAll();
+      const reason = plan.code === "SECONDARY_RATIO_MISMATCH"
+        ? "副窗源比例不同，无法同时满足小窗等大与无内部黑边。" : plan.reason;
+      ctx.showToast?.(`${reason}已恢复平铺。`, [], 6000);
+      return;
+    }
     ctx.focusLayout = plan;
+    ctx.wall.dataset.focusLayout = plan.layoutShape ?? plan.family;
+    ctx.wall.dataset.focusFallback = String(Boolean(plan.fallback));
     if (plan.absolute) {
       ctx.wall.style.gap = "0";
       ctx.wall.style.gridTemplateColumns = "minmax(0,1fr)";
@@ -139,7 +154,8 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
         Object.assign(root.style, { position: "absolute", left: `${box.x}px`, top: `${box.y}px`, width: `${box.width}px`, height: `${box.height}px` });
       }
       for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
-      hint.hidden = !plan.constrained;
+      hint.textContent = plan.fallback ? "当前数量采用等大布局，避免主副窗尺寸悬殊" : "窗口较小：画面已统一缩放，所有房间保持同屏";
+      hint.hidden = !plan.fallback && !plan.constrained;
       ctx.syncLayoutRadios();
       return;
     }
@@ -151,7 +167,8 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     const mainRoot = gridRootOf(mainTile);
     moveRoot(ctx.wall, mainRoot);
     clearTileGeometry(mainRoot);
-    Object.assign(mainRoot.style, { gridColumn: "1", gridRow: "1", width: `${plan.main.width}px`, height: `${plan.main.height}px`, justifySelf: "start", alignSelf: "start" });
+    // 主窗在自身列内垂直居中：细留黑上下均分呈 letterbox 观感，无留黑时居中等价于顶对齐。
+    Object.assign(mainRoot.style, { gridColumn: "1", gridRow: "1", width: `${plan.main.width}px`, height: `${plan.main.height}px`, justifySelf: "start", alignSelf: plan.mainOffsetY > 0.01 ? "center" : "start" });
     for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
     regions.right.root.hidden = !plan.rightWidth;
     regions.bottom.root.hidden = !plan.bottomHeight;

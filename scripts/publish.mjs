@@ -10,7 +10,8 @@
 // 命令行示例：
 // node scripts/publish.mjs
 // node scripts/publish.mjs patch --msg "优化单格音量防脱手控制"
-// node scripts/publish.mjs minor --msg "新增主窗等比例缩放功能"
+// node scripts/publish.mjs minor --msg "新增主窗等比例缩放功能" --notes "要点1；要点2"
+//   --notes：CHANGELOG 多条要点（分号分隔），缺省沿用 --msg 单条
 // node scripts/publish.mjs --local --msg "仅本地构建验证"
 
 import { readFileSync, writeFileSync, copyFileSync, rmSync, existsSync, mkdirSync } from "node:fs";
@@ -45,7 +46,8 @@ const run = (cmd, args, label, cwd = root) => {
 // 交互式输入逻辑
 async function resolveInputs() {
   let customMsg = argValue("--msg") || argValue("-m");
-  let bumpKind = argv.find((a) => !a.startsWith("-") && a !== customMsg);
+  let releaseNotes = argValue("--notes");
+  let bumpKind = argv.find((a) => !a.startsWith("-") && a !== customMsg && a !== releaseNotes);
   const isLocal = hasFlag("--local");
   const skipTests = hasFlag("--skip-tests");
 
@@ -79,6 +81,7 @@ async function resolveInputs() {
 
   return {
     customMsg: customMsg || "日常优化与功能更新",
+    releaseNotes,
     bumpKind: bumpKind || "patch",
     isLocal,
     skipTests
@@ -86,7 +89,7 @@ async function resolveInputs() {
 }
 
 async function main() {
-  const { customMsg, bumpKind, isLocal, skipTests } = await resolveInputs();
+  const { customMsg, releaseNotes, bumpKind, isLocal, skipTests } = await resolveInputs();
 
   const pkgPath = join(root, "package.json");
   const pkgOriginal = readFileSync(pkgPath, "utf8");
@@ -151,7 +154,8 @@ async function main() {
     const changelogPath = join(root, "CHANGELOG.md");
     const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : "# 更新日志\n\n";
     const today = new Date().toISOString().slice(0, 10);
-    const entry = `## ${version} - ${today}\n- ${customMsg}\n\n`;
+    const notes = (releaseNotes || customMsg).split(/[;；\n]/).map((s) => s.trim()).filter(Boolean);
+    const entry = `## ${version} - ${today}\n${notes.map((n) => `- ${n}`).join("\n")}\n\n`;
     const headerIdx = changelog.indexOf("\n\n");
     const updatedChangelog = headerIdx >= 0
       ? changelog.slice(0, headerIdx + 2) + entry + changelog.slice(headerIdx + 2)

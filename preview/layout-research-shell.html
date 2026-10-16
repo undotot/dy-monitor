@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN" class="h-full bg-[#090c12] [color-scheme:dark]">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="等大小窗调研排列预览：比较主窗跨度、侧栏列数、底栏行数和覆盖率。">
+  <title>监控室 · 调研排列预览</title>
+  <link rel="stylesheet" href="./recursive-layout-preview.css">
+  <script defer src="./layout-research-preview.js"></script>
+</head>
+<body class="m-0 h-full overflow-hidden font-['Bahnschrift','Microsoft_YaHei_UI',sans-serif] text-[#e7ebf2] antialiased [&_[hidden]]:!hidden">
+  <div class="flex h-dvh flex-col overflow-hidden">
+    <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#10141d] px-4 py-4 md:px-6">
+      <div class="flex items-center gap-3"><span class="grid h-10 w-10 grid-cols-3 gap-1 rounded-lg border border-[#f3a77e]/30 bg-[#f3a77e]/10 p-2" aria-hidden="true"><i class="col-span-2 row-span-2 bg-[#f3a77e]"></i><i class="bg-[#759fc1]"></i><i class="bg-[#759fc1]"></i><i class="bg-[#759fc1]"></i><i class="bg-[#759fc1]"></i><i class="bg-[#759fc1]"></i></span><div><h1 class="text-base font-semibold tracking-wide">布局实验室 <span class="mx-1 text-white/20">/</span> 调研排列</h1><p class="mt-1 text-[10px] tracking-[0.12em] text-[#8191aa]">同类结构 · 不同行列组合 <span class="ml-2 text-[#f3a77e]">每套方案的小窗全部等大</span></p></div></div>
+      <div class="flex flex-wrap items-center gap-2 text-xs"><button id="research-example" type="button" class="rounded-md border border-[#f3a77e]/30 bg-[#f3a77e]/10 px-3 py-2 text-[#f3a77e] hover:bg-[#f3a77e]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f3a77e]">载入 12 房调研示例</button><button id="research-back" hidden type="button" class="rounded-md border border-white/15 px-3 py-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f3a77e]">返回排列对比</button><button id="research-fullscreen" type="button" class="rounded-md border border-white/15 px-3 py-2 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f3a77e]">全屏</button></div>
+    </header>
+
+    <section aria-label="调研预览控制" class="shrink-0 border-b border-white/[0.07] bg-[#0e121b] px-4 py-3 md:px-6">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-[#8d9bb0]">
+        <label class="flex items-center gap-2">画墙<select id="research-resolution" aria-label="调研画墙分辨率" class="max-w-48 rounded-md border border-white/10 bg-[#161c27] px-2 py-1.5 text-[#dce3ee] focus:border-[#f3a77e]"><option value="auto">跟随当前窗口</option><option value="2246x994">2246 × 994 · 调研画墙</option><option value="1280x720">1280 × 720</option><option value="800x600">800 × 600</option><option value="390x844">390 × 844</option><option value="custom">自定义尺寸</option></select></label>
+        <label class="flex items-center gap-2">源比例<select id="research-ratio" aria-label="调研视频源比例" class="rounded-md border border-white/10 bg-[#161c27] px-2 py-1.5 text-[#dce3ee] focus:border-[#f3a77e]"><option value="landscape">全部 16:9</option><option value="portrait">全部 9:16</option></select></label>
+        <label class="flex items-center gap-2">当前主窗<select id="research-main" aria-label="调研主房间" class="rounded-md border border-white/10 bg-[#161c27] px-2 py-1.5 text-[#dce3ee] focus:border-[#f3a77e]"></select></label>
+        <label class="flex items-center gap-2" title="4 倍面积对应同源比例下宽高各 2 倍">面积目标<input id="research-weight" aria-label="调研主窗面积目标" type="range" min="2" max="10" step="0.5" value="4" class="h-1 w-20 accent-[#f3a77e]"><output id="research-weight-value" class="font-mono text-[#f3a77e]">4×</output></label>
+        <output id="research-dimensions" class="ml-auto font-mono text-[11px] text-[#8796ad]">正在测量画墙</output>
+      </div>
+      <form id="research-custom" hidden class="mt-3 flex flex-wrap items-center gap-2 text-xs"><label>宽 <input id="research-width" aria-label="调研自定义宽度" type="number" required min="32" max="16384" value="1920" class="w-20 rounded border border-white/10 bg-black/20 px-2 py-1"></label><span class="text-[#68758b]">×</span><label>高 <input id="research-height" aria-label="调研自定义高度" type="number" required min="32" max="16384" value="1080" class="w-20 rounded border border-white/10 bg-black/20 px-2 py-1"></label><button type="submit" class="rounded bg-[#f3a77e] px-3 py-1 text-[#17100c]">应用</button><span id="research-custom-error" role="alert" class="text-[#f29999]"></span></form>
+      <div class="mt-3 flex items-center gap-3"><span class="shrink-0 text-[11px] text-[#79869b]">房间数</span><nav id="research-counts" aria-label="调研房间数" class="flex min-w-0 flex-1 gap-1 overflow-x-auto"></nav></div>
+    </section>
+
+    <main class="flex min-h-0 flex-1 flex-col">
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
+        <div><h2 id="research-title" class="text-sm font-medium">排列对比</h2><p id="research-summary" role="status" class="mt-1 text-[11px] text-[#8796ad]">正在生成候选</p></div>
+        <div id="research-filters" role="group" aria-label="候选筛选" class="flex gap-1 rounded-lg border border-white/10 bg-[#101620] p-1"><button type="button" data-scope="moderate" aria-pressed="true" class="rounded-md px-3 py-1.5 text-[11px] text-[#91a0b5] hover:text-white aria-pressed:bg-[#f3a77e]/15 aria-pressed:text-[#f3a77e]">适中大小</button><button type="button" data-scope="frontier" aria-pressed="false" class="rounded-md px-3 py-1.5 text-[11px] text-[#91a0b5] hover:text-white aria-pressed:bg-[#f3a77e]/15 aria-pressed:text-[#f3a77e]">有效取舍</button><button type="button" data-scope="all" aria-pressed="false" class="rounded-md px-3 py-1.5 text-[11px] text-[#91a0b5] hover:text-white aria-pressed:bg-[#f3a77e]/15 aria-pressed:text-[#f3a77e]">全部候选</button></div>
+      </div>
+      <div id="research-viewport" class="relative mx-4 mb-3 min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-[#05070b] md:mx-6 [&:fullscreen]:m-0 [&:fullscreen]:h-dvh [&:fullscreen]:w-screen [&:fullscreen]:rounded-none">
+        <section id="research-gallery" aria-label="调研排列候选" class="absolute inset-0 overflow-y-auto bg-[#0c1018] p-3 md:p-4"><div id="research-grid" class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3"></div></section>
+        <section id="research-detail" hidden aria-label="选中排列大图" class="absolute inset-0 flex flex-col"><div id="research-detail-stats" class="flex shrink-0 flex-wrap gap-x-5 gap-y-2 border-b border-white/10 bg-[#101620] px-4 py-3 text-[11px] text-[#a8b7cc]"></div><div id="research-detail-wall" class="relative min-h-0 flex-1 overflow-hidden bg-[#192130]"></div></section>
+        <div id="research-empty" hidden class="absolute inset-0 grid place-items-center bg-[#0c1018] p-8 text-center"><p class="max-w-md text-sm leading-6 text-[#99a9c0]"></p></div>
+        <div id="research-loading" role="status" class="absolute inset-0 z-20 grid place-items-center bg-[#090d15]/90 text-xs text-[#aebbd0]">正在生成并检查排列</div>
+      </div>
+      <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pb-3 text-[10px] text-[#8190a7] md:px-6"><span id="research-hint">点击卡片看大图 · 同一套方案内所有副窗等宽等高</span><output id="research-audit" role="status" class="font-mono text-[#7fd6b0]">正在检查几何</output></div>
+    </main>
+
+    <footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] bg-[#0c1017] px-4 py-2 text-[10px] text-[#687991] md:px-6"><span>模拟画面 · 保持源比例 · 无内部空槽 · 外围仅单轴留白</span><details class="relative"><summary class="cursor-pointer text-[#a4b4ca]">调研来源与取舍说明</summary><div class="absolute bottom-7 right-0 z-40 w-80 rounded-lg border border-white/15 bg-[#151d2b] p-4 text-xs leading-6 shadow-xl"><p class="mb-2 text-[#dce5f3]">这里展示符合现有约束的行列组合。逐行改变小窗尺寸、滚动隐藏视频和裁切画面的模式不纳入候选。</p><p>同为 12 房，小主窗 L 型更接近 4× 面积目标，大主窗 L/U 型通常覆盖更多画墙。</p><div class="mt-2 flex flex-wrap gap-x-3 text-[#f3a77e]"><a href="https://github.com/huangzida/video-wall-player" target="_blank" rel="noopener noreferrer">Video Wall</a><a href="https://github.com/aullman/opentok-layout-js" target="_blank" rel="noopener noreferrer">OpenTok</a><a href="https://github.com/thangdevalone/meeting-grid-layout" target="_blank" rel="noopener noreferrer">Meeting Grid</a><a href="https://github.com/livekit/components-js" target="_blank" rel="noopener noreferrer">LiveKit</a></div></div></details></footer>
+  </div>
+  <noscript><p class="fixed inset-x-0 top-0 z-50 bg-red-950 p-4 text-center text-white">请启用 JavaScript 查看排列预览。</p></noscript>
+</body>
+</html>

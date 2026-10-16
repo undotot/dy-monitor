@@ -345,9 +345,10 @@ const videoA = tileA.querySelector("video");
 const originalTiles = [...wall.querySelectorAll(".tile-shell")];
 click(menuOf(tileA).find((el) => el.textContent.includes("放大该房间")));
 check("放大后进入聚焦布局", wall.classList.contains("is-focused"));
-check("主房间位于左上", tileA.parentElement === wall && tileA.style.gridColumn === "1" && tileA.style.gridRow === "1");
-check("右侧和底部均有小房间", query('[data-focus-region="right"]').hidden === false && query('[data-focus-region="bottom"]').hidden === false);
 const smallTiles = originalTiles.filter((tile) => tile !== tileA);
+check("主房间在完整矩形左上且使用绝对坐标", tileA.parentElement === wall && tileA.style.position === "absolute" && parseFloat(tileA.style.left) === 0 && parseFloat(tileA.style.top) >= 0);
+check("右侧和底部均有小房间", smallTiles.some((tile) => parseFloat(tile.style.left) >= parseFloat(tileA.style.left) + parseFloat(tileA.style.width) - 0.01)
+  && smallTiles.some((tile) => parseFloat(tile.style.top) >= parseFloat(tileA.style.top) + parseFloat(tileA.style.height) - 0.01));
 check("主画面至少 640px，小窗等大且不小于 120×60", parseFloat(tileA.style.width) >= 635 && new Set(smallTiles.map((tile) => tile.style.width)).size === 1 && new Set(smallTiles.map((tile) => tile.style.height)).size === 1 && smallTiles.every((tile) => parseFloat(tile.style.width) >= 120 && parseFloat(tile.style.height) >= 60));
 check("布局切换复用所有视频节点", originalTiles.every((tile) => wall.contains(tile)) && tileA.querySelector("video") === videoA);
 check("房间标题不再显示房号前缀", qa("[data-wall] [data-name]").every((el) => !/^\d+\s*·/.test(el.textContent)));
@@ -415,12 +416,12 @@ sourceRoom.dispatchEvent(rootDrag);
 targetRoom.dispatchEvent(new win.Event("dragover", { bubbles: true, cancelable: true }));
 check("拖动时提供源房间与落点提示", sourceRoom.classList.contains("is-dragging") && targetRoom.classList.contains("is-drop-target"));
 targetRoom.dispatchEvent(new win.Event("drop", { bubbles: true, cancelable: true }));
-check("放大模式拖动交换后目标房间接替左侧主区域", targetRoom.parentElement === wall && targetRoom.classList.contains("is-focused") && targetRoom.style.gridColumn === "1" && !sourceRoom.classList.contains("is-focused"));
+check("放大模式拖动交换后目标房间接替左侧主区域", targetRoom.parentElement === wall && targetRoom.classList.contains("is-focused") && targetRoom.style.position === "absolute" && !sourceRoom.classList.contains("is-focused"));
 check("拖动结束清除提示并保留视频节点", !sourceRoom.classList.contains("is-dragging") && !targetRoom.classList.contains("is-drop-target") && sourceRoom.querySelector("video") === videoA);
 click(menuOf(targetRoom).find((el) => el.textContent.includes("恢复平铺")));
 sourceRoom.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
 check("选中房间带有无障碍选中状态", sourceRoom.getAttribute("aria-current") === "true");
-check("选中房间仅名称淡粉染色且画面零边框零图标", /\.tile-shell\.is-selected \.t-name\s*\{[^}]*color:\s*#ffb3c8/.test(bundle) && !/\.tile-shell\.is-selected\s*\{[^}]*outline:/.test(bundle) && !bundle.includes(".tile-shell.is-selected .tile-status::before"));
+check("选中房间由标题栏变色高亮且画面零边框零图标", /\.tile-shell\.is-selected \.tile-status\s*\{[^}]*background:\s*var\(--grad\)/.test(bundle) && !bundle.includes(".tile-shell.is-selected .tile-status::before"));
 check("选中状态不强制显示控制器遮挡画面", !bundle.includes(".tile-shell.is-selected .tile-tools"));
 
 /* --- 汇总 --- */
