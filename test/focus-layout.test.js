@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFocusLayout } from "../src/core/focus-layout.js";
+import { calculateFocusLayout, resolveFocusLayout } from "../src/core/focus-layout.js";
 import { auditRecursiveLayout } from "../src/core/focus-layout-geometry.js";
 
 const RATIO = 16 / 9;
@@ -120,4 +120,51 @@ test("14 房回退完整等大网格，2 房保持几何允许的等大画面", 
     assert.equal(plan.fallback, count === 14);
     assert.ok(auditRecursiveLayout(plan.layoutPlan, count).valid);
   }
+});
+
+test("指定主窗比例冲突时，枚举其他主窗；1个异比例房间可作为主窗保留放大", () => {
+  for (const [width, height] of [[2246, 994], [1194, 834], [600, 900]]) {
+    for (const count of [3, 5, 8, 14, 16]) {
+      for (const [mainRatio, smallRatio] of [[9 / 16, RATIO], [RATIO, 9 / 16], [4 / 3, RATIO]]) {
+        const rooms = Array.from({ length: count }, (_, index) => ({ id: `room-${index}`, ratio: index === count - 1 ? mainRatio : smallRatio }));
+        const resolved = resolveFocusLayout({ width, height, rooms, mainRoomId: "room-0" });
+        assert.equal(resolved.mainChanged, true);
+        assert.equal(resolved.mainRoomId, `room-${count - 1}`);
+        assert.equal(resolved.requestedMainRoomId, "room-0");
+        assert.equal(resolved.plan.status, "ready");
+        assert.equal(auditRecursiveLayout(resolved.plan.layoutPlan, count).valid, true);
+        close(resolved.plan.main.width / resolved.plan.main.height, mainRatio);
+        for (const placement of resolved.plan.placements) {
+          close(placement.width / placement.height, smallRatio);
+          const original = resolved.plan.layoutPlan.rects.find((rect) => rect.roomId === resolved.secondaryRoomIds[placement.index]);
+          assert.ok(original);
+          close(placement.x, original.x);
+          close(placement.y, original.y);
+        }
+        const repeated = resolveFocusLayout({ width, height, rooms, mainRoomId: resolved.mainRoomId, previous: resolved.plan });
+        assert.equal(repeated.mainChanged, false);
+        assert.equal(repeated.plan.signature, resolved.plan.signature);
+      }
+    }
+  }
+});
+
+test("当前主窗可行时保持用户选择，全部主窗不可行才报告场景冲突", () => {
+  const options = { width: 1920, height: 1080, rooms: [
+    { id: "a", ratio: RATIO }, { id: "b", ratio: RATIO }, { id: "c", ratio: 9 / 16 },
+  ] };
+  assert.equal(resolveFocusLayout({ ...options, mainRoomId: "c" }).mainChanged, false);
+  const same = { ...options, rooms: options.rooms.map((room) => ({ ...room, ratio: RATIO })) };
+  assert.equal(resolveFocusLayout({ ...same, mainRoomId: "b" }).mainRoomId, "b");
+  const impossible = resolveFocusLayout({ ...options, mainRoomId: "a", rooms: [
+    ...options.rooms, { id: "d", ratio: 9 / 16 },
+  ] });
+  assert.equal(impossible.plan.status, "infeasible");
+  assert.equal(impossible.plan.code, "SECONDARY_RATIO_MISMATCH");
+  assert.equal(impossible.mainChanged, false);
+  // 无尺寸时等待真实测量，不擅自换主窗。
+  assert.equal(resolveFocusLayout({ ...options, mainRoomId: "a", width: 0 }).plan, null);
+  assert.equal(resolveFocusLayout({ ...options, mainRoomId: "missing" }), null);
+  assert.equal(resolveFocusLayout({ ...options, rooms: null }), null);
+  assert.equal(resolveFocusLayout({ ...options, rooms: [{ id: "a", ratio: RATIO }, { id: "a", ratio: RATIO }] }), null);
 });

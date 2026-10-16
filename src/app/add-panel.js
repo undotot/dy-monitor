@@ -1,7 +1,7 @@
 import { MAX_TILES, safeMessage } from "../core/settings.js";
 import { parseRoom } from "../core/room.js";
 import { fetchProbe } from "../api/probe.js";
-import { searchRooms } from "../api/search.js";
+import { searchRoomPage } from "../api/search.js";
 import { fetchFollowRooms, isExcludedFollowRoom } from "../api/follow.js";
 import { loadHistory, recordHistory } from "../api/history.js";
 import { addRowMarkup } from "../ui/tile-markup.js";
@@ -11,10 +11,24 @@ import { replaceTileRoom } from "./replace-room.js";
 import { closeTileSettingsPanels } from "./tile-events.js";
 
 // 添加房间面板：关注 / 历史 / 搜索 / 手动四个标签页，批量勾选与状态探测。
-export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = searchRooms, followRooms = fetchFollowRooms } = {}) {
+export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = searchRoomPage, followRooms = fetchFollowRooms, searchDelay = 500 } = {}) {
   const addState = ctx.addState;
   const els = ctx.els;
   const query = (selector) => ctx.wrapper.querySelector(selector);
+  const clock = ctx.wrapper.ownerDocument.defaultView;
+  let searchTimer = null;
+  let composing = false;
+  const handleCancelPendingSearch = () => {
+    if (searchTimer !== null) clock.clearTimeout(searchTimer);
+    searchTimer = null;
+  };
+  const updateSearchPagination = () => {
+    const more = query("[data-add-search-more]");
+    if (!more) return;
+    more.hidden = addState.mode !== "search" || !addState.searchHasMore;
+    more.disabled = Boolean(addState.searchLoading);
+    more.textContent = addState.searchLoading ? "正在加载…" : "加载更多主播";
+  };
 
   ctx.hasRoom = (rid) => [...ctx.tiles.values()].some((tile) => tile.rid === String(rid));
 
@@ -44,6 +58,8 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
 
   ctx.renderAddList = () => {
     els.addList.replaceChildren();
+    els.addList.setAttribute("aria-busy", String(Boolean(addState.searchLoading)));
+    updateSearchPagination();
     if (addState.mode === "manual") {
       const box = document.createElement("div");
       box.className = "manual-box";
@@ -97,8 +113,16 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
       const empty = document.createElement("div");
       empty.className = "fhint";
       empty.style.padding = "18px 4px";
-      empty.textContent = addState.mode === "search" ? "没有找到直播间，可换房号或完整主播名" : "暂无内容";
+      empty.textContent = addState.mode === "search" ? addState.searchLoading ? "正在搜索…" : addState.searchError ? "搜索未完成，请重试" : "没有找到直播间，可换房号或完整主播名" : "暂无内容";
       els.addList.append(empty);
+      if (addState.searchError) {
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn";
+        retry.dataset.addSearchRetry = "";
+        retry.textContent = "重新搜索";
+        els.addList.append(retry);
+      }
     }
     updateAddFooter();
   };
@@ -138,6 +162,12 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
   };
 
   ctx.loadAddTab = async (tab) => {
+    handleCancelPendingSearch();
+    composing = false;
+    addState.searchLoading = false;
+    addState.searchHasMore = false;
+    addState.searchError = false;
+    addState.query = "";
     addState.tab = tab;
     // manual 是标签页语义不是 mode 语义：mode 只区分“标签页 / 搜索”。
     addState.mode = tab === "manual" ? "manual" : "tab";
@@ -269,6 +299,9 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
   };
 
   ctx.closeAdd = () => {
+    handleCancelPendingSearch();
+    composing = false;
+    addState.searchLoading = false;
     addState.replaceController?.abort();
     addState.replaceController = null;
     handleReplacementBusy(false);
@@ -280,8 +313,12 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
     if (addState.probeController) addState.probeController.abort();
   };
 
-  ctx.runAddSearch = async () => {
+  ctx.runAddSearch = async ({ append = false } = {}) => {
+    handleCancelPendingSearch();
+    if (els.addPanel.hidden || composing || addState.replaceController) return;
     const text = els.addSearch.value.trim();
+    append = append && addState.query === text;
+    const page = append ? (addState.searchPage || 1) + 1 : 1;
     addState.generation++;
     addState.controller?.abort();
     addState.controller = null;
@@ -293,27 +330,41 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
     }
     const generation = addState.generation;
     addState.mode = "search";
+    addState.query = text;
     addState.controller = new AbortController();
-    addState.rooms = [];
+    const controller = addState.controller;
+    addState.searchLoading = true;
+    addState.searchError = false;
+    if (!append) { addState.rooms = []; addState.searchHasMore = false; }
     ctx.renderAddList();
     els.addStatus.textContent = "正在搜索…";
     try {
-      const rooms = await searchForRooms(text, addState.controller.signal, probeRoom);
-      if (generation !== addState.generation) return;
-      addState.rooms = rooms;
+      const result = await searchForRooms(text, controller.signal, probeRoom, { page });
+      if (generation !== addState.generation || controller.signal.aborted) return;
+      // 测试/扩展可提供只返回数组的搜索器；正式接口提供分页信息。
+      const rooms = Array.isArray(result) ? result : result.rooms;
+      addState.searchPage = page;
+      addState.searchHasMore = !Array.isArray(result) && result.hasMore;
+      addState.searchTotal = Array.isArray(result) ? rooms.length : result.total;
+      addState.searchLoading = false;
+      addState.rooms = [...new Map([...(append ? addState.rooms : []), ...rooms].map((room) => [room.rid, room])).values()];
       ctx.renderAddList();
-      els.addStatus.textContent = `找到 ${rooms.length} 个直播间，${addState.replaceTileId ? "选择一个房间替换当前画格" : "勾选后批量添加，或点击“添加”"}`;
+      els.addStatus.textContent = `已显示 ${addState.rooms.length} 个房间${addState.searchHasMore ? `，共 ${addState.searchTotal} 个结果，可加载更多` : ""}，${addState.replaceTileId ? "选择一个房间替换当前画格" : "勾选后批量添加，或点击“添加”"}`;
       ctx.probeRoomsStatus(rooms.filter((room) => !normalizeRoomName(room.name, room.rid)), () => {
         if (generation === addState.generation) ctx.renderAddList();
       });
     } catch (error) {
-      if (generation !== addState.generation) return;
+      if (generation !== addState.generation || controller.signal.aborted) return;
+      addState.searchLoading = false;
+      addState.searchError = true;
+      ctx.renderAddList();
       els.addStatus.textContent = `搜索失败：${safeMessage(error)}`;
     }
   };
 
   /* --- 事件绑定 --- */
   els.addList.addEventListener("click", (event) => {
+    if (event.target.closest("[data-add-search-retry]")) { void ctx.runAddSearch(); return; }
     const row = event.target.closest("[data-rid]");
     if (!row) return;
     const room = addState.rooms.find((entry) => String(entry.rid) === row.dataset.rid);
@@ -330,42 +381,48 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
     }
   });
 
-  // 回车才发起搜索，输入过程不搜；空输入回车与清空输入都回到当前标签页列表。
-  // 输入法的回车键只负责把中文上屏：此前拦截上屏回车会打断输入法提交，中文永远
-  // 到不了搜索框，只有未转换的拼音能搜到。上屏完成后再沿用同一次回车意图搜一次。
-  let searchAfterCompose = false;
-  const submitSearch = () => {
+  // 输入变化立即使旧请求失效，不能等防抖结束才取消，否则旧结果会盖住新输入。
+  const handleScheduleSearch = () => {
+    handleCancelPendingSearch();
+    addState.generation++;
+    addState.controller?.abort();
+    addState.probeController?.abort();
     const text = els.addSearch.value.trim();
-    if (/^\d+$/.test(text) || /^https?:/i.test(text)) {
-      try {
-        const room = { rid: parseRoom(text), name: "" };
-        if (addState.replaceTileId) { void ctx.replaceRoomFromPanel(room); return; }
-        ctx.addRoomFromPanel(room);
-        els.addSearch.value = "";
-      } catch (error) {
-        els.addStatus.textContent = safeMessage(error);
-      }
-      return;
-    }
-    void ctx.runAddSearch();
+    if (!text) { void ctx.loadAddTab(addState.tab); return; }
+    if (els.addPanel.hidden || addState.replaceController) return;
+    addState.mode = "search";
+    addState.rooms = [];
+    addState.searchHasMore = false;
+    addState.searchLoading = true;
+    addState.searchError = false;
+    ctx.renderAddList();
+    els.addStatus.textContent = composing ? "正在输入，选词完成后自动搜索" : "停止输入片刻后自动搜索…";
+    if (composing) return;
+    searchTimer = clock.setTimeout(() => { searchTimer = null; void ctx.runAddSearch(); }, searchDelay);
   };
-  els.addSearch.addEventListener("input", () => {
-    if (!els.addSearch.value.trim()) void ctx.loadAddTab(addState.tab);
+  els.addSearch.addEventListener("compositionstart", () => {
+    composing = true;
+    handleCancelPendingSearch();
+    addState.generation++;
+    addState.controller?.abort();
+    addState.probeController?.abort();
+  });
+  els.addSearch.addEventListener("input", (event) => {
+    if (event.isComposing) composing = true;
+    handleScheduleSearch();
   });
   els.addSearch.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    if (event.isComposing || event.keyCode === 229) {
-      searchAfterCompose = true;
-      return;
-    }
+    if (event.key !== "Enter" || composing || event.isComposing || event.keyCode === 229) return;
+    // Enter 不搜索、不直接添加；仅阻止外层表单的默认提交。
     event.preventDefault();
-    searchAfterCompose = false;
-    submitSearch();
   });
   els.addSearch.addEventListener("compositionend", () => {
-    if (!searchAfterCompose) return;
-    searchAfterCompose = false;
-    submitSearch();
+    composing = false;
+    handleScheduleSearch();
+  });
+  query("[data-add-search-more]")?.addEventListener("click", () => {
+    if (addState.searchLoading || !addState.searchHasMore) return;
+    void ctx.runAddSearch({ append: true });
   });
   for (const input of ctx.wrapper.querySelectorAll("[name=add-tab]")) input.addEventListener("change", () => void ctx.loadAddTab(input.value));
   query("[data-add-open]").addEventListener("click", () => ctx.openAdd());

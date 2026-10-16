@@ -43,6 +43,7 @@ export function initShell(ctx) {
     ctx.closeContextMenu();
     ctx.closeAdd();
     ctx.hideToast();
+    for (const tile of ctx.tiles.values()) void tile.exitFullscreen?.();
     ctx.handleClosePip();
     ctx.opened = false;
     ctx.focused = null;

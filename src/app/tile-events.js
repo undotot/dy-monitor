@@ -1,5 +1,6 @@
 import { bindTileAudio } from "./tile-audio.js";
 import { bindTileTools, closeTileMore } from "./tile-tools.js";
+import { bindTileFullscreen, isTileFullscreen } from "./tile-fullscreen.js";
 
 export const closeTileSettingsPanels = (scope, except = null) => {
   for (const panel of scope.querySelectorAll("[data-tile-settings]")) {
@@ -62,14 +63,7 @@ export function bindTileEvents(ctx, tile) {
 
   find("[data-t-pip]")?.addEventListener("click", () => void ctx.handlePip(tile));
 
-  find("[data-t-full]")?.addEventListener("click", () => {
-    try {
-      if (root.ownerDocument.fullscreenElement === root) void root.ownerDocument.exitFullscreen();
-      else void root.requestFullscreen();
-    } catch (error) {
-      ctx.showToast(`全屏失败：${error.message || error}`, [], 5e3);
-    }
-  });
+  bindTileFullscreen(ctx, tile);
 
   find("[data-t-external]")?.addEventListener("click", () => {
     window.open(`https://www.douyu.com/${tile.rid}`, "_blank", "noopener,noreferrer");
@@ -97,6 +91,7 @@ export function bindTileEvents(ctx, tile) {
 
   root.addEventListener("dblclick", (event) => {
     if (event.target.closest("button, input, select, textarea, label, a, [data-dm-sidebar]")) return;
+    if (isTileFullscreen(root)) return;
     ctx.toggleFocus(tile);
   });
 

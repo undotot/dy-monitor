@@ -2,16 +2,21 @@ import { API_BASE } from "../core/settings.js";
 import { iconMarkup } from "../ui/icons.js";
 import { closeTileSettingsPanels, setTileDanmakuSettings } from "./tile-events.js";
 import { closeTileMore } from "./tile-tools.js";
+import { isTileFullscreen } from "./tile-fullscreen.js";
 
 // 右键菜单：画格快捷操作 + 弹幕设置 + 分隔线 + 移除；点击外部关闭菜单与画格设置浮层。
 export function initContextMenu(ctx) {
   ctx.closeContextMenu = () => {
     ctx.els.ctx.hidden = true;
     ctx.els.ctx.replaceChildren();
+    if (ctx.els.ctx.parentElement !== ctx.appShell) ctx.appShell.append(ctx.els.ctx);
   };
 
   ctx.openContextMenu = (tile, clientX, clientY) => {
     const menu = ctx.els.ctx;
+    // 原生全屏只显示目标及其后代，不能把右键菜单留在外面的 app-shell。
+    const menuParent = isTileFullscreen(tile.root) ? tile.root : ctx.appShell;
+    if (menu.parentElement !== menuParent) menuParent.append(menu);
     menu.replaceChildren();
     const items = [
       [tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 重试" : "暂停", () => ctx.findAction(tile, "resume")],
@@ -21,7 +26,7 @@ export function initContextMenu(ctx) {
       [tile.danmaku.enabled ? "chatOff" : "chat", tile.danmaku.enabled ? "关闭弹幕" : "开启弹幕", () => ctx.findAction(tile, "danmaku")],
       ["settings", "弹幕设置 (飘屏范围/版式)…", () => setTileDanmakuSettings(tile, true)],
       ["pip", "弹幕画中画", () => void ctx.handlePip(tile)],
-      ["full", "全屏", () => ctx.findAction(tile, "full")],
+      ["full", isTileFullscreen(tile.root) ? "退出全屏" : "全屏", () => ctx.findAction(tile, "full")],
       ["external", "去该房间发弹幕", () => window.open(`${API_BASE}/${tile.rid}`, "_blank", "noopener,noreferrer")],
       ["edit", "修改房号", () => ctx.openAdd(tile)],
       ["layers", ctx.focused === tile.id ? "恢复平铺" : "放大该房间", () => ctx.toggleFocus(tile)]
@@ -48,7 +53,7 @@ export function initContextMenu(ctx) {
     });
     menu.append(remove);
     menu.hidden = false;
-    const rect = ctx.appShell.getBoundingClientRect();
+    const rect = menuParent.getBoundingClientRect();
     const x = Math.min(clientX - rect.left, rect.width - menu.offsetWidth - 8);
     const y = Math.min(clientY - rect.top, rect.height - menu.offsetHeight - 8);
     menu.style.left = `${Math.max(8, x)}px`;

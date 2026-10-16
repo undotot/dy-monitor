@@ -104,7 +104,7 @@ export function shellMarkup() {
           <div class="add-card">
             <div class="add-head">
               <h2 data-add-title>添加房间</h2>
-              <label class="field">${iconMarkup("search")}<input data-add-search aria-label="房号、链接或主播名" autocomplete="off" maxlength="2048" placeholder="房号 / 斗鱼链接 / 主播名（回车搜索）"></label>
+              <label class="field">${iconMarkup("search")}<input data-add-search aria-label="房号、链接或主播名" autocomplete="off" maxlength="2048" placeholder="房号 / 斗鱼链接 / 主播名（停输后自动搜索）"></label>
               <label class="fitem" data-add-rate-wrap><span class="tb-label">新房间画质</span><select data-default-rate class="sel sel-sm">${rateOptions}</select></label>
               <button data-add-close type="button" class="ibtn" title="关闭" aria-label="关闭添加面板">${iconMarkup("close")}</button>
             </div>
@@ -116,6 +116,7 @@ export function shellMarkup() {
               </span>
             </div>
             <div data-add-list class="add-list"></div>
+            <button data-add-search-more type="button" class="btn" hidden>加载更多主播</button>
             <div class="add-foot">
               <span class="add-status" data-add-status role="status"></span>
               <button data-add-selected class="btn">添加选中</button>

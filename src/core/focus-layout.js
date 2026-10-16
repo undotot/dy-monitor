@@ -6,6 +6,35 @@ const DEFAULT_RATIO = 16 / 9;
 const ratioOf = (value) => Number.isFinite(value) && value > 0 ? value : DEFAULT_RATIO;
 const areaOf = (box) => box.width * box.height;
 
+/**
+ * 先保留指定主窗；它的副窗比例冲突时，再检查其他房间是否能作为主窗。
+ * 单个主窗不可行不代表整个场景不可行。副窗索引始终绑定实际主窗对应的房间顺序。
+ */
+export const resolveFocusLayout = ({ rooms, mainRoomId, ...options }, calculateLayout = calculateFocusLayout) => {
+  if (!Array.isArray(rooms) || !rooms.length || rooms.length > 16
+    || rooms.some((room) => !room || !["string", "number"].includes(typeof room.id) || !String(room.id).trim())) return null;
+  const normalized = rooms.map((room) => ({ id: String(room.id), ratio: ratioOf(room.ratio) }));
+  if (new Set(normalized.map((room) => room.id)).size !== normalized.length) return null;
+  const requested = normalized.find((room) => room.id === String(mainRoomId));
+  if (!requested) return null;
+  const calculateFor = (main) => {
+    const secondaries = normalized.filter((room) => room !== main);
+    const plan = calculateLayout({ ...options, mainRoomId: main.id, mainRatio: main.ratio,
+      secondaryRoomIds: secondaries.map((room) => room.id), secondaryRatios: secondaries.map((room) => room.ratio) });
+    return { plan, mainRoomId: main.id, secondaryRoomIds: secondaries.map((room) => room.id),
+      requestedMainRoomId: requested.id, mainChanged: main.id !== requested.id };
+  };
+  const preferred = calculateFor(requested);
+  // 尺寸尚未就绪或其他错误不应触发主窗跳转；这里只处理可通过换主窗消除的比例冲突。
+  if (preferred.plan?.status !== "infeasible" || preferred.plan.code !== "SECONDARY_RATIO_MISMATCH") return preferred;
+  for (const candidate of normalized) {
+    if (candidate === requested) continue;
+    const result = calculateFor(candidate);
+    if (result.plan?.status === "ready") return result;
+  }
+  return preferred;
+};
+
 /** 将共用拼接结果转换为播放器的绝对坐标；全部视频节点保持原身份。 */
 export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO, secondaryRatios = [],
   mainRoomId = "main", secondaryRoomIds = [], mainWeight = DEFAULT_FOCUS_MAIN_WEIGHT, previous = null }) => {

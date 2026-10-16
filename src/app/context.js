@@ -28,6 +28,7 @@ export function createContext() {
     addState: {
       tab: "all", mode: "tab", query: "", rooms: [], selected: new Map(),
       generation: 0, controller: null, followRooms: null, probeController: null,
+      searchPage: 1, searchHasMore: false, searchTotal: 0, searchLoading: false, searchError: false,
       replaceTileId: null, replaceController: null
     },
   };

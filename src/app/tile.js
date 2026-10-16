@@ -30,6 +30,8 @@ export function initTile(ctx) {
   };
 
   ctx.removeTile = (tile) => {
+    void tile.exitFullscreen?.();
+    tile.disconnectFullscreen?.();
     if (ctx.pipSession?.tile === tile) ctx.handleClosePip();
     ctx.stop(tile);
     tile.nameRequest?.abort();

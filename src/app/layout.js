@@ -1,4 +1,4 @@
-import { calculateFocusLayout as defaultFocusLayout } from "../core/focus-layout.js";
+import { calculateFocusLayout as defaultFocusLayout, resolveFocusLayout } from "../core/focus-layout.js";
 import { clearTileGeometry } from "../ui/tile-geometry.js";
 
 export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, allowSingleFocus = false } = {}) {
@@ -121,21 +121,28 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     const height = rect.height || ctx.wall.clientHeight;
     // 关闭的 dialog 无尺寸，等待打开后的 ResizeObserver，避免用虚构屏幕尺寸计算。
     if (!width || !height) return;
-    const mainTile = ctx.tiles.get(ctx.focused);
-    const secondaries = list.filter((tile) => tile.id !== ctx.focused);
     const ratioOf = (tile) => tile.video.videoWidth && tile.video.videoHeight ? tile.video.videoWidth / tile.video.videoHeight : 16 / 9;
-    const plan = calculateFocusLayout({ width, height, mainRatio: ratioOf(mainTile), secondaryRatios: secondaries.map(ratioOf),
-      mainRoomId: mainTile.id, secondaryRoomIds: secondaries.map((tile) => tile.id), previous: ctx.focusLayout });
+    const resolved = resolveFocusLayout({ width, height, mainRoomId: ctx.focused,
+      rooms: list.map((tile) => ({ id: tile.id, ratio: ratioOf(tile) })), previous: ctx.focusLayout }, calculateFocusLayout);
+    const plan = resolved?.plan;
     if (!plan) return;
-    // 混合副窗比例无法同时等大且无内部黑边；清理旧坐标并明确恢复平铺。
+    // 已检查其他主窗；只有整个场景仍不可行时才清理坐标并恢复平铺。
     if (plan.status === "infeasible") {
       ctx.focused = null;
       ctx.handleLayout();
       ctx.applyAudioAll();
       const reason = plan.code === "SECONDARY_RATIO_MISMATCH"
-        ? "副窗源比例不同，无法同时满足小窗等大与无内部黑边。" : plan.reason;
+        ? "已检查所有房间作为主窗，副窗源比例仍无法统一，不能同时满足小窗等大与无内部黑边。" : plan.reason;
       ctx.showToast?.(`${reason}已恢复平铺。`, [], 6000);
       return;
+    }
+    const mainTile = ctx.tiles.get(resolved.mainRoomId);
+    const secondaries = resolved.secondaryRoomIds.map((id) => ctx.tiles.get(id));
+    if (resolved.mainChanged) {
+      ctx.focused = mainTile.id;
+      // 元数据/分辨率变化也会走这里；按既有声音跟随设置同步实际主窗。
+      ctx.applyAudioAll();
+      ctx.showToast?.("已自动切换可行主窗，使其他小窗保持等大、原比例且无内部黑边。", [], 6000);
     }
     ctx.focusLayout = plan;
     ctx.wall.dataset.focusLayout = plan.layoutShape ?? plan.family;

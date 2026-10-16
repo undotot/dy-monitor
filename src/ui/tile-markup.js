@@ -35,7 +35,7 @@ export const tileMarkup = () => `
     <span data-tool-quality-anchor><span class="tool-quality"><select data-t-rate class="rate-select sel" title="清晰度切换" aria-label="画质"></select></span></span>
     <span class="tool-divider" aria-hidden="true"></span>
     <button data-t-pip type="button" class="ibtn" title="画中画 (PiP)" aria-label="画中画"></button>
-    <button data-t-full type="button" class="ibtn" title="网页全屏" aria-label="全屏"></button>
+    <button data-t-full type="button" class="ibtn" title="全屏" aria-label="全屏" aria-pressed="false"></button>
     <button data-t-remove-bar type="button" class="ibtn tool-del" style="color:#f87171;" title="移除房间" aria-label="移除房间"></button>
     <button data-t-more type="button" class="ibtn tool-more-btn" aria-label="更多直播间操作" title="更多操作" aria-haspopup="menu" aria-expanded="false" style="display:none;">${iconMarkup("more")}</button>
   </div>

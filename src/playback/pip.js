@@ -5,6 +5,7 @@ import { clearTileGeometry } from "../ui/tile-geometry.js";
 import { roomDisplayName } from "../core/room-name.js";
 import { bindTileAudio } from "../app/tile-audio.js";
 import { observeTileControls } from "../core/tile-scale.js";
+import { bindTileFullscreen } from "../app/tile-fullscreen.js";
 
 // Document Picture-in-Picture：画格迁入独立窗口播放，网页原位留占位。
 export function initPip(ctx) {
@@ -16,6 +17,7 @@ export function initPip(ctx) {
     session.tile.disconnectControls?.();
     session.placeholder.replaceWith(session.tile.root);
     bindTileAudio(ctx, session.tile);
+    bindTileFullscreen(ctx, session.tile);
     session.tile.disconnectControls = observeTileControls(session.tile.root);
     session.tile.root.classList.toggle("is-selected", session.tile.id === ctx.selectedId);
     setIconButton(session.tile.pipButton, "pip", "弹幕画中画");
@@ -76,6 +78,7 @@ export function initPip(ctx) {
       container.append(tile.root);
       pipDocument.body.append(container);
       bindTileAudio(ctx, tile);
+      bindTileFullscreen(ctx, tile);
       tile.disconnectControls = observeTileControls(tile.root);
       const session = { tile, window: pipWindow, placeholder };
       ctx.pipSession = session;

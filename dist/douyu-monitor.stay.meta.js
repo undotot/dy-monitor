@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         监控室 · iPad/Stay版
 // @namespace    https://github.com/undotot/monitor-js
-// @version      1.4.5
+// @version      1.4.6
 // @description  斗鱼我的关注页多路监看（iPad Safari / Stay 专属适配版）：安全挂载、触屏手势、免urlchange内置路由。
 // @match        https://www.douyu.com/*
 // @run-at       document-idle

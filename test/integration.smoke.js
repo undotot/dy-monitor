@@ -43,7 +43,7 @@ assert.ok(!/\.tile-status\s*\{[^}]*max-width/.test(bundle), "胶囊不设 max-wi
 assert.ok(!/\.style\.width\s*=/.test(bundle), "全产物不写内联 width：胶囊宽度只能来自样式表的 auto");
 assert.ok(!bundle.includes("tile-header-mask"), "胶囊只含状态点与直播间名，不再有顶部遮罩");
 assert.ok(/\.wall\s*\{[^}]*gap:\s*0\.5px/.test(bundle) && /rgba\(56, 138, 240/.test(bundle), "画墙缝隙为 0.5px 冷蓝数据线");
-assert.ok(/getSearchRecV2\?kw=\$\{encodeURIComponent/.test(bundle), "添加直播间搜索固定走 getSearchRecV2 接口，kw 为搜索关键词");
+assert.ok(/searchUser\?kw=\$\{encodeURIComponent/.test(bundle) && bundle.includes("filterType=1"), "添加直播间使用官网正式主播搜索接口，而非输入联想");
 assert.ok(/videoLoop/.test(bundle) && /\.isLoop/.test(bundle), "轮播标志 videoLoop/isLoop 参与三态映射（轮播中/直播中/未开播）");
 assert.ok(/tile-audio-corner/.test(bundle), "右上角包含常驻声音控制胶囊");
 assert.ok(/room_name/.test(bundle), "关注列表过滤覆盖 room_name 等标题字段");
@@ -97,11 +97,11 @@ const stubJson = (body) => Promise.resolve({ ok: true, status: 200, json: () => 
 copy("fetch", (url) => {
   const href = String(url);
   if (href.includes("/japi/weblist/api/getFollowList")) return stubJson({ error: 0, data: { list: stubFollowRooms } });
-  if (href.includes("getSearchRecV2")) {
+  if (href.includes("/japi/search/api/searchUser")) {
     const kw = decodeURIComponent((href.split("kw=")[1] || "").split("&")[0]);
     return stubJson({
       error: 0,
-      data: stubFollowRooms.filter((room) => room.nickname.includes(kw)).map((room) => ({ roomResult: { rid: Number(room.rid), nickName: room.nickname, isLive: room.rid === "400004" ? 2 : 1, isLoop: room.rid === "400012" ? 1 : 0 } })),
+      data: { total: 1, pageSize: 28, relateUser: stubFollowRooms.filter((room) => room.nickname.includes(kw)).map((room) => ({ type: 1, anchorInfo: { rid: Number(room.rid), nickName: room.nickname, isLive: room.rid === "400004" ? 2 : 1, isLoop: room.rid === "400012" ? 1 : 0 } })) },
     });
   }
   const betard = href.match(/\/betard\/(\d+)/);
@@ -253,10 +253,10 @@ const search = query("[data-add-search]");
 search.value = "关注主播5";
 search.dispatchEvent(new win.Event("input", { bubbles: true }));
 await sleep(120);
-check("输入过程不搜索（回车才搜）", qa("[data-add-list] [data-rid]").length === 12);
+check("停输不足500ms时不发起搜索", qa("[data-add-list] [data-rid]").length === 0);
 search.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-await sleep(400);
-check("回车后才发起搜索", qa("[data-add-list] [data-rid]").length === 1);
+await sleep(500);
+check("停止输入后自动搜索，Enter不改变时机", qa("[data-add-list] [data-rid]").length === 1);
 check("搜索后原勾选保留", query("[data-add-selected]").textContent.includes("（1）"));
 rows()[0].querySelector("[data-chk]").click();
 check("不同列表选择累计且去重", query("[data-add-selected]").textContent.includes("（2）"));
@@ -271,26 +271,27 @@ await sleep(120);
 search.value = "关注主播5";
 search.dispatchEvent(new win.Event("input", { bubbles: true }));
 await sleep(120);
-check("输入仍未搜索", qa("[data-add-list] [data-rid]").length === 12);
+check("新输入等待防抖，旧结果已清空", qa("[data-add-list] [data-rid]").length === 0);
 search.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-await sleep(400);
+await sleep(500);
 check("搜索命中 1 行", qa("[data-add-list] [data-rid]").length === 1);
 search.value = "";
 search.dispatchEvent(new win.Event("input", { bubbles: true }));
 await sleep(120);
 check("清空搜索回到关注列表", qa("[data-add-list] [data-rid]").length === 12);
 
-// 输入法的回车键只把中文上屏（isComposing），不直接搜索；上屏完成后沿用同一次回车意图搜一次。
+// 中文组词期间不搜索，上屏后自动防抖搜索，不依赖回车。
+search.dispatchEvent(new win.Event("compositionstart", { bubbles: true }));
 search.value = "关注主播5";
 search.dispatchEvent(new win.Event("input", { bubbles: true }));
 const composingEnter = new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
 Object.defineProperty(composingEnter, "isComposing", { value: true });
 search.dispatchEvent(composingEnter);
 await sleep(120);
-check("输入法上屏回车不直接搜索", qa("[data-add-list] [data-rid]").length === 12);
+check("输入法上屏回车不直接搜索", qa("[data-add-list] [data-rid]").length === 0);
 search.dispatchEvent(new win.Event("compositionend", { bubbles: true }));
-await sleep(400);
-check("上屏完成后沿用回车意图搜索", qa("[data-add-list] [data-rid]").length === 1);
+await sleep(600);
+check("上屏完成后自动搜索", qa("[data-add-list] [data-rid]").length === 1);
 search.value = "";
 search.dispatchEvent(new win.Event("input", { bubbles: true }));
 await sleep(120);

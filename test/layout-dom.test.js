@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import { initLayout } from "../src/app/layout.js";
+import { initAudio } from "../src/app/audio.js";
 import { clearTileGeometry } from "../src/ui/tile-geometry.js";
 import { calculateUniformFocusLayout } from "../src/core/focus-uniform-layout.js";
 
@@ -52,23 +53,104 @@ test("正式放大与等大回退复用同一批媒体节点，缩放和退出�
   } finally { win.close(); }
 });
 
-test("元数据出现副窗比例冲突时恢复平铺并说明原因，不遗留旧放大坐标", () => {
+test("副窗元数据出现异比例时自动改用可行主窗，不误退出放大或重建媒体", () => {
   const { win, ctx, tiles, wall, toasts } = makeScene(5);
   try {
     ctx.setFocus("0");
     const original = [...tiles.values()].map((tile) => tile.video);
+    ctx.selectedId = "0";
     Object.defineProperties(tiles.get("2").video, { videoWidth: { value: 900 }, videoHeight: { value: 1600 } });
+    ctx.handleLayout();
+    assert.equal(ctx.focused, "2");
+    assert.equal(ctx.selectedId, "0");
+    assert.equal(ctx.focusLayout.status, "ready");
+    assert.equal(wall.classList.contains("is-focused"), true);
+    assert.equal(tiles.get("2").root.classList.contains("is-focused"), true);
+    assert.equal(tiles.get("0").root.classList.contains("is-focused"), false);
+    assert.ok(Math.abs(ctx.focusLayout.main.width / ctx.focusLayout.main.height - 9 / 16) < 1e-7);
+    const smallRoots = [...tiles.values()].filter((tile) => tile.id !== "2").map((tile) => tile.root);
+    assert.equal(new Set(smallRoots.map((root) => root.style.width)).size, 1);
+    assert.equal(new Set(smallRoots.map((root) => root.style.height)).size, 1);
+    assert.equal(toasts.length, 1);
+    assert.match(toasts[0], /自动切换可行主窗/);
+    assert.deepEqual([...tiles.values()].map((tile) => tile.video), original);
+    assert.ok([...tiles.values()].every((tile) => tile.root.parentElement === wall && tile.video.volume === 0.35));
+    ctx.handleLayout();
+    assert.equal(ctx.focused, "2");
+    assert.equal(toasts.length, 1);
+    // 用户再次指定不可行主窗时仍保留可行的放大模式，而不是退出。
+    ctx.setFocus("0");
+    assert.equal(ctx.focused, "2");
+    ctx.toggleFocus(tiles.get("2"));
+    assert.equal(ctx.focused, null);
+    assert.equal(ctx.focusLayout, null);
+    assert.equal(wall.classList.contains("is-focused"), false);
+    assert.ok([...tiles.values()].every((tile) => tile.root.parentElement === wall && !tile.root.style.position && !tile.root.style.width));
+  } finally { win.close(); }
+});
+
+test("所有主窗都无法统一副窗比例时才恢复平铺，并清理旧坐标", () => {
+  const { win, ctx, tiles, wall, toasts } = makeScene(5);
+  try {
+    ctx.setFocus("0");
+    const original = [...tiles.values()].map((tile) => tile.video);
+    for (const id of ["2", "3"]) Object.defineProperties(tiles.get(id).video, { videoWidth: { value: 900 }, videoHeight: { value: 1600 } });
     ctx.handleLayout();
     assert.equal(ctx.focused, null);
     assert.equal(ctx.focusLayout, null);
     assert.equal(wall.classList.contains("is-focused"), false);
     assert.ok([...tiles.values()].every((tile) => tile.root.parentElement === wall && !tile.root.style.position && !tile.root.style.width));
     assert.equal(toasts.length, 1);
-    assert.match(toasts[0], /副窗源比例不同.*恢复平铺/);
+    assert.match(toasts[0], /已检查所有房间作为主窗.*恢复平铺/);
     assert.deepEqual([...tiles.values()].map((tile) => tile.video), original);
     ctx.handleLayout();
     assert.equal(toasts.length, 1);
   } finally { win.close(); }
+});
+
+test("自动换主窗时正确定位画中画占位，不移动画中画里的原播放器", () => {
+  const { win, ctx, tiles, wall } = makeScene(5);
+  try {
+    ctx.setFocus("0");
+    const tile = tiles.get("3");
+    Object.defineProperties(tile.video, { videoWidth: { value: 900 }, videoHeight: { value: 1600 } });
+    const placeholder = win.document.createElement("div");
+    tile.root.replaceWith(placeholder);
+    const pip = win.document.createElement("div");
+    win.document.body.append(pip);
+    pip.append(tile.root);
+    clearTileGeometry(tile.root);
+    ctx.pipSession = { tile, placeholder };
+    ctx.handleLayout();
+    assert.equal(ctx.focused, "3");
+    assert.equal(placeholder.parentElement, wall);
+    assert.equal(placeholder.style.width, `${ctx.focusLayout.main.width}px`);
+    assert.equal(tile.root.parentElement, pip);
+    assert.equal(tile.root.style.width, "");
+    assert.equal(tile.video.volume, 0.35);
+    assert.equal(tile.root.classList.contains("is-focused"), false);
+  } finally { win.close(); }
+});
+
+test("元数据触发自动换主窗后，声音仅按原有跟随偏好同步且保留每路音量", () => {
+  for (const followFocus of [false, true]) {
+    const { win, ctx, tiles } = makeScene(5);
+    try {
+      ctx.selectedId = "0";
+      ctx.audio = { mode: "solo", master: 0.5, followFocus };
+      for (const tile of tiles.values()) { tile.muted = false; tile.vol = 0.7; }
+      initAudio(ctx);
+      ctx.setFocus("0");
+      Object.defineProperties(tiles.get("2").video, { videoWidth: { value: 900 }, videoHeight: { value: 1600 } });
+      ctx.handleLayout();
+      assert.equal(ctx.focused, "2");
+      assert.equal(ctx.selectedId, "0");
+      for (const tile of tiles.values()) {
+        assert.equal(tile.video.muted, tile.id !== (followFocus ? "2" : "0"));
+        assert.equal(tile.video.volume, 0.35);
+      }
+    } finally { win.close(); }
+  }
 });
 
 test("聚焦、画中画占位与平铺复用原节点并恢复位置和顺序", () => {
