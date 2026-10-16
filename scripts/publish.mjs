@@ -155,12 +155,15 @@ async function main() {
     const changelog = existsSync(changelogPath) ? readFileSync(changelogPath, "utf8") : "# 更新日志\n\n";
     const today = new Date().toISOString().slice(0, 10);
     const notes = (releaseNotes || customMsg).split(/[;；\n]/).map((s) => s.trim()).filter(Boolean);
+    // 行尾统一按 LF 计算、写回时还原文件行尾：CRLF/混合行尾下 "\n\n" 字面匹配会错位，曾误走兜底分支重复插入标题
+    const eol = changelog.includes("\r\n") ? "\r\n" : "\n";
+    const normalized = changelog.replace(/\r\n/g, "\n");
     const entry = `## ${version} - ${today}\n${notes.map((n) => `- ${n}`).join("\n")}\n\n`;
-    const headerIdx = changelog.indexOf("\n\n");
-    const updatedChangelog = headerIdx >= 0
-      ? changelog.slice(0, headerIdx + 2) + entry + changelog.slice(headerIdx + 2)
-      : `# 更新日志\n\n${entry}${changelog}`;
-    writeFileSync(changelogPath, updatedChangelog, "utf8");
+    const headerIdx = normalized.indexOf("\n\n");
+    const updated = headerIdx >= 0
+      ? normalized.slice(0, headerIdx + 2) + entry + normalized.slice(headerIdx + 2)
+      : `# 更新日志\n\n${entry}${normalized}`;
+    writeFileSync(changelogPath, eol === "\n" ? updated : updated.replace(/\n/g, "\r\n"), "utf8");
     console.log(`✓ 已更新 CHANGELOG.md`);
   } catch (err) {
     console.warn(`⚠ 更新 CHANGELOG 警告：${err.message}`);
