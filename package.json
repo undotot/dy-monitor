@@ -1,6 +1,6 @@
 {
   "name": "douyu-monitor",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "description": "监控室 · 源码工程（构建产物为 Tampermonkey 单文件脚本）",
   "private": true,
   "type": "module",

@@ -26,12 +26,12 @@ const withScene = async (searchForRooms, work) => {
 const room = (rid, name = `主播${rid}`) => ({ rid, name, liveStatus: "live" });
 const page = (rooms, extra = {}) => ({ rooms, page: 1, hasMore: false, total: rooms.length, ...extra });
 
-test("连续输入只搜索停输后的最终关键词，Enter立即搜索但不添加", async () => {
+test("连续输入只搜索停输后的最终关键词，Enter不立即搜索或添加", async () => {
   const calls = [];
   await withScene(async (text) => { calls.push(text); return page([room("100")]); }, async ({ ctx, win, input }) => {
     input("a"); input("af"); input("阿飞");
     ctx.els.addSearch.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", cancelable: true }));
-    assert.deepEqual(calls, ["阿飞"]);
+    assert.deepEqual(calls, []);
     await sleep(70);
     assert.deepEqual(calls, ["阿飞"]);
     assert.equal(ctx.addState.rooms[0].rid, "100");

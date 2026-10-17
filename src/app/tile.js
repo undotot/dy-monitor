@@ -27,8 +27,9 @@ export function initTile(ctx) {
     ctx.tiles.clear();
     for (const [id, tile] of entries) ctx.tiles.set(id, tile);
     ctx.handleLayout();
+    // 选中跟随新主窗，避免选中与声音对象停留在被换走的房间。
     if (ctx.focused && nextSelected) ctx.select?.(nextSelected);
-    else ctx.renderRoomChrome?.();
+    else ctx.syncFocusBanner?.();
     ctx.save();
   };
 
@@ -40,21 +41,13 @@ export function initTile(ctx) {
     tile.nameRequest?.abort();
     tile.disconnectControls?.();
     tile.disconnectAudio?.();
-    if (ctx.soloRoomId === tile.id) {
-      ctx.soloRoomId = null;
-      if (ctx.audio.mode === "solo") {
-        ctx.audio.mode = "mute";
-        if (ctx.els.audioMode) ctx.els.audioMode.value = "mute";
-        ctx.showToast?.("独奏房间已移除，已切换为全部静音，请选择新的听音对象。", [], 5e3);
-      }
-    }
     ctx.tiles.delete(tile.id);
     tile.root.remove();
     if (ctx.focused === tile.id) ctx.focused = null;
     if (ctx.selectedId === tile.id) ctx.selectedId = null;
     ctx.handleLayout();
     ctx.updateCount();
-    ctx.renderRoomChrome?.();
+    ctx.syncFocusBanner?.();
     ctx.save();
   };
 
@@ -79,7 +72,6 @@ export function initTile(ctx) {
       }
     }
     tile.rateSel.value = String(tile.rate);
-    ctx.renderRoomChrome?.();
   };
 
   ctx.addTile = (rid, rate = 1, autoplay = true, danmaku = null, audioRestore = null, name = "") => {
@@ -99,7 +91,7 @@ export function initTile(ctx) {
       danmaku: normalizeDanmaku({ ...ctx.danmakuDefaults, ...(danmaku || {}), enabled: false }),
       retrying: false, retryAt: 0, retryTimer: null, watch: null, stableTimer: null, lastProbe: 0,
       dotEl: find("[data-dot]"), nameEl: find("[data-name]"),
-      noteEl: find("[data-note]"), retryEl: find("[data-retry]"), retryText: find("[data-retry-text]"), stateEl: find("[data-tile-state]"), muteMark: find("[data-mute-mark]"),
+      noteEl: find("[data-note]"), retryEl: find("[data-retry]"), retryText: find("[data-retry-text]"),
       loadingEl: find("[data-loading]"), loadingText: find("[data-loading-text]"),
       muteBtn: find("[data-t-mute]"), volSlider: find("[data-t-vol]"), volPct: find("[data-t-vol-pct]"), audioCorner: find("[data-audio-corner]"),
       resumeBtn: find("[data-t-resume]"), soloBtn: find("[data-t-solo]"), danmakuBtn: find("[data-t-danmaku]"),
@@ -151,7 +143,6 @@ export function initTile(ctx) {
     tile.disconnectControls = observeTileControls(root);
     ctx.handleLayout();
     ctx.updateCount();
-    ctx.renderRoomChrome?.();
     recordHistory(tile.rid, tile.name);
     ctx.save();
     if (autoplay) void ctx.handleStart(tile);

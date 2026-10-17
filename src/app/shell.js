@@ -42,10 +42,6 @@ export function initShell(ctx) {
     if (!ctx.opened) return;
     ctx.closeContextMenu();
     ctx.closeAdd();
-    ctx.closeRoomSheet?.();
-    ctx.exitReorder?.();
-    const exitPrompt = ctx.wrapper.querySelector("[data-exit-prompt]");
-    if (exitPrompt) exitPrompt.hidden = true;
     ctx.hideToast();
     for (const tile of ctx.tiles.values()) void tile.exitFullscreen?.();
     ctx.handleClosePip();
@@ -83,20 +79,20 @@ export function initShell(ctx) {
     ctx.titleBeforeMonitor = document.title;
     document.title = "监控室";
     query("[data-entry]").hidden = true;
-    ctx.handleDrawer(false, { focus: false, remember: false });
+    ctx.handleDrawer(ctx.drawerPreference, { focus: false, remember: false });
     ctx.pauseOfficial();
     const pending = !ctx.tiles.size && (ctx.pendingTiles?.length || 0) > 0;
     if (pending) {
       // 上次保存的房间尚未装配：只有确认加载才进墙，“暂不加载”保持空墙。
       if (ctx.resumeMode === "always") ctx.loadPendingTiles(true);
-      else if (ctx.resumeMode === "never") ctx.openAdd();
+      else if (ctx.resumeMode === "never") ctx.handleDrawer(true);
       else showResumePrompt();
     } else if (ctx.tiles.size > 0) {
       if (ctx.resumeMode === "always") {
         for (const tile of ctx.tiles.values()) void ctx.handleStart(tile);
       } else if (ctx.resumeMode === "never") ctx.handleDrawer(true);
       else showResumePrompt();
-    }
+    } else ctx.handleDrawer(true);
   };
 
   query("[data-entry]").addEventListener("click", ctx.handleOpen);
@@ -127,7 +123,7 @@ export function initShell(ctx) {
     ctx.hideResumePrompt();
     // “暂不加载”后墙上不能残留房间：已装配的画格整体收回待加载，配置保留，下次打开再问。
     if (ctx.tiles.size) ctx.parkAllTiles();
-    ctx.showToast?.("已保留上次布局；点击“添加房间”或重新打开监控室即可恢复。", [], 5e3);
+    ctx.handleDrawer(true);
   });
 
   /* --- 入口按钮定位 --- */

@@ -4,7 +4,7 @@ export const groupsCss = `
 /* 团播筛选区整体容器（方案 A：暗黑毛玻璃紧凑滑轨） */
 .groups-filter-box {
   padding: 8px 14px 10px;
-  background: rgba(24, 24, 27, 0.92);
+  background: rgba(18, 22, 34, 0.85);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@ export const groupsCss = `
 .groups-cat-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #c9c9d1;
+  color: #cbd5e1;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11px;
@@ -67,7 +67,7 @@ export const groupsCss = `
 
 .groups-current-badge {
   font-size: 11px;
-  color: #a1a1aa;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -116,7 +116,7 @@ export const groupsCss = `
   right: 0;
   bottom: 6px;
   width: 24px;
-  background: linear-gradient(to right, transparent, rgba(24, 24, 27, 0.96));
+  background: linear-gradient(to right, transparent, rgba(18, 22, 34, 0.95));
   pointer-events: none;
 }
 
@@ -134,7 +134,7 @@ export const groupsCss = `
   border-radius: 8px !important;
   background: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #e8e8ec !important;
+  color: #e2e8f0 !important;
   cursor: pointer !important;
   flex-shrink: 0 !important;
   text-align: left !important;
@@ -193,8 +193,8 @@ export const groupsCss = `
   width: 28px !important;
   height: 28px !important;
   border-radius: 50% !important;
-  background: #3a3a40 !important;
-  color: #a1a1aa !important;
+  background: #334155 !important;
+  color: #94a3b8 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -233,7 +233,7 @@ export const groupsCss = `
 .groups-card-name {
   font-size: 12px !important;
   font-weight: 500 !important;
-  color: #f4f4f5 !important;
+  color: #f1f5f9 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -241,7 +241,7 @@ export const groupsCss = `
 
 .groups-card-season {
   font-size: 10px !important;
-  color: #a1a1aa !important;
+  color: #94a3b8 !important;
   flex-shrink: 0 !important;
 }
 
@@ -262,11 +262,11 @@ export const groupsCss = `
 }
 
 .groups-card-status.is-ended {
-  color: #7c7c86 !important;
+  color: #64748b !important;
 }
 
 .groups-card-kind {
-  color: #a1a1aa !important;
+  color: #94a3b8 !important;
   font-size: 9px !important;
   padding: 0 3px !important;
   border-radius: 3px !important;
@@ -276,7 +276,7 @@ export const groupsCss = `
 
 .groups-loading {
   font-size: 12px !important;
-  color: #a1a1aa !important;
+  color: #94a3b8 !important;
   padding: 12px 6px !important;
 }
 

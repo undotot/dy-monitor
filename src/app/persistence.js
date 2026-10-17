@@ -17,7 +17,7 @@ export function initPersistence(ctx) {
     hevc: ctx.hevc,
     pauseOfficial: ctx.pauseOfficialEnabled,
     resumeMode: ctx.resumeMode,
-    audio: { mode: ctx.audio.mode, master: ctx.audio.master, followFocus: ctx.audio.followFocus, autoMute: ctx.audio.autoMute, soloRid: ctx.soloRoomId ? ctx.tiles.get(ctx.soloRoomId)?.rid ?? null : null },
+    audio: { mode: ctx.audio.mode, master: ctx.audio.master, followFocus: ctx.audio.followFocus, autoMute: ctx.audio.autoMute },
     danmakuDefaults: ctx.danmakuDefaults,
     liveAlerts: ctx.liveAlerts, liveAlertSound: ctx.liveAlertSound, liveAutoPlay: ctx.liveAutoPlay,
     drawerVisible: ctx.drawerPreference,
@@ -76,8 +76,6 @@ export function initPersistence(ctx) {
         followFocus: data.audio?.followFocus === true,
         autoMute: data.audio?.autoMute !== false
       };
-      ctx.pendingSoloRid = data.audio?.soloRid ?? null;
-      ctx.soloRoomId = null;
       ctx.danmakuDefaults = normalizeDanmaku(data.danmakuDefaults || {});
       ctx.liveAlerts = data.liveAlerts !== false;
       ctx.liveAlertSound = data.liveAlertSound === true;
@@ -92,11 +90,10 @@ export function initPersistence(ctx) {
           ctx.log("", "跳过无效或重复的保存房间");
         }
       }
-      ctx.resolveSoloTarget?.();
     } finally {
       ctx.restoring = false;
     }
-    ctx.handleDrawer(false, { focus: false, remember: false });
+    ctx.handleDrawer(ctx.drawerPreference, { focus: false, remember: false });
     ctx.handleLayout();
     ctx.applyAudioAll();
     ctx.updateCount();
@@ -116,7 +113,6 @@ export function initPersistence(ctx) {
           ctx.log("", "跳过无效或重复的保存房间");
         }
       }
-      ctx.resolveSoloTarget?.();
     } finally {
       ctx.restoring = false;
     }
@@ -175,7 +171,7 @@ export function initPersistence(ctx) {
     }
     if (ctx.resumeMode === "always") ctx.loadPendingTiles(false);
     ctx.syncControlsFromState();
-    ctx.handleDrawer(false, { focus: false, remember: false });
+    ctx.handleDrawer(ctx.drawerPreference, { focus: false, remember: false });
     ctx.handleLayout();
     ctx.applyAudioAll();
     ctx.updateCount();

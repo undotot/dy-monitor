@@ -42,7 +42,7 @@ assert.ok(/\.tile-status\s*\{[^}]*width:\s*auto/.test(bundle), "胶囊宽度显�
 assert.ok(!/\.tile-status\s*\{[^}]*max-width/.test(bundle), "胶囊不设 max-width 固定上限，宽度纯 auto");
 assert.ok(!/\.style\.width\s*=/.test(bundle), "全产物不写内联 width：胶囊宽度只能来自样式表的 auto");
 assert.ok(!bundle.includes("tile-header-mask"), "胶囊只含状态点与直播间名，不再有顶部遮罩");
-assert.ok(/\.wall\s*\{[^}]*gap:\s*0\.5px/.test(bundle) && /rgba\(255, 93, 35/.test(bundle), "画墙缝隙为 0.5px 斗鱼橙数据线");
+assert.ok(/\.wall\s*\{[^}]*gap:\s*0\.5px/.test(bundle) && /rgba\(56, 138, 240/.test(bundle), "画墙缝隙为 0.5px 冷蓝数据线");
 assert.ok(/searchUser\?kw=\$\{encodeURIComponent/.test(bundle) && bundle.includes("filterType=1"), "添加直播间使用官网正式主播搜索接口，而非输入联想");
 assert.ok(/videoLoop/.test(bundle) && /\.isLoop/.test(bundle), "轮播标志 videoLoop/isLoop 参与三态映射（轮播中/直播中/未开播）");
 assert.ok(/tile-audio-corner/.test(bundle), "右上角包含常驻声音控制胶囊");
@@ -173,18 +173,16 @@ check("重新打开再次询问", prompt.hidden === false && tilesInWall() === 0
 click(query("[data-resume-no]"));
 check("暂不加载后询问收起", prompt.hidden === true);
 check("暂不加载后墙仍为空", tilesInWall() === 0);
-check("暂不加载后回到空墙，不打开设置面板", drawer.hidden === true);
+check("暂不加载后设置抽屉打开", drawer.hidden === false);
 const saved = stored.get(KEY);
 check("保存的工作区仍保留 2 个房间", Array.isArray(saved?.tiles) && saved.tiles.length === 2);
 check("保存的房间号未变", String(saved?.tiles?.[0]?.rid) === "111111" && String(saved?.tiles?.[1]?.rid) === "222222");
 
 /* 6. 抽屉开合 */
 click(query("[data-controls-toggle]"));
-check("抽屉可展开", drawer.hidden === false);
-click(query("[data-controls-toggle]"));
 check("抽屉可收起", drawer.hidden === true);
 click(query("[data-controls-toggle]"));
-check("抽屉再次展开", drawer.hidden === false);
+check("抽屉可展开", drawer.hidden === false);
 click(query("[data-controls-collapse]"));
 check("抽屉折叠按钮可用", drawer.hidden === true);
 
@@ -209,72 +207,6 @@ check("确认后 2 个画格装配进墙", tilesInWall() === 2);
 check("确认后询问收起", prompt.hidden === true);
 check("恢复旧存档也默认关闭弹幕", qa("[data-wall] [data-t-danmaku]").every((el) => el.getAttribute("aria-pressed") === "false"));
 check("计数已更新", /\b2\b/.test(query("[data-count]").textContent));
-
-/* 8b. 新检查器 / 触屏房间面板 / 设置页签 / 顶栏浮层 */
-const firstWallTile = wall.querySelector(".tile-shell");
-click(firstWallTile);
-check("选中画格后检查器显示当前房间", query("[data-room-name]").textContent && query("[data-room-name]").textContent !== "未选择房间");
-check("检查器房间面板展开", query("[data-insp-pane='room']").hidden === false);
-check("房间库列出 2 个房间", qa("[data-insp-library] .library-row").length === 2);
-click(query("[data-inspector] [data-room-act='mute']"));
-check("检查器静音按钮作用于当前房间", !firstWallTile.querySelector(".tile-audio-corner").classList.contains("is-muted"));
-click(query("[data-cb-act='more']"));
-check("触屏控制条“更多”打开房间面板", query("[data-room-sheet]").hidden === false);
-click(query("[data-room-sheet] [data-room-sheet-close]"));
-check("房间面板可关闭", query("[data-room-sheet]").hidden === true);
-click(query("[data-more-open]"));
-click(query("[data-settings-open]"));
-check("顶栏更多菜单可打开设置", drawer.hidden === false);
-click(query("[data-settings-tab='danmaku']"));
-check("设置页签切换到全局弹幕", query("[data-settings-section='danmaku']").hidden === false && query("[data-settings-section='play']").hidden === true);
-click(query("[data-controls-collapse]"));
-check("设置面板可关闭", drawer.hidden === true);
-click(query("[data-pop='layout']"));
-check("顶栏布局浮层可打开", query("[data-pop-panel='layout']").hidden === false);
-click(query("[data-pop='layout']"));
-check("顶栏布局浮层可收起", query("[data-pop-panel='layout']").hidden === true);
-
-/* 8b-2. 任意房间可放大 / 恢复后再放大另一间 */
-wall.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1280, bottom: 720, width: 1280, height: 720 });
-const secondWallTile = wall.querySelectorAll(".tile-shell")[1];
-click(secondWallTile);
-click(query("[data-inspector] [data-room-act='focus']"));
-check("第二个房间可以成为放大主窗", secondWallTile.classList.contains("is-focused") && !firstWallTile.classList.contains("is-focused"));
-check("放大后显示全局恢复入口", query("[data-focus-banner]").hidden === false);
-click(firstWallTile);
-click(query("[data-inspector] [data-room-act='focus']"));
-check("切回第一个房间可以成为放大主窗", firstWallTile.classList.contains("is-focused") && !secondWallTile.classList.contains("is-focused"));
-click(query("[data-inspector] [data-room-act='focus']"));
-check("恢复平铺后没有主窗", !wall.classList.contains("is-focused") && !firstWallTile.classList.contains("is-focused"));
-check("恢复平铺后隐藏恢复入口", query("[data-focus-banner]").hidden === true);
-
-/* 8c. 整理位置（点击换位） */
-const orderBefore = [...wall.querySelectorAll(".tile-shell")];
-click(query("[data-more-open]"));
-click(query("[data-reorder-open]"));
-check("整理位置模式打开", query("[data-reorder-bar]").hidden === false);
-click(orderBefore[0]);
-click(orderBefore[1]);
-check("点击两个画格完成交换", [...wall.querySelectorAll(".tile-shell")][0] === orderBefore[1]);
-click(query("[data-reorder-cancel]"));
-check("取消整理位置恢复原顺序", [...wall.querySelectorAll(".tile-shell")][0] === orderBefore[0] && query("[data-reorder-bar]").hidden === true);
-
-/* 8d. 移除与撤销 */
-click(firstWallTile);
-const countBeforeRemove = tilesInWall();
-click(query("[data-inspector] [data-room-act='remove']"));
-check("房间面板移除房间", tilesInWall() === countBeforeRemove - 1);
-const undoButton = qa("[data-toast-actions] button").find((el) => el.textContent.includes("撤销"));
-check("移除后提供撤销", Boolean(undoButton));
-undoButton.click();
-check("撤销恢复房间", tilesInWall() === countBeforeRemove);
-
-/* 8e. 退出确认弹层 */
-click(query("[data-more-open]"));
-click(query("[data-exit]"));
-check("退出监看使用确认弹层", query("[data-exit-prompt]").hidden === false);
-click(query("[data-exit-no]"));
-check("退出确认可取消", query("[data-exit-prompt]").hidden === true);
 
 /* 9. 添加面板批量回归：手动页可用、跨页勾选批量添加、全选只选择 */
 click(query("[data-add-open]"));
@@ -306,10 +238,6 @@ check("页签包含关注·全部/添加历史/手动房号/团播（不含旧�
 check("关注·全部列出 12 行", qa("[data-add-list] [data-rid]").length === 12);
 const rows = () => qa("[data-add-list] [data-rid]");
 const firstRow = rows()[0];
-firstRow.querySelector(".rinfo").click();
-check("整行点击可勾选", query("[data-add-selected]").textContent.includes("（1）"));
-firstRow.querySelector(".rinfo").click();
-check("再次整行点击取消勾选", query("[data-add-selected]").disabled === true);
 firstRow.querySelector("[data-chk]").click();
 check("勾选不重建列表（行节点引用不变）", rows()[0] === firstRow);
 rows()[2].querySelector("[data-chk]").click();
@@ -494,26 +422,25 @@ check("拖动结束清除提示并保留视频节点", !sourceRoom.classList.con
 click(menuOf(targetRoom).find((el) => el.textContent.includes("恢复平铺")));
 sourceRoom.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
 check("选中房间带有无障碍选中状态", sourceRoom.getAttribute("aria-current") === "true");
-check("选中房间由斗鱼橙细描边高亮且不遮挡画面", /\.tile-shell\.is-selected\s*\{[^}]*box-shadow:\s*inset 0 0 0 2px/.test(bundle) && !bundle.includes(".tile-shell.is-selected .tile-tools"));
+check("选中房间由标题栏变色高亮且画面零边框零图标", /\.tile-shell\.is-selected \.tile-status\s*\{[^}]*background:\s*var\(--grad\)/.test(bundle) && !bundle.includes(".tile-shell.is-selected .tile-status::before"));
 check("选中状态不强制显示控制器遮挡画面", !bundle.includes(".tile-shell.is-selected .tile-tools"));
 
-/* 14. 混合源比例：换位、恢复平铺后仍能放大任意房间 */
+/* 14. 混合源比例：放大任意房间、换位跟随、恢复平铺后可放大另一间 */
 const mixedTiles = [...wall.querySelectorAll(".tile-shell")];
 Object.defineProperties(mixedTiles[3].querySelector("video"), { videoWidth: { configurable: true, value: 900 }, videoHeight: { configurable: true, value: 1600 } });
 const mixedFirst = mixedTiles[0], mixedSecond = mixedTiles[1];
-click(mixedFirst);
-click(query("[data-inspector] [data-room-act='focus']"));
+click(menuOf(mixedFirst).find((el) => el.textContent.includes("放大该房间")));
 check("混合比例下所选房间成为主窗", mixedFirst.classList.contains("is-focused") && wall.classList.contains("is-focused"));
 check("混合比例副窗显示适配提示", query("[data-focus-hint]").hidden === false && query("[data-focus-hint]").textContent.includes("副窗源比例不同"));
+check("放大后显示主画面提示条", query("[data-focus-banner]").hidden === false && query("[data-focus-name]").textContent.length > 0);
 const mixedDrag = new win.Event("dragstart", { bubbles: true, cancelable: true });
 Object.defineProperty(mixedDrag, "dataTransfer", { value: { setData: () => {}, effectAllowed: "" } });
 mixedFirst.querySelector("[data-drag]").dispatchEvent(mixedDrag);
 mixedSecond.dispatchEvent(new win.Event("drop", { bubbles: true, cancelable: true }));
 check("换位后主窗跟随目标房间", mixedSecond.classList.contains("is-focused") && !mixedFirst.classList.contains("is-focused"));
 click(query("[data-focus-exit]"));
-check("全局入口可恢复平铺", !wall.classList.contains("is-focused"));
-click(mixedFirst);
-click(query("[data-inspector] [data-room-act='focus']"));
+check("主画面提示条可恢复平铺", !wall.classList.contains("is-focused") && query("[data-focus-banner]").hidden === true);
+click(menuOf(mixedFirst).find((el) => el.textContent.includes("放大该房间")));
 check("恢复平铺后放大另一间仍是该房间", mixedFirst.classList.contains("is-focused") && !mixedSecond.classList.contains("is-focused"));
 click(query("[data-focus-exit]"));
 

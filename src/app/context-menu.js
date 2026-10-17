@@ -49,7 +49,7 @@ export function initContextMenu(ctx) {
     remove.innerHTML = `${iconMarkup("trash")}<span>移除该房间</span>`;
     remove.addEventListener("click", () => {
       ctx.closeContextMenu();
-      (ctx.removeTileWithUndo || ctx.removeTile)(tile);
+      ctx.removeTile(tile);
     });
     menu.append(remove);
     menu.hidden = false;

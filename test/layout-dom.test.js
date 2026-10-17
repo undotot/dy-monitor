@@ -137,12 +137,11 @@ test("混合比例副窗进入画中画时占位仍被定位，不移动原播�
   } finally { win.close(); }
 });
 
-test("混合比例副窗不改变主窗与独奏对象，保留每路音量", () => {
+test("混合比例副窗不改变主窗与听音对象，保留每路音量", () => {
   for (const followFocus of [false, true]) {
     const { win, ctx, tiles } = makeScene(5);
     try {
       ctx.selectedId = "0";
-      ctx.soloRoomId = "0";
       ctx.audio = { mode: "solo", master: 0.5, followFocus };
       for (const tile of tiles.values()) { tile.muted = false; tile.vol = 0.7; }
       initAudio(ctx);

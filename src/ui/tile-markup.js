@@ -10,7 +10,6 @@ export const tileMarkup = () => `
   <i class="dot gr" data-dot role="img" aria-label="未播放"></i>
   <b class="t-name" data-name>直播间</b>
 </header>
-<span class="tile-mute-mark" data-mute-mark hidden>${iconMarkup("muted")}</span>
 <div class="tile-audio-corner" data-audio-corner title="声音控制（点击展开）">
   <button data-t-mute type="button" class="ibtn audio-btn" aria-label="声音控制"></button>
   <div class="tile-volume-tray tile-volume-popover" data-vol-tray>
@@ -21,13 +20,7 @@ export const tileMarkup = () => `
 <video muted playsinline webkit-playsinline class="tile-video" aria-label="直播画面"></video>
 <canvas aria-hidden="true" class="tile-dm"></canvas>
 <div class="tile-dm-stage" data-dm-stage hidden aria-hidden="true"></div>
-<div class="tile-quick" data-tile-quick>
-  <button data-t-quick="play" type="button" class="ibtn" title="播放 / 暂停" aria-label="播放 / 暂停"></button>
-  <button data-t-quick="focus" type="button" class="ibtn" title="放大 / 恢复平铺" aria-label="放大或恢复平铺"></button>
-  <button data-t-quick="more" type="button" class="ibtn" title="当前房间操作" aria-label="当前房间操作" aria-haspopup="dialog"></button>
-</div>
 
-<div class="tile-state-chip" data-tile-state hidden></div>
 <div class="tile-loading" data-loading hidden aria-label="正在加载直播"><div class="tile-spinner"></div><span class="tile-loading-text" data-loading-text>正在连接…</span></div>
 <div class="tile-retry" data-retry hidden><span data-retry-text></span><button data-t-retry-now type="button" class="btn mini">立即重试</button></div>
 <div class="tile-feedback" data-note role="status" hidden></div>
@@ -85,7 +78,7 @@ export const addRowMarkup = (room, state, checked, actionLabel = "添加") => {
   const letter = escapeHtml((name.charAt(0) || "?").toUpperCase());
   const avatar = room.avatar ? `<img src="${String(room.avatar).replace(/"/g, "&quot;")}" alt="" referrerpolicy="no-referrer" loading="lazy">` : "";
   const sub = escapeHtml(room.category || "");
-  return `<div class="add-row${state.disabled ? " is-off" : ""}${checked ? " is-checked" : ""}" data-rid="${room.rid}">
+  return `<div class="add-row${state.disabled ? " is-off" : ""}" data-rid="${room.rid}">
     <input class="chk" type="checkbox" data-chk ${checked ? "checked" : ""} ${state.disabled ? "disabled" : ""} aria-label="选择 ${escapeHtml(name)}">
     <span class="ravatar rava-${Number(String(room.rid).charCodeAt(0) || 0) % 3}">${avatar}<b>${letter}</b></span>
     <span class="rinfo"><b>${escapeHtml(name)}</b><span>${sub}</span></span>

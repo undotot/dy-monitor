@@ -1,5 +1,6 @@
 import { calculateFocusLayout as defaultFocusLayout, resolveFocusLayout } from "../core/focus-layout.js";
 import { clearTileGeometry } from "../ui/tile-geometry.js";
+import { roomDisplayName } from "../core/room-name.js";
 
 export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, allowSingleFocus = false } = {}) {
   const doc = ctx.wall.ownerDocument;
@@ -18,6 +19,20 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     ctx.wall.append(region);
     regions[name] = { root: region, content };
   }
+  const banner = doc.createElement("div");
+  banner.className = "focus-banner";
+  banner.dataset.focusBanner = "";
+  banner.hidden = true;
+  banner.innerHTML = '<span class="focus-banner-label">主画面</span><b data-focus-name></b><button type="button" data-focus-exit>恢复平铺</button>';
+  banner.querySelector("[data-focus-exit]").addEventListener("click", () => ctx.setFocus(null));
+  ctx.wall.append(banner);
+  ctx.syncFocusBanner = () => {
+    const tile = ctx.focused ? ctx.tiles.get(ctx.focused) : null;
+    banner.hidden = !tile;
+    const label = banner.querySelector("[data-focus-name]");
+    if (label) label.textContent = tile ? roomDisplayName(tile) : "";
+  };
+
   const hint = doc.createElement("span");
   hint.className = "focus-size-hint";
   hint.dataset.focusHint = "";
@@ -47,14 +62,12 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       else tile.root.removeAttribute("aria-current");
     }
     ctx.applyAudioAll();
-    if (id) ctx.showInspectorTab?.("room");
-    ctx.renderRoomChrome?.();
   };
   ctx.setFocus = (id) => {
     ctx.focused = id && ctx.tiles.has(id) ? id : null;
     ctx.handleLayout();
     ctx.applyAudioAll();
-    ctx.renderRoomChrome?.();
+    ctx.syncFocusBanner?.();
   };
   ctx.toggleFocus = (tile) => ctx.setFocus(ctx.focused === tile.id ? null : tile.id);
   ctx.syncLayoutRadios = () => {
@@ -116,7 +129,7 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
         for (const root of roots) moveRoot(ctx.wall, root, true);
       }
       ctx.syncLayoutRadios();
-      ctx.renderRoomChrome?.();
+      ctx.syncFocusBanner?.();
       return;
     }
     const rect = ctx.wall.getBoundingClientRect();
@@ -136,7 +149,7 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       ctx.handleLayout();
       ctx.applyAudioAll();
       const reason = plan.code === "SECONDARY_RATIO_MISMATCH"
-        ? "已检查所有房间作为主窗，副窗源比例仍无法统一，不能同时满足小窗等大与无内部黑边。" : plan.reason;
+        ? "当前房间的副窗源比例不同，且画墙不足以生成等大副窗的放大布局。" : plan.reason;
       ctx.showToast?.(`${reason}已恢复平铺。`, [], 6000);
       return;
     }
@@ -166,7 +179,7 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
         hint.hidden = false;
       }
       ctx.syncLayoutRadios();
-      ctx.renderRoomChrome?.();
+      ctx.syncFocusBanner?.();
       return;
     }
     ctx.wall.style.gap = "";
@@ -206,7 +219,7 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       hint.hidden = false;
     }
     ctx.syncLayoutRadios();
-    ctx.renderRoomChrome?.();
+    ctx.syncFocusBanner?.();
   };
 
   let frame = null;
