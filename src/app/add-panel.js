@@ -285,6 +285,8 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
   ctx.openAdd = (replacement = null) => {
     if (!els.addPanel.hidden) ctx.closeAdd();
     closeTileSettingsPanels(ctx.wrapper);
+    ctx.closeRoomSheet?.();
+    ctx.handleDrawer?.(false, { focus: false, remember: false });
     addState.replaceTileId = replacement?.id && ctx.tiles.get(replacement.id) === replacement ? replacement.id : null;
     addState.selected.clear();
     els.addPanel.classList.toggle("is-replacing", !!addState.replaceTileId);
@@ -372,13 +374,24 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
     if (event.target.matches("[data-chk]")) {
       if (event.target.checked) addState.selected.set(room.rid, room);
       else addState.selected.delete(room.rid);
+      row.classList.toggle("is-checked", event.target.checked);
       updateAddFooter();
       return;
     }
     if (event.target.closest("[data-add-one]")) {
       if (addState.replaceTileId) void ctx.replaceRoomFromPanel(room);
       else ctx.addRoomFromPanel(room);
+      return;
     }
+    // 触屏友好：整行可点选，复选框只是状态指示；行内“添加”按钮仍单独生效。
+    if (row.classList.contains("is-off") || event.target.closest("button")) return;
+    const checkbox = row.querySelector("[data-chk]");
+    if (!checkbox || checkbox.disabled) return;
+    checkbox.checked = !checkbox.checked;
+    if (checkbox.checked) addState.selected.set(room.rid, room);
+    else addState.selected.delete(room.rid);
+    row.classList.toggle("is-checked", checkbox.checked);
+    updateAddFooter();
   });
 
   // 输入变化立即使旧请求失效，不能等防抖结束才取消，否则旧结果会盖住新输入。
@@ -413,8 +426,8 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
   });
   els.addSearch.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" || composing || event.isComposing || event.keyCode === 229) return;
-    // Enter 不搜索、不直接添加；仅阻止外层表单的默认提交。
     event.preventDefault();
+    void ctx.runAddSearch();
   });
   els.addSearch.addEventListener("compositionend", () => {
     composing = false;
@@ -427,6 +440,7 @@ export function initAddPanel(ctx, { probeRoom = fetchProbe, searchForRooms = sea
   for (const input of ctx.wrapper.querySelectorAll("[name=add-tab]")) input.addEventListener("change", () => void ctx.loadAddTab(input.value));
   query("[data-add-open]").addEventListener("click", () => ctx.openAdd());
   query("[data-add-close]").addEventListener("click", ctx.closeAdd);
+  query("[data-add-search-go]")?.addEventListener("click", () => void ctx.runAddSearch());
   els.addPanel.addEventListener("pointerdown", (event) => {
     if (event.target === els.addPanel) ctx.closeAdd();
   });

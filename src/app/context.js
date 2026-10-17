@@ -15,7 +15,7 @@ export function createContext() {
     // 上次保存但尚未装配进墙的房间（“暂不加载”后保留，下次询问前不装配）
     pendingTiles: null,
     // 运行时状态
-    opened: false, focused: null, selectedId: null, previousFocus: null, pausedVideo: null,
+    opened: false, focused: null, selectedId: null, soloRoomId: null, pendingSoloRid: null, previousFocus: null, pausedVideo: null,
     restoring: false, titleBeforeMonitor: null, dragSourceId: null,
     audio: { mode: "mix", master: 0.5, followFocus: false, autoMute: true },
     layoutMode: 2,

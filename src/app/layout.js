@@ -47,11 +47,14 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       else tile.root.removeAttribute("aria-current");
     }
     ctx.applyAudioAll();
+    if (id) ctx.showInspectorTab?.("room");
+    ctx.renderRoomChrome?.();
   };
   ctx.setFocus = (id) => {
     ctx.focused = id && ctx.tiles.has(id) ? id : null;
     ctx.handleLayout();
     ctx.applyAudioAll();
+    ctx.renderRoomChrome?.();
   };
   ctx.toggleFocus = (tile) => ctx.setFocus(ctx.focused === tile.id ? null : tile.id);
   ctx.syncLayoutRadios = () => {
@@ -113,6 +116,7 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
         for (const root of roots) moveRoot(ctx.wall, root, true);
       }
       ctx.syncLayoutRadios();
+      ctx.renderRoomChrome?.();
       return;
     }
     const rect = ctx.wall.getBoundingClientRect();
@@ -138,12 +142,6 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
     }
     const mainTile = ctx.tiles.get(resolved.mainRoomId);
     const secondaries = resolved.secondaryRoomIds.map((id) => ctx.tiles.get(id));
-    if (resolved.mainChanged) {
-      ctx.focused = mainTile.id;
-      // 元数据/分辨率变化也会走这里；按既有声音跟随设置同步实际主窗。
-      ctx.applyAudioAll();
-      ctx.showToast?.("已自动切换可行主窗，使其他小窗保持等大、原比例且无内部黑边。", [], 6000);
-    }
     ctx.focusLayout = plan;
     ctx.wall.dataset.focusLayout = plan.layoutShape ?? plan.family;
     ctx.wall.dataset.focusFallback = String(Boolean(plan.fallback));
@@ -163,7 +161,12 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       for (const tile of list) tile.root.classList.toggle("is-focused", tile.id === ctx.focused && ctx.pipSession?.tile !== tile);
       hint.textContent = plan.fallback ? "当前数量采用等大布局，避免主副窗尺寸悬殊" : "窗口较小：画面已统一缩放，所有房间保持同屏";
       hint.hidden = !plan.fallback && !plan.constrained;
+      if (plan.containSecondary) {
+        hint.textContent = "副窗源比例不同：已保留所选主窗，个别小窗会以黑边适配。";
+        hint.hidden = false;
+      }
       ctx.syncLayoutRadios();
+      ctx.renderRoomChrome?.();
       return;
     }
     ctx.wall.style.gap = "";
@@ -198,7 +201,12 @@ export function initLayout(ctx, { calculateFocusLayout = defaultFocusLayout, all
       }
     }
     hint.hidden = !plan.constrained || plan.quality >= 0.98;
+    if (plan.containSecondary) {
+      hint.textContent = "副窗源比例不同：已保留所选主窗，个别小窗会以黑边适配。";
+      hint.hidden = false;
+    }
     ctx.syncLayoutRadios();
+    ctx.renderRoomChrome?.();
   };
 
   let frame = null;

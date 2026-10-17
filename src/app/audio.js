@@ -1,9 +1,17 @@
 import { clamp01, AUDIO_MODES } from "../core/settings.js";
 
 // 声音模型：输出 = 主增益 × 每路音量；静音与音量解耦。
-// 模式 mix/solo/mute；solo 目标 = 跟随焦点 ? (焦点 || 选中) : 选中。
+// 模式 mix/solo/mute；独奏对象独立于选中：跟随焦点 ? 焦点/独奏对象 : 独奏对象。
 export function initAudio(ctx) {
-  ctx.soloTargetId = () => (ctx.audio.followFocus ? ctx.focused || ctx.selectedId : ctx.selectedId);
+  ctx.soloTargetId = () => (ctx.audio.followFocus ? ctx.focused || ctx.soloRoomId : ctx.soloRoomId);
+
+  ctx.resolveSoloTarget = () => {
+    const wanted = ctx.pendingSoloRid != null ? [...ctx.tiles.values()].find((tile) => String(tile.rid) === String(ctx.pendingSoloRid)) : null;
+    ctx.soloRoomId = wanted?.id || null;
+    ctx.pendingSoloRid = null;
+    if (ctx.audio.mode === "solo" && !ctx.soloRoomId) ctx.audio.mode = "mix";
+    if (ctx.els?.audioMode) ctx.els.audioMode.value = ctx.audio.mode;
+  };
 
   ctx.applyAudio = (tile) => {
     const audible = ctx.audio.mode === "mix"
@@ -25,6 +33,7 @@ export function initAudio(ctx) {
   ctx.applyAudioAll = () => {
     for (const tile of ctx.tiles.values()) ctx.applyAudio(tile);
     ctx.refreshSoloButtons();
+    ctx.renderRoomChrome?.();
   };
 
   ctx.toggleMute = (tile) => {
@@ -38,10 +47,12 @@ export function initAudio(ctx) {
   };
 
   ctx.toggleSolo = (tile) => {
-    if (ctx.audio.mode === "solo" && ctx.soloTargetId() === tile.id) ctx.audio.mode = "mix";
-    else {
+    if (ctx.audio.mode === "solo" && ctx.soloRoomId === tile.id) {
+      ctx.audio.mode = "mix";
+      ctx.soloRoomId = null;
+    } else {
       ctx.audio.mode = "solo";
-      ctx.select(tile);
+      ctx.soloRoomId = tile.id;
     }
     ctx.els.audioMode.value = ctx.audio.mode;
     ctx.applyAudioAll();
@@ -50,6 +61,11 @@ export function initAudio(ctx) {
 
   ctx.setAudioMode = (mode) => {
     ctx.audio.mode = AUDIO_MODES.includes(mode) ? mode : "mix";
+    if (ctx.audio.mode === "solo" && !ctx.soloRoomId) ctx.soloRoomId = ctx.selectedId || null;
+    if (ctx.audio.mode === "solo" && !ctx.soloRoomId) {
+      ctx.audio.mode = "mix";
+      ctx.showToast?.("请先在画墙选择一个房间，再开启独奏。", [], 4e3);
+    }
     ctx.els.audioMode.value = ctx.audio.mode;
     ctx.applyAudioAll();
     ctx.save();

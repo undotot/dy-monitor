@@ -122,46 +122,53 @@ test("14 房回退完整等大网格，2 房保持几何允许的等大画面", 
   }
 });
 
-test("指定主窗比例冲突时，枚举其他主窗；1个异比例房间可作为主窗保留放大", () => {
+test("指定主窗比例冲突时保留所选主窗，混合副窗以黑边适配", () => {
   for (const [width, height] of [[2246, 994], [1194, 834], [600, 900]]) {
     for (const count of [3, 5, 8, 14, 16]) {
       for (const [mainRatio, smallRatio] of [[9 / 16, RATIO], [RATIO, 9 / 16], [4 / 3, RATIO]]) {
         const rooms = Array.from({ length: count }, (_, index) => ({ id: `room-${index}`, ratio: index === count - 1 ? mainRatio : smallRatio }));
         const resolved = resolveFocusLayout({ width, height, rooms, mainRoomId: "room-0" });
-        assert.equal(resolved.mainChanged, true);
-        assert.equal(resolved.mainRoomId, `room-${count - 1}`);
-        assert.equal(resolved.requestedMainRoomId, "room-0");
+        assert.equal(resolved.mainChanged, false);
+        assert.equal(resolved.mainRoomId, "room-0");
         assert.equal(resolved.plan.status, "ready");
+        assert.equal(resolved.plan.containSecondary, true);
         assert.equal(auditRecursiveLayout(resolved.plan.layoutPlan, count).valid, true);
-        close(resolved.plan.main.width / resolved.plan.main.height, mainRatio);
-        for (const placement of resolved.plan.placements) {
-          close(placement.width / placement.height, smallRatio);
-          const original = resolved.plan.layoutPlan.rects.find((rect) => rect.roomId === resolved.secondaryRoomIds[placement.index]);
-          assert.ok(original);
-          close(placement.x, original.x);
-          close(placement.y, original.y);
-        }
-        const repeated = resolveFocusLayout({ width, height, rooms, mainRoomId: resolved.mainRoomId, previous: resolved.plan });
+        close(resolved.plan.main.width / resolved.plan.main.height, smallRatio);
+        const secondaryCells = resolved.plan.placements;
+        assert.ok(secondaryCells.length === count - 1);
+        assert.equal(new Set(secondaryCells.map((placement) => placement.width)).size, 1);
+        assert.equal(new Set(secondaryCells.map((placement) => placement.height)).size, 1);
+        for (const placement of secondaryCells) close(placement.width / placement.height, resolved.plan.secondaryRatio);
+        const repeated = resolveFocusLayout({ width, height, rooms, mainRoomId: "room-0", previous: resolved.plan });
         assert.equal(repeated.mainChanged, false);
-        assert.equal(repeated.plan.signature, resolved.plan.signature);
+        assert.equal(repeated.plan.status, "ready");
+        assert.equal(repeated.plan.containSecondary, true);
       }
     }
   }
 });
 
-test("当前主窗可行时保持用户选择，全部主窗不可行才报告场景冲突", () => {
+test("任何主窗都保留用户选择，混合比例副窗以 contain 适配", () => {
   const options = { width: 1920, height: 1080, rooms: [
     { id: "a", ratio: RATIO }, { id: "b", ratio: RATIO }, { id: "c", ratio: 9 / 16 },
   ] };
-  assert.equal(resolveFocusLayout({ ...options, mainRoomId: "c" }).mainChanged, false);
+  const requestedC = resolveFocusLayout({ ...options, mainRoomId: "c" });
+  assert.equal(requestedC.mainRoomId, "c");
+  assert.equal(requestedC.mainChanged, false);
+  assert.equal(requestedC.plan.containSecondary, false);
+  assert.equal(auditRecursiveLayout(requestedC.plan.layoutPlan, 3).valid, true);
   const same = { ...options, rooms: options.rooms.map((room) => ({ ...room, ratio: RATIO })) };
-  assert.equal(resolveFocusLayout({ ...same, mainRoomId: "b" }).mainRoomId, "b");
-  const impossible = resolveFocusLayout({ ...options, mainRoomId: "a", rooms: [
+  const sameMain = resolveFocusLayout({ ...same, mainRoomId: "b" });
+  assert.equal(sameMain.mainRoomId, "b");
+  assert.equal(sameMain.plan.containSecondary, false);
+  const mixed = resolveFocusLayout({ ...options, mainRoomId: "a", rooms: [
     ...options.rooms, { id: "d", ratio: 9 / 16 },
   ] });
-  assert.equal(impossible.plan.status, "infeasible");
-  assert.equal(impossible.plan.code, "SECONDARY_RATIO_MISMATCH");
-  assert.equal(impossible.mainChanged, false);
+  assert.equal(mixed.mainRoomId, "a");
+  assert.equal(mixed.mainChanged, false);
+  assert.equal(mixed.plan.status, "ready");
+  assert.equal(mixed.plan.containSecondary, true);
+  assert.equal(auditRecursiveLayout(mixed.plan.layoutPlan, 4).valid, true);
   // 无尺寸时等待真实测量，不擅自换主窗。
   assert.equal(resolveFocusLayout({ ...options, mainRoomId: "a", width: 0 }).plan, null);
   assert.equal(resolveFocusLayout({ ...options, mainRoomId: "missing" }), null);

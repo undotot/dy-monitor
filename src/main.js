@@ -15,6 +15,8 @@ import { initPip } from "./playback/pip.js";
 import { initTile } from "./app/tile.js";
 import { initContextMenu } from "./app/context-menu.js";
 import { initAddPanel } from "./app/add-panel.js";
+import { initInspector } from "./app/inspector.js";
+import { initReorder } from "./app/reorder.js";
 import { initDrawer } from "./app/drawer.js";
 import { initPersistence } from "./app/persistence.js";
 import { initKeyboard } from "./app/keyboard.js";
@@ -77,8 +79,14 @@ const bootstrap = () => {
     const pageScrollLock = createPageScrollLock(document);
     const emptyEl = document.createElement("div");
     emptyEl.className = "empty";
-    emptyEl.innerHTML = `<div>${iconMarkup("grid")}<div style="margin-top:10px">监控室是空的<br>点击右上角“添加房间”开始</div></div>`;
+    emptyEl.innerHTML = `<div class="empty-inner">
+      <span class="empty-icon">${iconMarkup("grid")}</span>
+      <p class="empty-title">监控室是空的</p>
+      <p class="empty-sub">从关注列表、历史或房号添加直播间</p>
+      <div class="empty-actions"><button data-empty-add type="button" class="btn primary">${iconMarkup("search")}添加房间</button></div>
+    </div>`;
     wall.append(emptyEl);
+    emptyEl.querySelector("[data-empty-add]")?.addEventListener("click", () => ctx.openAdd?.());
 
     const ctx = createContext();
     Object.assign(ctx, { host, wrapper, dialog, wall, appShell, els, emptyEl, pageScrollLock });
@@ -95,9 +103,11 @@ const bootstrap = () => {
     initContextMenu(ctx);
     initAddPanel(ctx);
     initDrawer(ctx);
+    initInspector(ctx);
     initPersistence(ctx);
     initKeyboard(ctx);
     initTopbar(ctx);
+    initReorder(ctx);
     initShell(ctx);
     initLiveWatcher(ctx);
     initUpdater(ctx);

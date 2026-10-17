@@ -34,6 +34,11 @@ export function initStatus(ctx) {
     tile.noteEl.textContent = tile.noteEl.hidden ? "" : message;
     tile.noteEl.classList.toggle("is-failed", state === "failed");
     tile.retryEl.hidden = !(state === "reconnecting" && tile.retryAt);
+    const stateTextVisible = ["queued", "probing", "signing", "connecting", "buffering", "waiting"].includes(state);
+    if (tile.stateEl) {
+      tile.stateEl.hidden = !stateTextVisible;
+      tile.stateEl.textContent = stateTextVisible ? (message || meta.label) : "";
+    }
     const isLoading = ["queued", "probing", "signing", "connecting", "reconnecting", "buffering"].includes(state);
     if (tile.loadingEl) {
       tile.loadingEl.hidden = !isLoading;
@@ -42,6 +47,7 @@ export function initStatus(ctx) {
       }
     }
     ctx.updateCount();
+    ctx.renderRoomChrome?.();
   };
 
   ctx.updateTileChrome = (tile) => {
@@ -57,6 +63,7 @@ export function initStatus(ctx) {
     setIconButton(tile.muteBtn, tile.muted ? "muted" : "volume", tile.muted ? "开启声音" : "静音");
     tile.muteBtn.setAttribute("aria-pressed", String(!tile.muted));
     tile.audioCorner?.classList.toggle("is-muted", tile.muted);
+    if (tile.muteMark) tile.muteMark.hidden = !tile.muted;
     tile.audioCorner?.setAttribute("title", tile.muted ? "当前静音（点击开启声音，滚轮微调音量）" : `当前音量 ${Math.round(tile.vol * 100)}%（点击静音，滚轮微调音量）`);
     if (tile.volPct) tile.volPct.textContent = `${Math.round((tile.muted ? 0 : tile.vol) * 100)}%`;
     tile.volSlider.value = String(tile.vol);
@@ -68,6 +75,8 @@ export function initStatus(ctx) {
     syncDanmakuButtons(tile);
     ctx.syncGlobalDanmakuActions?.();
     setIconButton(tile.resumeBtn, tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 继续" : "暂停");
+    setIconButton(tile.root.querySelector("[data-t-quick='play']"), tile.video.paused ? "play" : "pause", tile.video.paused ? "播放 / 继续" : "暂停");
+    ctx.renderRoomChrome?.();
   };
 
   ctx.updateCount = () => {
@@ -80,5 +89,6 @@ export function initStatus(ctx) {
     ctx.els.health.className = `meta-health ${failed ? "bad" : "ok"}`;
     ctx.refreshSoloButtons();
     ctx.syncGlobalDanmakuActions?.();
+    ctx.syncMiniCount?.();
   };
 }

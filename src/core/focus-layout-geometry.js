@@ -15,6 +15,23 @@ const COVERAGE_SIZE_PENALTY = 0.12;
 const areaOf = (rect) => rect.width * rect.height;
 const ratioOf = (value) => Number.isFinite(value) && value > 0 ? value : DEFAULT_RATIO;
 const nearlyEqual = (a, b) => Math.abs(a - b) <= EPSILON * Math.max(1, Math.abs(a), Math.abs(b));
+// 混合比例副窗的公共格子比例取出现次数最多者；并列时优先 16:9，减少黑边面积。
+const dominantRatio = (rooms, fallback) => {
+  if (!rooms.length) return ratioOf(fallback);
+  const counts = new Map();
+  for (const room of rooms) {
+    const key = room.ratio.toFixed(6);
+    const entry = counts.get(key) || { ratio: room.ratio, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  }
+  let best = null;
+  for (const entry of counts.values()) {
+    if (!best || entry.count > best.count
+      || (entry.count === best.count && nearlyEqual(entry.ratio, DEFAULT_RATIO) && !nearlyEqual(best.ratio, DEFAULT_RATIO))) best = entry;
+  }
+  return best?.ratio ?? ratioOf(fallback);
+};
 const positiveInteger = (value) => Math.round(value) >= 1 && nearlyEqual(value, Math.round(value));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -161,7 +178,7 @@ const materialize = (candidate, bounds, main, secondaries, smallRatio) => {
  * 混合副窗比例返回明确的不可行结果，不能用拉伸/裁切/黑边伪造成功。
  * @param {{width:number,height:number,rooms:RoomInput[],mainRoomId:string,anchor?:string,mainWeight?:number,previous?:object,selection?:string,family?:string,candidateKey?:string}} options
  */
-export const calculateRecursiveLayout = ({ width, height, rooms, mainRoomId, anchor = "auto", mainWeight = 4, previous = null, selection = "balanced", family = "auto", candidateKey = null }) => {
+export const calculateRecursiveLayout = ({ width, height, rooms, mainRoomId, anchor = "auto", mainWeight = 4, previous = null, selection = "balanced", family = "auto", candidateKey = null, containSecondary = false }) => {
   if (![width, height].every((value) => Number.isFinite(value) && value > 0)) return null;
   if (!Array.isArray(rooms) || rooms.length < 1 || rooms.length > 16 || rooms.some((room) => !room || !["string", "number"].includes(typeof room.id) || !String(room.id).trim())) return null;
   const normalized = rooms.map((room) => ({ id: String(room.id), ratio: ratioOf(room.ratio) }));
@@ -169,11 +186,18 @@ export const calculateRecursiveLayout = ({ width, height, rooms, mainRoomId, anc
   const main = normalized.find((room) => room.id === String(mainRoomId));
   if (!main) return null;
   const secondaries = normalized.filter((room) => room !== main);
-  const smallRatio = secondaries[0]?.ratio ?? main.ratio;
-  if (secondaries.some((room) => !nearlyEqual(room.ratio / smallRatio, 1))) {
+  const rawSmallRatio = secondaries[0]?.ratio ?? main.ratio;
+  const mixedSecondaries = secondaries.some((room) => !nearlyEqual(room.ratio / rawSmallRatio, 1));
+  const useContain = containSecondary === true && mixedSecondaries;
+  const smallRatio = useContain ? dominantRatio(secondaries, main.ratio) : rawSmallRatio;
+  if (mixedSecondaries && !useContain) {
     return { status: "infeasible", code: "SECONDARY_RATIO_MISMATCH", width, height, rects: [],
       reason: "副窗源比例不同，无法同时满足等宽等高、保持源比例和无内部黑边。请将副窗统一为同一源比例。" };
   }
+  // 保留用户指定的主窗：混合比例副窗共用出现最多的格子比例，实际视频按 contain 在黑边内显示。
+  const layoutSecondaries = useContain
+    ? secondaries.map((room) => ({ ...room, ratio: smallRatio }))
+    : secondaries;
   if (selection === "equal-grid" && !nearlyEqual(main.ratio / smallRatio, 1)) {
     return { status: "infeasible", code: "GRID_RATIO_MISMATCH", width, height, rects: [],
       reason: "主副窗源比例不同，无法在保持源比例和无格内黑边的同时改为全等大网格。" };
@@ -187,7 +211,7 @@ export const calculateRecursiveLayout = ({ width, height, rooms, mainRoomId, anc
   const trackingCache = new Map();
   const trackingCost = (candidate) => {
     if (trackingCache.has(candidate)) return trackingCache.get(candidate);
-    const boxes = materialize(candidate, containVideo({ x: 0, y: 0, width, height }, candidate.ratio), main, secondaries, smallRatio);
+    const boxes = materialize(candidate, containVideo({ x: 0, y: 0, width, height }, candidate.ratio), main, layoutSecondaries, smallRatio);
     const focus = boxes[0];
     const cost = boxes.slice(1).reduce((sum, rect) => sum + Math.hypot(rect.x + rect.width / 2 - focus.x - focus.width / 2,
       rect.y + rect.height / 2 - focus.y - focus.height / 2) / Math.min(width, height), 0);
@@ -298,10 +322,10 @@ export const calculateRecursiveLayout = ({ width, height, rooms, mainRoomId, anc
   if (family === "sides") autoReason = `主窗顶部居中，左右各 ${chosen.leftColumns} 列等大小窗，拼成完整矩形。`;
   if (selection === "equal-grid") autoReason = `所有窗口等大，${chosen.columns} 列 × ${chosen.rows} 行；当前主房间保留标记，画面尺寸一致。`;
   const bounds = containVideo({ x: 0, y: 0, width, height }, chosen.ratio);
-  const rects = materialize(chosen, bounds, main, secondaries, smallRatio);
+  const rects = materialize(chosen, bounds, main, layoutSecondaries, smallRatio);
   const metrics = { ...measureLayoutGeometry({ width, height, bounds, rects, mainWeight: weight }), coverageAllowance: ["coverage", "size-balanced", "coverage-size-balanced", "equal-grid"].includes(selection) ? 0 : COVERAGE_ALLOWANCE };
   const positionLabel = shapeLabels[layoutShape];
-  return { status: "ready", width, height, bounds, anchor: resolvedAnchor, requestedAnchor, family, autoReason,
+  return { status: "ready", width, height, bounds, anchor: resolvedAnchor, requestedAnchor, family, autoReason, containSecondary: useContain, secondaryRatio: smallRatio,
     positionLabel, layoutShape, lShapeAvailable, shapeConstraintNote, rects, signature: chosen.key, metrics, candidateCount: candidates.length, gap: 0,
     grid: selection === "equal-grid" ? { columns: chosen.columns, rows: chosen.rows } : null,
     units: { mainColumns: chosen.mainColumns, mainRows: chosen.mainRows, sideColumns: chosen.sideColumns,

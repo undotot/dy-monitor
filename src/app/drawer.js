@@ -10,20 +10,44 @@ export function initDrawer(ctx) {
   const els = ctx.els;
   const query = (selector) => ctx.wrapper.querySelector(selector);
 
+  const backdrop = query("[data-drawer-backdrop]");
+  ctx.showDrawerTab = (tab) => {
+    const next = ["play", "danmaku", "sound", "workspace", "diagnostics"].includes(tab) ? tab : "play";
+    for (const button of ctx.wrapper.querySelectorAll("[data-settings-tab]")) {
+      const on = button.dataset.settingsTab === next;
+      button.classList.toggle("is-active", on);
+      button.setAttribute("aria-selected", String(on));
+    }
+    for (const section of ctx.wrapper.querySelectorAll("[data-settings-section]")) {
+      section.hidden = section.dataset.settingsSection !== next;
+    }
+    const body = els.drawer.querySelector(".drawer-body");
+    if (body) body.scrollTop = 0;
+    if (!els.drawer.hidden) els.drawer.querySelector(`[data-settings-tab="${next}"]`)?.focus?.({ preventScroll: true });
+  };
   ctx.handleDrawer = (visible, { focus = true, remember = true } = {}) => {
-    if (visible) closeTileSettingsPanels(ctx.wrapper);
+    if (visible) {
+      closeTileSettingsPanels(ctx.wrapper);
+      ctx.closeRoomSheet?.();
+    }
     els.drawer.hidden = !visible;
+    if (backdrop) backdrop.hidden = !visible;
     ctx.appShell.classList.toggle("drawer-open", visible);
     ctx.appShell.classList.remove("edge-near");
     els.controlsButton.setAttribute("aria-expanded", String(visible));
+    els.controlsButton.setAttribute("aria-hidden", String(visible));
     setIconButton(els.controlsButton, visible ? "chevrr" : "chevr", visible ? "收起设置" : "展开设置");
     if (remember) {
       ctx.drawerPreference = visible;
       if (ctx.opened) ctx.save();
     }
     if (focus) {
-      if (visible) els.drawer.querySelector("button, input, select")?.focus();
-      else els.controlsButton.focus();
+      if (visible) {
+        const active = els.drawer.querySelector("[data-settings-tab].is-active");
+        (active || els.drawer.querySelector("button, input, select"))?.focus();
+      } else {
+        ctx.wrapper.querySelector("[data-more-open]")?.focus();
+      }
     }
   };
 
@@ -36,6 +60,11 @@ export function initDrawer(ctx) {
   ctx.appShell.addEventListener("pointerleave", () => ctx.appShell.classList.remove("edge-near"));
   els.controlsButton.addEventListener("click", () => ctx.handleDrawer(els.drawer.hidden));
   query("[data-controls-collapse]").addEventListener("click", () => ctx.handleDrawer(false));
+  backdrop?.addEventListener("click", () => ctx.handleDrawer(false));
+  for (const button of ctx.wrapper.querySelectorAll("[data-settings-tab]")) {
+    button.addEventListener("click", () => ctx.showDrawerTab(button.dataset.settingsTab));
+  }
+  ctx.showDrawerTab("play");
 
   bindGlobalDanmaku(ctx);
 

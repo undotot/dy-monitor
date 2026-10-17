@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>监控室 · 双端交互重设计</title>
+<style>
+:root{color-scheme:light dark;--foreground:#1d2128;--background:#f7f7f4;--muted-foreground:#6b7280;--muted:rgba(15,23,42,.05);--border:rgba(15,23,42,.12)}
+@media (prefers-color-scheme:dark){:root{--foreground:#eef2f8;--background:#15171c;--muted-foreground:#9aa5b6;--muted:rgba(255,255,255,.06);--border:rgba(255,255,255,.1)}}
+html,body{margin:0;padding:0;background:var(--background);color:var(--foreground)}
+body{padding:20px 20px 40px;font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif}
+.page{max-width:1280px;margin:0 auto}
+@media (max-width:640px){body{padding:12px 12px 28px}}
+</style>
+<script src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
+</head>
+<body>
+<div class="page">
+<div id="uiux-board">
+  <header class="bd-head">
+    <div class="bd-kicker">MONITOR / UI-UX 2.1 · V1.4.6</div>
+    <div class="bd-title-row">
+      <h1>监控室 · 双端交互重设计</h1>
+      <div class="bd-tags">
+        <span class="bd-tag">PC 停靠检查器</span>
+        <span class="bd-tag">iPad 底部控制条</span>
+        <span class="bd-tag">44 / 48px 命中区</span>
+        <span class="bd-tag">单一命令模型</span>
+      </div>
+    </div>
+    <p class="bd-sub">同一套房间命令，两种密度：PC 用停靠检查器承载当前房间；iPad 用底部控制条和底部面板。悬停、右键、长按、拖动只作为快捷方式，不再是唯一入口。</p>
+  </header>
+
+  <nav class="bd-tabs" role="tablist" aria-label="设备视图">
+    <button class="bd-tab is-active" id="tab-pc" data-view="pc" role="tab" aria-selected="true" aria-controls="panel-pc">
+      <span class="bd-ic"><i data-lucide="monitor"></i></span><span>PC 1440×900</span>
+    </button>
+    <button class="bd-tab" id="tab-ipad-l" data-view="ipad-l" role="tab" aria-selected="false" aria-controls="panel-ipad-l">
+      <span class="bd-ic"><i data-lucide="tablet"></i></span><span>iPad 横屏 1180×820</span>
+    </button>
+    <button class="bd-tab" id="tab-ipad-p" data-view="ipad-p" role="tab" aria-selected="false" aria-controls="panel-ipad-p">
+      <span class="bd-ic"><i data-lucide="smartphone"></i></span><span>iPad 竖屏 820×1180</span>
+    </button>
+  </nav>
+
+  <section class="bd-stage">
+    <figure class="device" data-device="pc" id="panel-pc" role="tabpanel" aria-labelledby="tab-pc">
+      <figcaption class="device-cap">
+        <span><b>PC · 1440×900</b> · 鼠标优先</span>
+        <span class="cap-hint">点击画格 → 检查器；悬停画格显示快捷键</span>
+      </figcaption>
+      <div class="device-frame">
+        <div class="device-screen" data-frame-screen="pc">
+          <div class="design-canvas mock pc" data-mock="pc" data-dw="1440" data-dh="900" style="width:1440px;height:900px">
+            <header class="appbar">
+              <div class="brand">
+                <span class="logo">斗</span>
+                <span class="brand-name">监控室</span>
+                <span class="ver">v1.4.6</span>
+              </div>
+              <div class="stats">
+                <span class="stat-strong">9<span class="stat-dim">/16</span> 格</span>
+                <span class="stat">5 路播放</span>
+                <span class="stat stat-err"><i class="dot err"></i>1 路异常</span>
+              </div>
+              <span class="grow"></span>
+              <button class="appbtn icon is-on" type="button" aria-label="收起或展开当前房间面板" title="收起或展开当前房间面板">
+                <span class="ic"><i data-lucide="panel-right"></i></span>
+              </button>
+              <button class="appbtn" type="button">
+                <span class="ic"><i data-lucide="layout-grid"></i></span><span>布局 · 3 列</span><span class="ic chev"><i data-lucide="chevron-down"></i></span>
+              </button>
+              <button class="appbtn" type="button">
+                <span class="ic"><i data-lucide="volume-2"></i></span><span>混音</span><span class="ic chev"><i data-lucide="chevron-down"></i></span>
+              </button>
+              <button class="appbtn primary" type="button">
+                <span class="ic"><i data-lucide="plus"></i></span><span>添加房间</span>
+              </button>
+              <button class="appbtn icon" type="button" aria-label="更多全局操作" data-pc-more>
+                <span class="ic"><i data-lucide="ellipsis"></i></span>
+              </button>
+
+              <div class="pc-menu" data-pc-menu hidden>
+                <button type="button"><span class="ic"><i data-lucide="play"></i></span>全部播放</button>
+                <button type="button"><span class="ic"><i data-lucide="square"></i></span>全部停止</button>
+                <button type="button"><span class="ic"><i data-lucide="settings-2"></i></span>设置</button>
+                <div class="sep"></div>
+                <button type="button" class="danger"><span class="ic"><i data-lucide="log-out"></i></span>退出监看</button>
+              </div>
+            </header>
+
+            <div class="workspace">
+              <main class="wall" data-wall="pc" aria-label="多路直播画面"></main>
+
+              <aside class="inspector" aria-label="当前房间与房间库">
+                <div class="insp-head">
+                  <div class="insp-tabs" role="tablist" aria-label="检查器视图">
+                    <button class="insp-tab is-active" type="button" role="tab" data-insp-tab="room" aria-selected="true">当前房间</button>
+                    <button class="insp-tab" type="button" role="tab" data-insp-tab="library" aria-selected="false">房间库</button>
+                  </div>
+                  <button class="insp-collapse" type="button" aria-label="收起检查器">
+                    <span class="ic"><i data-lucide="panel-right-close"></i></span>
+                  </button>
+                </div>
+
+                <div class="insp-pane" data-insp-pane="room">
+                  <div class="insp-body">
+                    <div class="room-id">
+                      <span class="avatar js-room-avatar">夜</span>
+                      <div class="room-id-copy">
+                        <div class="room-title js-room-name">深夜电台</div>
+                        <div class="room-meta js-room-meta">音乐 · 房间号 288016</div>
+                      </div>
+                    </div>
+                    <div class="status-line">
+                      <i class="dot live js-room-dot"></i>
+                      <span class="js-room-status">直播中</span>
+                      <span class="sep"></span>
+                      <span class="js-room-quality">1080P</span>
+                      <span class="sep"></span>
+                      <span>延迟 2.1s</span>
+                    </div>
+
+                    <div class="primary-grid">
+                      <button class="pbtn" type="button" data-act="play">
+                        <span class="ic"><i data-lucide="pause"></i></span><span class="js-play-label">暂停</span>
+                      </button>
+                      <button class="pbtn" type="button" data-act="mute">
+                        <span class="ic"><i data-lucide="volume-2"></i></span><span class="js-mute-label">静音</span>
+                      </button>
+                      <button class="pbtn" type="button" data-act="solo">
+                        <span class="ic"><i data-lucide="headphones"></i></span><span>独奏</span>
+                      </button>
+                      <button class="pbtn" type="button" data-act="focus">
+                        <span class="ic"><i data-lucide="maximize-2"></i></span><span class="js-focus-label">放大</span>
+                      </button>
+                    </div>
+
+                    <div class="sect">
+                      <div class="sect-h"><span>声音</span><b>72%</b></div>
+                      <div class="volume-slider" role="slider" aria-label="该直播间音量" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" tabindex="0">
+                        <span class="volume-fill" style="width:72%"></span>
+                        <span class="volume-thumb" style="left:72%"></span>
+                      </div>
+                      <div class="slider-foot"><span>跟随主增益</span><span class="mini-actions"><button type="button">−5%</button><button type="button">+5%</button></span></div>
+                    </div>
+
+                    <div class="sect">
+                      <div class="sect-h"><span>弹幕</span><span class="pill on">已开启</span></div>
+                      <div class="kv"><span>跟随全局 · 半屏 · 简单</span><button class="link" type="button">设置</button></div>
+                    </div>
+
+                    <div class="sect">
+                      <div class="sect-h"><span>画质</span></div>
+                      <button class="select-row" type="button"><span>蓝光 8M</span><span class="ic"><i data-lucide="chevron-down"></i></span></button>
+                    </div>
+
+                    <div class="rows">
+                      <button class="rowbtn" type="button"><span class="ic"><i data-lucide="refresh-cw"></i></span>重新取流<span class="rowchev"><i data-lucide="chevron-right"></i></span></button>
+                      <button class="rowbtn" type="button"><span class="ic"><i data-lucide="pencil"></i></span>替换房号<span class="rowchev"><i data-lucide="chevron-right"></i></span></button>
+                      <button class="rowbtn" type="button"><span class="ic"><i data-lucide="external-link"></i></span>打开直播间<span class="rowchev"><i data-lucide="chevron-right"></i></span></button>
+                    </div>
+                    <button class="rowbtn danger" type="button"><span class="ic"><i data-lucide="trash-2"></i></span>移除房间</button>
+                  </div>
+                </div>
+
+                <div class="insp-pane" data-insp-pane="library" hidden>
+                  <div class="insp-body">
+                    <div class="lib-top">
+                      <div class="lib-search"><span class="ic"><i data-lucide="search"></i></span><span>搜索已添加房间</span></div>
+                    </div>
+                    <button class="appbtn primary lib-add" type="button"><span class="ic"><i data-lucide="plus"></i></span>添加房间</button>
+                    <div class="lib-section">已添加 · 9 个</div>
+                    <div class="lib-list" data-pc-library></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="device" data-device="ipad-l" id="panel-ipad-l" role="tabpanel" aria-labelledby="tab-ipad-l" hidden>
+      <figcaption class="device-cap">
+        <span><b>iPad 横屏 · 1180×820</b> · 触屏</span>
+        <span class="cap-hint">轻点画格 → 底部控制条；更多 → 底部面板</span>
+      </figcaption>
+      <div class="device-frame">
+        <div class="device-screen" data-frame-screen="ipad-l">
+          <div class="design-canvas mock ipad ipad-l" data-mock="ipad-l" data-dw="1180" data-dh="820" style="width:1180px;height:820px">
+            <header class="appbar compact">
+              <div class="brand">
+                <span class="logo">斗</span>
+                <span class="brand-name">监控室</span>
+              </div>
+              <div class="stats">
+                <span class="stat-strong">6<span class="stat-dim">/16</span> 格</span>
+                <span class="stat">5 路播放</span>
+              </div>
+              <span class="grow"></span>
+              <button class="appbtn" type="button"><span class="ic"><i data-lucide="layout-grid"></i></span><span>布局</span></button>
+              <button class="appbtn" type="button"><span class="ic"><i data-lucide="volume-2"></i></span><span>混音</span></button>
+              <button class="appbtn primary" type="button"><span class="ic"><i data-lucide="plus"></i></span><span>添加房间</span></button>
+              <button class="appbtn icon" type="button" aria-label="更多全局操作"><span class="ic"><i data-lucide="ellipsis"></i></span></button>
+            </header>
+
+            <main class="wall" data-wall="ipad-l" aria-label="多路直播画面"></main>
+
+            <div class="cmdbar">
+              <div class="cmd-room">
+                <div class="cmd-name js-bar-name">深夜电台</div>
+                <div class="cmd-meta"><i class="dot live js-bar-dot"></i><span class="js-bar-status">直播中 · 1080P</span></div>
+              </div>
+              <div class="cmd-actions">
+                <button class="cmd" type="button" data-act="play">
+                  <span class="ic"><i data-lucide="pause"></i></span><span class="js-play-label">暂停</span>
+                </button>
+                <button class="cmd" type="button" data-act="mute">
+                  <span class="ic"><i data-lucide="volume-2"></i></span><span class="js-mute-label">静音</span>
+                </button>
+                <button class="cmd" type="button" data-act="solo">
+                  <span class="ic"><i data-lucide="headphones"></i></span><span>独奏</span>
+                </button>
+                <button class="cmd" type="button" data-act="focus">
+                  <span class="ic"><i data-lucide="maximize-2"></i></span><span class="js-focus-label">放大</span>
+                </button>
+                <button class="cmd" type="button" data-act="danmaku">
+                  <span class="ic"><i data-lucide="message-square"></i></span><span>弹幕</span>
+                </button>
+                <button class="cmd" type="button" data-act="more">
+                  <span class="ic"><i data-lucide="ellipsis"></i></span><span>更多</span>
+                </button>
+              </div>
+            </div>
+            <div class="homebar"><span></span></div>
+
+            <div class="sheet-scrim" data-sheet-close hidden></div>
+            <section class="action-sheet" data-sheet hidden role="dialog" aria-modal="true" aria-label="更多房间操作">
+              <div class="sheet-grab"></div>
+              <div class="sheet-head">
+                <div class="sheet-room"><b class="js-sheet-name">深夜电台</b><span class="js-sheet-status">直播中 · 1080P</span></div>
+                <button class="close48" type="button" data-sheet-close aria-label="关闭更多操作"><span class="ic"><i data-lucide="x"></i></span></button>
+              </div>
+              <div class="sheet-body sheet-cols">
+                <div class="sheet-group">
+                  <div class="sheet-label">播放</div>
+                  <button class="sheet-row" type="button" data-act="play"><span class="ic"><i data-lucide="pause"></i></span><span class="js-play-label">暂停 / 继续</span></button>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="refresh-cw"></i></span>重新取流</button>
+                  <div class="sheet-label">声音</div>
+                  <button class="sheet-row" type="button" data-act="mute"><span class="ic"><i data-lucide="volume-2"></i></span><span class="js-mute-label">静音</span></button>
+                  <button class="sheet-row" type="button" data-act="solo"><span class="ic"><i data-lucide="headphones"></i></span>独奏该房间</button>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="sliders-horizontal"></i></span>音量<span class="val">72%</span></button>
+                </div>
+                <div class="sheet-group">
+                  <div class="sheet-label">画面</div>
+                  <button class="sheet-row" type="button" data-act="focus"><span class="ic"><i data-lucide="maximize-2"></i></span><span class="js-focus-label">放大</span></button>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="monitor-play"></i></span>画质<span class="val">蓝光 8M</span></button>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="scan"></i></span>全屏<span class="val">能力可用时</span></button>
+                  <div class="sheet-label">弹幕</div>
+                  <button class="sheet-row" type="button" data-act="danmaku"><span class="ic"><i data-lucide="message-square"></i></span>弹幕设置<span class="val">跟随全局</span></button>
+                </div>
+                <div class="sheet-group">
+                  <div class="sheet-label">房间</div>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="pencil"></i></span>替换房号</button>
+                  <button class="sheet-row" type="button"><span class="ic"><i data-lucide="external-link"></i></span>打开直播间</button>
+                  <button class="sheet-row danger" type="button"><span class="ic"><i data-lucide="trash-2"></i></span>移除房间</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="device" data-device="ipad-p" id="panel-ipad-p" role="tabpanel" aria-labelledby="tab-ipad-p" hidden>
+      <figcaption class="device-cap">
+        <span><b>iPad 竖屏 · 820×1180</b> · 添加房间</span>
+        <span class="cap-hint">整行选择 · 底部托盘 · 16px 输入</span>
+      </figcaption>
+      <div class="device-frame">
+        <div class="device-screen" data-frame-screen="ipad-p">
+          <div class="design-canvas mock ipad ipad-p" data-mock="ipad-p" data-dw="820" data-dh="1180" style="width:820px;height:1180px">
+            <header class="appbar compact">
+              <div class="brand">
+                <span class="logo">斗</span>
+                <span class="brand-name">监控室</span>
+              </div>
+              <div class="stats"><span class="stat-strong">6<span class="stat-dim">/16</span> 格</span></div>
+              <span class="grow"></span>
+              <button class="appbtn" type="button"><span class="ic"><i data-lucide="layout-grid"></i></span><span>布局</span></button>
+              <button class="appbtn primary" type="button"><span class="ic"><i data-lucide="plus"></i></span><span>添加</span></button>
+              <button class="appbtn icon" type="button" aria-label="更多全局操作"><span class="ic"><i data-lucide="ellipsis"></i></span></button>
+            </header>
+
+            <main class="wall" data-wall="ipad-p" aria-label="多路直播画面"></main>
+
+            <div class="sheet-scrim" aria-hidden="true"></div>
+            <section class="add-sheet" aria-label="添加房间">
+              <div class="sheet-grab"></div>
+              <div class="add-head">
+                <h3>添加房间</h3>
+                <button class="close48" type="button" aria-label="关闭添加房间"><span class="ic"><i data-lucide="x"></i></span></button>
+              </div>
+              <div class="search48">
+                <span class="ic"><i data-lucide="search"></i></span>
+                <span class="search-placeholder">房号 / 斗鱼链接 / 主播名</span>
+                <button class="search-go" type="button">搜索</button>
+              </div>
+              <div class="source-chips">
+                <button class="source-chip is-active" type="button">关注 <span>12</span></button>
+                <button class="source-chip" type="button">历史</button>
+                <button class="source-chip" type="button">团播</button>
+                <button class="source-chip" type="button">手动</button>
+              </div>
+              <div class="add-list-head">
+                <span>关注 · 在线优先</span>
+                <button class="link" type="button">全选在播</button>
+              </div>
+              <div class="add-list">
+                <button class="add-row is-on" type="button">
+                  <span class="add-avatar a1">白</span>
+                  <span class="add-copy"><b>白天PS</b><span>英雄联盟 · 正在直播</span></span>
+                  <span class="add-status live"><i class="dot live"></i>直播中</span>
+                  <span class="add-check is-on"><i data-lucide="check"></i></span>
+                </button>
+                <button class="add-row is-on" type="button">
+                  <span class="add-avatar a2">峡</span>
+                  <span class="add-copy"><b>峡谷双排</b><span>英雄联盟 · 正在直播</span></span>
+                  <span class="add-status live"><i class="dot live"></i>直播中</span>
+                  <span class="add-check is-on"><i data-lucide="check"></i></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a3">电</span>
+                  <span class="add-copy"><b>电竞实验室</b><span>绝地求生 · 正在连接</span></span>
+                  <span class="add-status queue"><i class="dot queue"></i>排队中</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a4">C</span>
+                  <span class="add-copy"><b>CS2 训练营</b><span>CS2 · 暂未开播</span></span>
+                  <span class="add-status off"><i class="dot off"></i>未开播</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a5">二</span>
+                  <span class="add-copy"><b>二次元放映室</b><span>二次元 · 正在直播</span></span>
+                  <span class="add-status live"><i class="dot live"></i>直播中</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a3">主</span>
+                  <span class="add-copy"><b>主机游戏君</b><span>主机游戏 · 正在直播</span></span>
+                  <span class="add-status live"><i class="dot live"></i>直播中</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a4">桌</span>
+                  <span class="add-copy"><b>桌游夜话</b><span>桌游 · 直播异常</span></span>
+                  <span class="add-status err"><i class="dot err"></i>异常</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a5">夜</span>
+                  <span class="add-copy"><b>深夜电台</b><span>音乐 · 正在直播</span></span>
+                  <span class="add-status live"><i class="dot live"></i>直播中</span>
+                  <span class="add-check"></span>
+                </button>
+                <button class="add-row" type="button">
+                  <span class="add-avatar a1">新</span>
+                  <span class="add-copy"><b>新晋主播</b><span>主机游戏 · 重连中</span></span>
+                  <span class="add-status wait"><i class="dot wait"></i>重连</span>
+                  <span class="add-check"></span>
+                </button>
+              </div>
+              <div class="add-foot">
+                <div class="add-count"><b>已选 2 个</b><span>跨搜索保留</span></div>
+                <button class="link" type="button">清空</button>
+                <button class="add-cta" type="button"><span class="ic"><i data-lucide="plus"></i></span>加入墙</button>
+              </div>
+              <div class="homebar"><span></span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </figure>
+  </section>
+
+  <section class="bd-section">
+    <div class="bd-section-head">
+      <h2>关键流程</h2>
+      <span>同一张动作清单，按屏幕落到面板；添加与设置不再挤在顶栏</span>
+    </div>
+    <div class="comp-grid">
+      <div class="comp">
+        <div class="comp-label"><b>01 / 更多操作</b><span>触屏长按或“⋯”打开</span></div>
+        <div class="comp-stage">
+          <div class="comp-sheet">
+            <div class="sheet-grab"></div>
+            <div class="sheet-head">
+              <div class="sheet-room"><b>深夜电台</b><span>直播中 · 1080P · 音乐</span></div>
+              <span class="close48"><span class="ic"><i data-lucide="x"></i></span></span>
+            </div>
+            <div class="sheet-body">
+              <div class="sheet-label">播放</div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="pause"></i></span><span>暂停 / 继续</span></div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="refresh-cw"></i></span><span>重新取流</span></div>
+              <div class="sheet-label">声音</div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="volume-x"></i></span><span>静音</span></div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="headphones"></i></span><span>独奏该房间</span></div>
+              <div class="sheet-label">画面</div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="maximize-2"></i></span><span>放大 / 恢复平铺</span></div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="monitor-play"></i></span><span>画质</span><span class="val">蓝光 8M</span></div>
+              <div class="sheet-row"><span class="ic"><i data-lucide="message-square"></i></span><span>弹幕设置</span><span class="val">跟随全局</span></div>
+              <div class="sheet-row danger"><span class="ic"><i data-lucide="trash-2"></i></span><span>移除房间</span><span class="val">可撤销</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-label"><b>02 / 设置</b><span>低频设置集中，不再是一页长表单</span></div>
+        <div class="comp-stage">
+          <div class="comp-settings">
+            <div class="set-nav">
+              <div class="set-nav-item is-active"><span class="ic"><i data-lucide="play"></i></span>播放</div>
+              <div class="set-nav-item"><span class="ic"><i data-lucide="volume-2"></i></span>声音与提醒</div>
+              <div class="set-nav-item"><span class="ic"><i data-lucide="message-square"></i></span>弹幕默认</div>
+              <div class="set-nav-item"><span class="ic"><i data-lucide="folder"></i></span>工作区</div>
+              <div class="set-nav-item"><span class="ic"><i data-lucide="activity"></i></span>诊断</div>
+            </div>
+            <div class="set-main">
+              <div class="set-title">播放</div>
+              <div class="set-sub">同时连接数与恢复行为</div>
+              <div class="set-label">并发路数</div>
+              <div class="seg"><span>4</span><span class="on">6</span><span>8</span><span>12</span><span>16</span></div>
+              <div class="switch-row"><span>请求 H.265</span><span class="switch-ui"></span></div>
+              <div class="switch-row"><span>暂停页面主视频</span><span class="switch-ui on"></span></div>
+              <div class="set-label">打开监控室时</div>
+              <div class="seg"><span class="on">每次询问</span><span>自动加载</span><span>直接面板</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-label"><b>03 / 整理位置</b><span>点源画格 → 点目标画格；取消不交换</span></div>
+        <div class="comp-stage">
+          <div class="comp-reorder">
+            <div class="reo-banner">
+              <span class="ic"><i data-lucide="move"></i></span>
+              <span>整理位置 · 选择两个画面交换</span>
+              <span class="reo-actions"><span class="reo-cancel">取消</span><span class="reo-done">完成</span></span>
+            </div>
+            <div class="reo-tiles">
+              <div class="reo-tile">01</div>
+              <div class="reo-tile source">02</div>
+              <div class="reo-tile">03</div>
+              <div class="reo-tile">04</div>
+              <div class="reo-tile target">05</div>
+              <div class="reo-tile">06</div>
+            </div>
+            <div class="reo-hint">桌面仍可用名字胶囊拖动；触屏不依赖拖动</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-label"><b>04 / 空墙</b><span>先给下一步，而不是先给设置面板</span></div>
+        <div class="comp-stage">
+          <div class="comp-empty">
+            <div class="empty-icon"><span class="ic"><i data-lucide="layout-grid"></i></span></div>
+            <div class="empty-title">监控室是空的</div>
+            <div class="empty-sub">从关注列表或房号添加直播间；上次布局仍安全保留。</div>
+            <button class="empty-primary" type="button"><span class="ic"><i data-lucide="plus"></i></span>添加房间</button>
+            <button class="empty-second" type="button">加载上次 6 个房间</button>
+            <div class="empty-hint">轻点画面选择 · 长按或“⋯”打开操作</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bd-section">
+    <div class="bd-section-head">
+      <h2>触控与响应式规范</h2>
+      <span>排版看容器宽度，命中区看输入能力</span>
+    </div>
+    <div class="spec-grid">
+      <div class="spec-card">
+        <div class="spec-title">命中区 / 输入</div>
+        <div class="tgt-row">
+          <span class="tgt-btn"><span class="ic"><i data-lucide="pause"></i></span></span>
+          <span class="tgt-note">48px<br>核心动作</span>
+        </div>
+        <div class="tgt-row">
+          <span class="tgt-circle"><span class="ic"><i data-lucide="x"></i></span></span>
+          <span class="tgt-note">44px<br>关闭 / 图标</span>
+        </div>
+        <div class="tgt-input">房号 / 主播名<span>16px</span></div>
+        <div class="tgt-foot">粗指针 44 起 · 间距 ≥ 8 · 输入 ≥ 16 防 iOS 放大</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="spec-title">断点 / 面板形态</div>
+        <div class="bp-row"><span>≥1180</span><div class="bp-bar" style="--w:100%"><i></i></div><b>停靠检查器</b></div>
+        <div class="bp-row"><span>900–1179</span><div class="bp-bar" style="--w:76%"><i></i></div><b>底部控制条</b></div>
+        <div class="bp-row"><span>&lt;900</span><div class="bp-bar" style="--w:52%"><i></i></div><b>全宽底部面板</b></div>
+        <div class="tgt-foot">用容器宽度，不用 UA；iPad 分屏/旋转不重置选中与播放</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="spec-title">状态语义</div>
+        <div class="state-grid">
+          <span class="st"><i class="dot live"></i>直播中</span>
+          <span class="st"><i class="dot queue"></i>排队 / 取流</span>
+          <span class="st"><i class="dot wait"></i>重连 / 轮播</span>
+          <span class="st"><i class="dot off"></i>未开播</span>
+          <span class="st"><i class="dot err"></i>播放异常</span>
+          <span class="st st-select"><i></i>已选中</span>
+          <span class="st st-main">主</span>
+          <span class="st"><span class="ic"><i data-lucide="volume-x"></i></span>静音</span>
+        </div>
+        <div class="tgt-foot">颜色 + 文字；选中用品牌橙细描边，品牌橙填充只留给“添加”主按钮</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="spec-title">能力 / 降级</div>
+        <div class="cap-row"><span class="ic"><i data-lucide="picture-in-picture-2"></i></span><div><b>弹幕画中画</b><span>仅 Document PiP；无此 API 不显示</span></div></div>
+        <div class="cap-row"><span class="ic"><i data-lucide="scan"></i></span><div><b>全屏</b><span>失败回退页面内专注视图</span></div></div>
+        <div class="cap-row"><span class="ic"><i data-lucide="volume-2"></i></span><div><b>逐路音量</b><span>iPad 不生效时显示系统音量说明</span></div></div>
+        <div class="tgt-foot">不把“有按钮”当成“有能力”；降级必须有替代路径</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="bd-foot">
+    <span>监控室 · UI/UX 2.1 · 依据 v1.4.6 代码</span>
+    <span>保留：布局算法 / 11 态 / 工作区 schema v2 / GM 存储键 / 单文件产物</span>
+  </footer>
+
+  <div class="u-sr" id="uiux-live" aria-live="polite"></div>
+</div>
+
+<style>
+#uiux-board {
+  --bd-line: var(--border, rgba(127,127,127,.22));
+  --bd-fg: var(--foreground, #1d2128);
+  --bd-muted: var(--muted-foreground, #6b7280);
+  --bd-soft: var(--muted, rgba(127,127,127,.08));
+  position: relative;
+  width: 100%;
+  color: var(--bd-fg);
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+#uiux-board *, #uiux-board *::before, #uiux-board *::after { box-sizing: border-box; }
+#uiux-board [hidden] { display: none !important; }
+#uiux-board :where(button) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+#uiux-board button:focus-visible { outline: 2px solid var(--bd-fg); outline-offset: 2px; }
+#uiux-board svg { display: block; }
+#uiux-board .u-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+#uiux-board .bd-ic, #uiux-board .ic { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#uiux-board .bd-ic svg { width: 15px; height: 15px; }
+#uiux-board :where(.ic) svg { width: 16px; height: 16px; }
+
+/* board chrome */
+#uiux-board .bd-head { padding: 4px 2px 18px; border-bottom: 1px solid var(--bd-line); }
+#uiux-board .bd-kicker { font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; color: var(--bd-muted); }
+#uiux-board .bd-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px 24px; flex-wrap: wrap; margin-top: 9px; }
+#uiux-board .bd-title-row h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.02em; }
+#uiux-board .bd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+#uiux-board .bd-tag { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border: 1px solid var(--bd-line); border-radius: 999px; background: var(--bd-soft); color: var(--bd-muted); font-size: 11px; white-space: nowrap; }
+#uiux-board .bd-sub { max-width: 820px; margin: 9px 0 0; color: var(--bd-muted); font-size: 13px; line-height: 1.7; }
+#uiux-board .bd-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 0 12px; }
+#uiux-board .bd-tab { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 1px solid var(--bd-line); border-radius: 9px; color: var(--bd-muted); font-size: 12px; }
+#uiux-board .bd-tab:hover { color: var(--bd-fg); border-color: var(--bd-fg); }
+#uiux-board .bd-tab.is-active { background: var(--bd-fg); border-color: var(--bd-fg); color: var(--background, #fff); }
+#uiux-board .bd-stage { position: relative; }
+#uiux-board .device { max-width: 1180px; margin: 0 auto; }
+#uiux-board .device[data-device="ipad-p"] { max-width: 620px; }
+#uiux-board .device-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 6px 2px 8px; color: var(--bd-muted); font-size: 11px; letter-spacing: .02em; }
+#uiux-board .device-cap b { color: var(--bd-fg); font-weight: 500; }
+#uiux-board .cap-hint { color: var(--bd-muted); }
+#uiux-board .device-frame { padding: 6px; border: 1px solid var(--bd-line); border-radius: 16px; background: var(--bd-soft); box-shadow: 0 24px 60px rgba(0,0,0,.16); }
+#uiux-board .device-screen { position: relative; width: 100%; aspect-ratio: 1440 / 900; overflow: hidden; overflow: clip; contain: paint; border-radius: 11px; background: #09090b; }
+#uiux-board .device[data-device="ipad-l"] .device-screen { aspect-ratio: 1180 / 820; }
+#uiux-board .device[data-device="ipad-p"] .device-screen { aspect-ratio: 820 / 1180; }
+#uiux-board .design-canvas { position: absolute; top: 0; left: 0; transform-origin: top left; }
+
+/* product mock base */
+#uiux-board .mock { position: relative; overflow: hidden; background: #0f0f11; color: #eef2f8; font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif; font-size: 13px; line-height: 1.4; user-select: none; -webkit-tap-highlight-color: transparent; }
+#uiux-board .mock *, #uiux-board .mock *::before, #uiux-board .mock *::after { box-sizing: border-box; }
+#uiux-board .mock [hidden] { display: none !important; }
+#uiux-board .mock button { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+#uiux-board :where(.mock .ic) svg { width: 16px; height: 16px; }
+#uiux-board .mock .grow { flex: 1; }
+#uiux-board .mock .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+#uiux-board .mock .dot.live { background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.12); }
+#uiux-board .mock .dot.err { background: #ff6b6b; }
+#uiux-board .mock .dot.wait { background: #f5b84c; }
+#uiux-board .mock .dot.off { background: #6b7688; }
+#uiux-board .mock .dot.queue { background: #60a5fa; }
+#uiux-board .mock .sep { width: 3px; height: 3px; border-radius: 50%; background: #4b5563; flex-shrink: 0; }
+#uiux-board .mock .link { color: #ff7a45; font-size: 11.5px; }
+
+/* appbar */
+#uiux-board .mock .appbar { position: relative; z-index: 10; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #141416; border-bottom: 1px solid rgba(255,255,255,.07); }
+#uiux-board .mock.ipad .appbar { height: 58px; padding: 0 14px; }
+#uiux-board .mock .brand { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+#uiux-board .mock .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #ff5d23, #ff7a45); display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 4px 14px rgba(255,93,35,.28); }
+#uiux-board .mock .brand-name { font-size: 15px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+#uiux-board .mock .ver { font: 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #7c7c86; border: 1px solid rgba(255,255,255,.09); padding: 3px 6px; border-radius: 5px; }
+#uiux-board .mock .stats { display: flex; align-items: center; gap: 10px; margin-left: 4px; font-size: 11.5px; color: #a1a1aa; white-space: nowrap; }
+#uiux-board .mock .stat-strong { color: #e8edf5; font-weight: 600; }
+#uiux-board .mock .stat-dim { color: #7c7c86; font-weight: 400; }
+#uiux-board .mock .stat-err { color: #ff9b9b; display: inline-flex; align-items: center; gap: 5px; }
+#uiux-board .mock .appbtn { height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border-radius: 8px; border: 1px solid rgba(255,255,255,.09); background: #141821; color: #c9c9d1; font-size: 12px; white-space: nowrap; }
+#uiux-board .mock .appbtn:hover { background: #1a1f2a; color: #fff; }
+#uiux-board .mock .appbtn .chev svg { width: 12px; height: 12px; color: #7c7c86; }
+#uiux-board .mock .appbtn.primary { background: #ff5d23; border-color: #ff5d23; color: #fff; font-weight: 600; box-shadow: 0 6px 16px rgba(255,93,35,.22); }
+#uiux-board .mock .appbtn.primary:hover { background: #ff6f39; }
+#uiux-board .mock .appbtn.icon { width: 34px; padding: 0; justify-content: center; }
+#uiux-board .mock .appbtn.icon.is-on { border-color: rgba(255,122,69,.24); background: rgba(255,122,69,.06); color: #ff7a45; }
+#uiux-board .mock.ipad .appbtn { height: 44px; padding: 0 12px; border-radius: 10px; }
+#uiux-board .mock.ipad .appbtn.icon { width: 44px; }
+#uiux-board .mock.ipad .appbtn .ic svg { width: 18px; height: 18px; }
+
+/* workspace and wall */
+#uiux-board .mock.pc .workspace { display: flex; height: calc(100% - 56px); }
+#uiux-board .mock .wall { display: grid; gap: 3px; padding: 4px; min-width: 0; min-height: 0; background: linear-gradient(135deg, rgba(56,138,240,.22), rgba(56,138,240,.06) 48%, rgba(96,180,255,.18)); }
+#uiux-board .mock.pc .wall { flex: 1; grid-template-columns: repeat(3, minmax(0,1fr)); grid-template-rows: repeat(3, minmax(0,1fr)); }
+#uiux-board .mock.ipad-l .wall { position: absolute; top: 58px; left: 0; right: 0; bottom: 92px; grid-template-columns: repeat(3, minmax(0,1fr)); grid-template-rows: repeat(2, minmax(0,1fr)); }
+#uiux-board .mock.ipad-p .wall { position: absolute; top: 58px; left: 0; right: 0; bottom: 0; grid-template-columns: repeat(2, minmax(0,1fr)); grid-template-rows: repeat(3, minmax(0,1fr)); }
+
+/* tile */
+#uiux-board .mock .tile { position: relative; overflow: hidden; background: #0a0a0b; border-radius: 2px; isolation: isolate; }
+#uiux-board .mock .tile::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.045); }
+#uiux-board .mock .tile.is-selected::after { box-shadow: inset 0 0 0 2px #ff7a45, inset 0 0 26px rgba(255,122,69,.08); }
+#uiux-board .mock .tile-hit { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; background: transparent; cursor: pointer; }
+#uiux-board .mock .feed { position: absolute; inset: 0; overflow: hidden; background: #080b11; }
+#uiux-board .mock .feed::before { content: ""; position: absolute; inset: -12%; background: radial-gradient(ellipse at 28% 22%, var(--a) 0%, transparent 55%), radial-gradient(ellipse at 76% 74%, var(--c) 0%, transparent 52%), linear-gradient(148deg, var(--b) 0%, #09090b 78%); }
+#uiux-board .mock .feed::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.026) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 38%, rgba(0,0,0,.42) 100%); }
+#uiux-board .mock .g1 { --a: rgba(37,99,235,.55); --b: #081326; --c: rgba(14,165,233,.35); }
+#uiux-board .mock .g2 { --a: rgba(124,58,237,.5); --b: #150b26; --c: rgba(236,72,153,.3); }
+#uiux-board .mock .g3 { --a: rgba(13,148,136,.45); --b: #071b1a; --c: rgba(56,189,248,.28); }
+#uiux-board .mock .g4 { --a: rgba(217,119,6,.4); --b: #1b1006; --c: rgba(245,158,11,.28); }
+#uiux-board .mock .g5 { --a: rgba(79,70,229,.5); --b: #0d0c24; --c: rgba(56,189,248,.26); }
+#uiux-board .mock .g6 { --a: rgba(71,85,105,.38); --b: #0c1117; --c: rgba(148,163,184,.18); }
+#uiux-board .mock .g7 { --a: rgba(190,24,93,.45); --b: #1b0a14; --c: rgba(244,114,182,.25); }
+#uiux-board .mock .g8 { --a: rgba(127,29,29,.42); --b: #170a0a; --c: rgba(239,68,68,.22); }
+#uiux-board .mock .g9 { --a: rgba(3,105,161,.42); --b: #07141d; --c: rgba(34,211,238,.24); }
+#uiux-board .mock .feed-num { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font: 700 44px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: rgba(255,255,255,.12); letter-spacing: -.04em; }
+#uiux-board .mock .feed-tag { position: absolute; right: 9px; bottom: 8px; font: 8.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: rgba(255,255,255,.24); letter-spacing: .08em; }
+#uiux-board .mock .tile[data-kind="err"] .feed { filter: saturate(.35) brightness(.62); }
+#uiux-board .mock .tile[data-kind="queue"] .feed { filter: saturate(.7) brightness(.78); }
+#uiux-board .mock .tile-top { position: absolute; z-index: 3; top: 8px; left: 8px; right: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; pointer-events: none; }
+#uiux-board .mock .nameplate { min-width: 0; max-width: calc(100% - 30px); height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px 0 7px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(10,14,20,.62); color: #fff; font-size: 11.5px; box-shadow: 0 4px 14px rgba(0,0,0,.25); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); overflow: hidden; white-space: nowrap; }
+#uiux-board .mock .nameplate b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+#uiux-board .mock .tile.is-selected .nameplate { border-color: rgba(255,122,69,.55); background: rgba(12,26,36,.74); }
+#uiux-board .mock .main-badge { display: none; align-items: center; height: 15px; padding: 0 4px; border-radius: 3px; background: #ff7a45; color: #1a0d07; font-size: 9px; font-weight: 800; line-height: 1; }
+#uiux-board .mock .tile.is-focused .main-badge { display: inline-flex; }
+#uiux-board .mock .mute-mark { display: none; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: rgba(8,10,14,.6); color: #c9c9d1; backdrop-filter: blur(8px); }
+#uiux-board .mock .tile.is-muted .mute-mark { display: grid; }
+#uiux-board .mock .mute-mark svg { width: 13px; height: 13px; }
+#uiux-board .mock .tile-bottom { position: absolute; z-index: 5; left: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 64px); pointer-events: none; }
+#uiux-board .mock .state-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: rgba(8,10,14,.72); color: #c9c9d1; font-size: 10.5px; white-space: nowrap; backdrop-filter: blur(8px); }
+#uiux-board .mock .state-chip.wait { color: #f5c76a; border-color: rgba(245,184,76,.35); }
+#uiux-board .mock .state-chip.err { color: #ff9b9b; border-color: rgba(255,107,107,.35); }
+#uiux-board .mock .state-chip.off { color: #a1a1aa; }
+#uiux-board .mock .spinner { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,.2); border-top-color: currentColor; border-radius: 50%; animation: uiux-spin .9s linear infinite; flex-shrink: 0; }
+@keyframes uiux-spin { to { transform: rotate(360deg); } }
+#uiux-board .mock .chipbtn { height: 24px; padding: 0 8px; border: 1px solid rgba(255,107,107,.35); border-radius: 6px; background: rgba(255,107,107,.16); color: #ffb3b3; font-size: 10.5px; pointer-events: auto; }
+#uiux-board .mock .quick { position: absolute; z-index: 6; right: 8px; bottom: 8px; display: none; align-items: center; gap: 4px; }
+#uiux-board .mock .tile.is-selected .quick { display: flex; }
+#uiux-board .mock.pc .tile:hover .quick { display: flex; }
+#uiux-board .mock .quick button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(8,11,16,.7); color: #e4e4e7; backdrop-filter: blur(10px); }
+#uiux-board .mock .quick button:hover { background: rgba(24,31,42,.92); color: #fff; }
+#uiux-board .mock .quick button svg { width: 15px; height: 15px; }
+#uiux-board .mock.ipad .quick { display: none; }
+#uiux-board .mock.ipad .tile.is-selected .quick { display: flex; }
+#uiux-board .mock.ipad .quick .q-play, #uiux-board .mock.ipad .quick .q-focus { display: none; }
+#uiux-board .mock.ipad .quick .q-more { width: 44px; height: 44px; border-radius: 12px; }
+#uiux-board .mock.ipad .quick .q-more svg { width: 20px; height: 20px; }
+#uiux-board .mock.ipad .tile-bottom { max-width: calc(100% - 60px); }
+#uiux-board .mock.ipad .state-chip { height: 28px; font-size: 11.5px; }
+#uiux-board .mock.ipad .chipbtn { height: 32px; font-size: 11.5px; }
+#uiux-board .mock.ipad .nameplate { height: 30px; font-size: 12.5px; }
+#uiux-board .mock.ipad .feed-num { font-size: 60px; }
+
+/* inspector */
+#uiux-board .mock .inspector { width: 320px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; background: #141416; border-left: 1px solid rgba(255,255,255,.07); }
+#uiux-board .mock .insp-head { height: 52px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; }
+#uiux-board .mock .insp-tabs { display: flex; gap: 2px; padding: 2px; border: 1px solid rgba(255,255,255,.06); border-radius: 8px; background: #0f0f11; }
+#uiux-board .mock .insp-tab { height: 30px; padding: 0 10px; border-radius: 6px; color: #8e8e96; font-size: 11.5px; }
+#uiux-board .mock .insp-tab.is-active { background: #26262a; color: #eef2f8; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+#uiux-board .mock .insp-collapse { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 7px; color: #8e8e96; }
+#uiux-board .mock .insp-collapse:hover { background: #1e1e22; color: #fff; }
+#uiux-board .mock .insp-collapse svg { width: 15px; height: 15px; }
+#uiux-board .mock .insp-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#uiux-board .mock .insp-body { flex: 1; min-height: 0; overflow: auto; padding: 16px 16px 18px; scrollbar-width: thin; }
+#uiux-board .mock .room-id { display: flex; align-items: center; gap: 12px; }
+#uiux-board .mock .avatar { width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: linear-gradient(135deg, #1d4ed8, #7c3aed); color: #fff; font-size: 16px; font-weight: 700; }
+#uiux-board .mock .room-id-copy { min-width: 0; }
+#uiux-board .mock .room-title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .room-meta { margin-top: 3px; color: #8e8e96; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .status-line { display: flex; align-items: center; gap: 7px; margin-top: 10px; color: #a2acbd; font-size: 11px; flex-wrap: wrap; }
+#uiux-board .mock .primary-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-top: 16px; }
+#uiux-board .mock .pbtn { height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid rgba(255,255,255,.07); border-radius: 9px; background: #1e1e21; color: #c9c9d1; font-size: 10.5px; }
+#uiux-board .mock .pbtn:hover { background: #26262a; color: #fff; }
+#uiux-board .mock .pbtn svg { width: 17px; height: 17px; }
+#uiux-board .mock .pbtn.is-on { border-color: rgba(255,122,69,.35); background: rgba(255,122,69,.08); color: #ff7a45; }
+#uiux-board .mock .sect { margin-top: 18px; }
+#uiux-board .mock .sect-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #8e8e96; font-size: 11px; letter-spacing: .03em; }
+#uiux-board .mock .sect-h b { color: #e8edf5; font-size: 12px; font-weight: 600; }
+#uiux-board .mock .volume-slider { position: relative; height: 28px; display: flex; align-items: center; cursor: pointer; }
+#uiux-board .mock .volume-slider::before { content: ""; position: absolute; left: 0; right: 0; height: 5px; border-radius: 99px; background: #242b37; }
+#uiux-board .mock .volume-fill { position: absolute; left: 0; height: 5px; border-radius: 99px; background: linear-gradient(90deg, #ff7a45, #ffb199); }
+#uiux-board .mock .volume-thumb { position: absolute; top: 50%; width: 18px; height: 18px; transform: translate(-50%,-50%); border: 4px solid #ff7a45; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+#uiux-board .mock .slider-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; color: #7c7c86; font-size: 10.5px; }
+#uiux-board .mock .mini-actions { display: flex; gap: 4px; }
+#uiux-board .mock .mini-actions button { height: 24px; padding: 0 7px; border: 1px solid rgba(255,255,255,.09); border-radius: 5px; color: #a1a1aa; font-size: 10px; }
+#uiux-board .mock .mini-actions button:hover { color: #fff; background: #1e1e22; }
+#uiux-board .mock .pill { display: inline-flex; align-items: center; height: 19px; padding: 0 7px; border-radius: 999px; font-size: 10px; }
+#uiux-board .mock .pill.on { background: rgba(52,211,153,.1); color: #7ee2b8; }
+#uiux-board .mock .kv { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #a1a1aa; font-size: 11.5px; }
+#uiux-board .mock .select-row { width: 100%; height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: #1e1e21; color: #e8edf5; font-size: 11.5px; }
+#uiux-board .mock .select-row .ic svg { width: 13px; height: 13px; color: #7c7c86; }
+#uiux-board .mock .rows { margin-top: 16px; border-top: 1px solid rgba(255,255,255,.07); }
+#uiux-board .mock .rowbtn { width: 100%; height: 38px; display: flex; align-items: center; gap: 9px; border-bottom: 1px solid rgba(255,255,255,.07); color: #c9c9d1; font-size: 11.5px; text-align: left; }
+#uiux-board .mock .rowbtn .ic { color: #8e8e96; }
+#uiux-board .mock .rowbtn .rowchev { margin-left: auto; color: #5d687a; }
+#uiux-board .mock .rowbtn .rowchev svg { width: 13px; height: 13px; }
+#uiux-board .mock .rowbtn:hover { color: #fff; background: rgba(255,255,255,.025); }
+#uiux-board .mock .rowbtn.danger { justify-content: center; margin-top: 10px; border: 1px solid rgba(255,107,107,.16); border-radius: 8px; background: rgba(255,107,107,.06); color: #ff8f8f; }
+#uiux-board .mock .lib-top { margin-bottom: 10px; }
+#uiux-board .mock .lib-search { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: #111113; color: #6f7a8c; font-size: 11px; }
+#uiux-board .mock .lib-search .ic svg { width: 14px; height: 14px; }
+#uiux-board .mock .lib-add { width: 100%; justify-content: center; margin-bottom: 12px; }
+#uiux-board .mock .lib-section { margin: 4px 0 6px; color: #6f7a8c; font-size: 9.5px; letter-spacing: .12em; }
+#uiux-board .mock .lib-list { display: flex; flex-direction: column; gap: 2px; }
+#uiux-board .mock .lib-row { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 8px; text-align: left; }
+#uiux-board .mock .lib-row:hover { background: #1e1e21; }
+#uiux-board .mock .lib-row.is-active { background: rgba(255,122,69,.08); box-shadow: inset 2px 0 0 #ff7a45; }
+#uiux-board .mock .lib-avatar { width: 28px; height: 28px; display: grid; place-items: center; flex-shrink: 0; border-radius: 8px; background: #1d2533; color: #c9c9d1; font-size: 11px; font-weight: 600; }
+#uiux-board .mock .lib-copy { min-width: 0; }
+#uiux-board .mock .lib-name { display: block; color: #e4e4e7; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .lib-meta { display: block; margin-top: 1px; color: #6f7a8c; font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .lib-state { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: #8e8e96; font-size: 9.5px; white-space: nowrap; }
+
+/* PC global menu */
+#uiux-board .mock .pc-menu { position: absolute; z-index: 40; top: 52px; right: 12px; width: 210px; padding: 5px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: #1b1b1e; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+#uiux-board .mock .pc-menu button { width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; color: #c9c9d1; font-size: 12px; text-align: left; }
+#uiux-board .mock .pc-menu button:hover { background: #1c2330; color: #fff; }
+#uiux-board .mock .pc-menu .danger { color: #ff8f8f; }
+#uiux-board .mock .pc-menu .sep { height: 1px; margin: 4px 2px; background: rgba(255,255,255,.08); }
+
+/* touch command bar */
+#uiux-board .mock .cmdbar { position: absolute; z-index: 8; left: 0; right: 0; bottom: 16px; height: 76px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-top: 1px solid rgba(255,255,255,.08); background: #0c1016; }
+#uiux-board .mock .cmd-room { flex: 1; min-width: 0; }
+#uiux-board .mock .cmd-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .cmd-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: #a1a1aa; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .cmd-actions { display: flex; gap: 2px; flex-shrink: 0; }
+#uiux-board .mock .cmd { width: 56px; height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 10px; color: #c9c9d1; font-size: 9.5px; }
+#uiux-board .mock .cmd svg { width: 20px; height: 20px; }
+#uiux-board .mock .cmd:hover { background: #1e1e21; color: #fff; }
+#uiux-board .mock .cmd.is-on { background: rgba(255,122,69,.08); color: #ff7a45; }
+#uiux-board .mock .homebar { position: absolute; z-index: 9; left: 0; right: 0; bottom: 0; height: 16px; display: grid; place-items: center; background: #0c1016; }
+#uiux-board .mock .homebar span { width: 120px; height: 4px; border-radius: 99px; background: rgba(255,255,255,.42); }
+
+/* sheets */
+#uiux-board .sheet-scrim { position: absolute; inset: 0; z-index: 20; background: rgba(3,5,8,.55); }
+#uiux-board .mock .action-sheet { position: absolute; z-index: 21; left: 0; right: 0; bottom: 0; max-height: 560px; display: flex; flex-direction: column; padding-bottom: 16px; border-top: 1px solid rgba(255,255,255,.14); border-radius: 20px 20px 0 0; background: #17171a; box-shadow: 0 -1px 0 rgba(255,255,255,.05), 0 -20px 60px rgba(0,0,0,.55); }
+#uiux-board .sheet-grab { width: 38px; height: 4px; margin: 8px auto 0; border-radius: 99px; background: rgba(255,255,255,.22); flex-shrink: 0; }
+#uiux-board .sheet-head { display: flex; align-items: center; gap: 12px; padding: 10px 16px 8px; flex-shrink: 0; }
+#uiux-board .sheet-room { min-width: 0; }
+#uiux-board .sheet-room b { display: block; color: #eef2f8; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .sheet-room span { display: block; margin-top: 3px; color: #a1a1aa; font-size: 10.5px; }
+#uiux-board .close48 { width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; border-radius: 10px; background: #1e1e22; color: #c9c9d1; }
+#uiux-board .close48:hover { background: #1e2531; color: #fff; }
+#uiux-board .close48 svg { width: 18px; height: 18px; }
+#uiux-board .sheet-head .close48 { margin-left: auto; }
+#uiux-board .sheet-body { min-height: 0; overflow: auto; padding: 0 10px 8px; scrollbar-width: thin; }
+#uiux-board .sheet-cols { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); align-content: start; gap: 0 18px; width: 100%; max-width: 1100px; margin: 0 auto; }
+#uiux-board .sheet-group { min-width: 0; }
+#uiux-board .action-sheet .sheet-head { width: 100%; max-width: 1100px; margin: 0 auto; }
+#uiux-board .action-sheet { max-height: 560px; border-top-color: rgba(255,255,255,.14); box-shadow: 0 -1px 0 rgba(255,255,255,.05), 0 -20px 60px rgba(0,0,0,.55); }
+#uiux-board .sheet-label { padding: 10px 8px 4px; color: #6f7a8c; font-size: 9.5px; letter-spacing: .12em; }
+#uiux-board .sheet-row { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 8px; color: #d7deea; font-size: 12px; text-align: left; }
+#uiux-board .sheet-row .ic { color: #a1a1aa; }
+#uiux-board .sheet-row .ic svg { width: 16px; height: 16px; }
+#uiux-board .sheet-row:hover { background: #1e1e22; }
+#uiux-board .sheet-row .val { margin-left: auto; color: #8e8e96; font-size: 11px; }
+#uiux-board .sheet-row.danger { color: #ff8f8f; background: rgba(255,107,107,.06); margin-top: 6px; }
+#uiux-board .sheet-row.danger .ic { color: #ff8f8f; }
+
+/* add sheet */
+#uiux-board .mock .add-sheet { position: absolute; z-index: 21; left: 0; right: 0; bottom: 0; height: 910px; display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,.1); border-radius: 22px 22px 0 0; background: #17171a; box-shadow: 0 -20px 60px rgba(0,0,0,.5); overflow: hidden; }
+#uiux-board .mock .add-head { display: flex; align-items: center; padding: 8px 16px 4px; flex-shrink: 0; }
+#uiux-board .mock .add-head h3 { margin: 0; color: #eef2f8; font-size: 17px; font-weight: 600; }
+#uiux-board .mock .add-head .close48 { margin-left: auto; background: transparent; }
+#uiux-board .mock .search48 { height: 48px; display: flex; align-items: center; gap: 8px; margin: 8px 16px 0; padding: 0 6px 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: #0f0f11; color: #6f7a8c; flex-shrink: 0; }
+#uiux-board .mock .search48 .ic svg { width: 17px; height: 17px; }
+#uiux-board .mock .search-placeholder { flex: 1; min-width: 0; font-size: 16px; color: #7c7c86; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .search-go { height: 36px; padding: 0 12px; border-radius: 8px; background: #26262a; color: #c9c9d1; font-size: 12px; flex-shrink: 0; }
+#uiux-board .mock .source-chips { display: flex; gap: 7px; padding: 12px 16px 4px; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+#uiux-board .mock .source-chips::-webkit-scrollbar { display: none; }
+#uiux-board .mock .source-chip { height: 36px; display: inline-flex; align-items: center; gap: 4px; padding: 0 13px; border: 1px solid rgba(255,255,255,.09); border-radius: 999px; color: #a1a1aa; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+#uiux-board .mock .source-chip span { color: #6f7a8c; font-size: 10px; }
+#uiux-board .mock .source-chip.is-active { border-color: rgba(255,122,69,.5); background: rgba(255,122,69,.1); color: #e8f6ff; }
+#uiux-board .mock .add-list-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 6px; flex-shrink: 0; color: #8e8e96; font-size: 11px; }
+#uiux-board .mock .add-list { flex: 1; min-height: 0; overflow: auto; padding: 0 8px; scrollbar-width: thin; }
+#uiux-board .mock .add-row { width: 100%; min-height: 68px; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-radius: 10px; text-align: left; }
+#uiux-board .mock .add-row:hover { background: #1e1e21; }
+#uiux-board .mock .add-row.is-on { background: rgba(255,122,69,.06); }
+#uiux-board .mock .add-avatar { width: 40px; height: 40px; display: grid; place-items: center; flex-shrink: 0; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 700; }
+#uiux-board .mock .add-avatar.a1 { background: linear-gradient(135deg,#2563eb,#7c3aed); }
+#uiux-board .mock .add-avatar.a2 { background: linear-gradient(135deg,#db2777,#f59e0b); }
+#uiux-board .mock .add-avatar.a3 { background: linear-gradient(135deg,#0d9488,#0ea5e9); }
+#uiux-board .mock .add-avatar.a4 { background: linear-gradient(135deg,#475569,#94a3b8); }
+#uiux-board .mock .add-avatar.a5 { background: linear-gradient(135deg,#7c3aed,#ec4899); }
+#uiux-board .mock .add-copy { flex: 1; min-width: 0; }
+#uiux-board .mock .add-copy b { display: block; color: #e8edf5; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .add-copy span { display: block; margin-top: 3px; color: #7c7c86; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#uiux-board .mock .add-status { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 11.5px; }
+#uiux-board .mock .add-status.live { color: #7ee2b8; }
+#uiux-board .mock .add-status.queue { color: #93c5fd; }
+#uiux-board .mock .add-status.off { color: #8e8e96; }
+#uiux-board .mock .add-status.err { color: #ff9b9b; }
+#uiux-board .mock .add-status.wait { color: #f5c76a; }
+#uiux-board .mock .add-check { width: 26px; height: 26px; display: grid; place-items: center; flex-shrink: 0; border: 1.5px solid rgba(255,255,255,.2); border-radius: 50%; color: transparent; }
+#uiux-board .mock .add-check.is-on { border-color: #ff7a45; background: #ff7a45; color: #1a0d07; }
+#uiux-board .mock .add-check svg { width: 14px; height: 14px; stroke-width: 3; }
+#uiux-board .mock .add-foot { display: flex; align-items: center; gap: 12px; padding: 12px 16px 20px; border-top: 1px solid rgba(255,255,255,.08); background: #0d1117; flex-shrink: 0; }
+#uiux-board .mock .add-count { flex: 1; min-width: 0; }
+#uiux-board .mock .add-count b { display: block; color: #eef2f8; font-size: 13px; font-weight: 600; }
+#uiux-board .mock .add-count span { display: block; margin-top: 2px; color: #6f7a8c; font-size: 10px; }
+#uiux-board .mock .add-cta { height: 48px; display: inline-flex; align-items: center; gap: 7px; padding: 0 18px; border-radius: 10px; background: #ff5d23; color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 6px 18px rgba(255,93,35,.25); flex-shrink: 0; }
+#uiux-board .mock .add-cta .ic svg { width: 17px; height: 17px; }
+
+/* component flows */
+#uiux-board .bd-section { margin-top: 38px; }
+#uiux-board .bd-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; margin-bottom: 12px; }
+#uiux-board .bd-section-head h2 { margin: 0; font-size: 15px; font-weight: 500; }
+#uiux-board .bd-section-head span { color: var(--bd-muted); font-size: 11px; }
+#uiux-board .comp-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+#uiux-board .comp { min-width: 0; display: flex; flex-direction: column; }
+#uiux-board .comp-label { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; color: var(--bd-muted); font-size: 11px; }
+#uiux-board .comp-label b { color: var(--bd-fg); font-size: 12px; font-weight: 500; }
+#uiux-board .comp-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 250px; padding: 16px; overflow: hidden; border: 1px solid var(--bd-line); border-radius: 14px; background: var(--bd-soft); }
+#uiux-board .comp-sheet { width: 340px; overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 18px; background: #17171a; color: #eef2f8; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+#uiux-board .comp-sheet .sheet-body { max-height: none; }
+#uiux-board .comp-sheet .sheet-head { padding-top: 8px; }
+#uiux-board .comp-settings { width: 100%; max-width: 560px; height: 330px; display: flex; overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: #17171a; color: #eef2f8; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+#uiux-board .set-nav { width: 148px; flex-shrink: 0; padding: 10px 8px; border-right: 1px solid rgba(255,255,255,.07); background: #111113; }
+#uiux-board .set-nav-item { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 7px; color: #8e8e96; font-size: 11.5px; }
+#uiux-board .set-nav-item .ic svg { width: 15px; height: 15px; }
+#uiux-board .set-nav-item.is-active { background: #26262a; color: #eef2f8; }
+#uiux-board .set-main { flex: 1; min-width: 0; padding: 14px 16px; overflow: auto; }
+#uiux-board .set-title { color: #eef2f8; font-size: 14px; font-weight: 600; }
+#uiux-board .set-sub { margin-top: 3px; color: #7c7c86; font-size: 10.5px; }
+#uiux-board .set-label { margin: 14px 0 6px; color: #8e8e96; font-size: 10px; }
+#uiux-board .seg { display: flex; gap: 2px; padding: 2px; border: 1px solid rgba(255,255,255,.07); border-radius: 8px; background: #0f0f11; }
+#uiux-board .seg span { flex: 1; height: 26px; display: grid; place-items: center; border-radius: 6px; color: #8e8e96; font-size: 10.5px; white-space: nowrap; }
+#uiux-board .seg span.on { background: #26303f; color: #fff; }
+#uiux-board .switch-row { height: 36px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.06); color: #c9c9d1; font-size: 11.5px; }
+#uiux-board .switch-ui { position: relative; width: 34px; height: 20px; border-radius: 99px; background: #2a323f; flex-shrink: 0; }
+#uiux-board .switch-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+#uiux-board .switch-ui.on { background: #ff7a45; }
+#uiux-board .switch-ui.on::after { left: 16px; }
+#uiux-board .comp-reorder { width: 100%; max-width: 560px; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: #17171a; color: #eef2f8; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+#uiux-board .reo-banner { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid rgba(255,122,69,.22); border-radius: 8px; background: rgba(255,122,69,.07); color: #ffe6da; font-size: 11.5px; }
+#uiux-board .reo-banner .ic svg { width: 15px; height: 15px; }
+#uiux-board .reo-actions { margin-left: auto; display: flex; gap: 6px; }
+#uiux-board .reo-cancel, #uiux-board .reo-done { height: 28px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 6px; font-size: 10.5px; }
+#uiux-board .reo-cancel { color: #a1a1aa; background: #1e1e21; }
+#uiux-board .reo-done { color: #1a0d07; background: #ff7a45; font-weight: 600; }
+#uiux-board .reo-tiles { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 6px; margin-top: 12px; }
+#uiux-board .reo-tile { height: 54px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.09); border-radius: 4px; background: linear-gradient(145deg, #17202b, #0b1017); color: rgba(255,255,255,.48); font: 600 16px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#uiux-board .reo-tile.source { box-shadow: inset 0 0 0 2px #ff7a45; color: #ffe6da; }
+#uiux-board .reo-tile.target { border: 1px dashed #ff7a45; color: #ffc9b3; }
+#uiux-board .reo-hint { margin-top: 10px; color: #7c7c86; font-size: 10.5px; }
+#uiux-board .comp-empty { width: 360px; max-width: 100%; padding: 22px 20px; border: 1px solid rgba(255,255,255,.09); border-radius: 16px; background: #111113; color: #eef2f8; text-align: center; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+#uiux-board .empty-icon { width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: #1b1b1e; color: #7c7c86; }
+#uiux-board .empty-icon svg { width: 22px; height: 22px; }
+#uiux-board .empty-title { font-size: 14px; font-weight: 600; }
+#uiux-board .empty-sub { margin: 5px auto 14px; max-width: 280px; color: #7c7c86; font-size: 10.5px; line-height: 1.6; }
+#uiux-board .empty-primary { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; background: #ff5d23; color: #fff; font-size: 12px; font-weight: 600; }
+#uiux-board .empty-primary .ic svg { width: 16px; height: 16px; }
+#uiux-board .empty-second { margin-top: 8px; color: #ff7a45; font-size: 11px; }
+#uiux-board .empty-hint { margin-top: 12px; color: #5d687a; font-size: 9.5px; }
+
+/* specs */
+#uiux-board .spec-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+#uiux-board .spec-card { min-width: 0; padding: 14px; border: 1px solid var(--bd-line); border-radius: 14px; }
+#uiux-board .spec-title { margin-bottom: 12px; color: var(--bd-muted); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; }
+#uiux-board .tgt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+#uiux-board .tgt-btn { width: 48px; height: 48px; display: grid; place-items: center; flex-shrink: 0; border-radius: 10px; background: #ff7a45; color: #1a0d07; }
+#uiux-board .tgt-btn svg { width: 20px; height: 20px; }
+#uiux-board .tgt-circle { width: 44px; height: 44px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: #1e1e22; color: #c9c9d1; }
+#uiux-board .tgt-circle svg { width: 18px; height: 18px; }
+#uiux-board .tgt-note { color: var(--bd-muted); font-size: 10px; line-height: 1.5; }
+#uiux-board .tgt-input { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; padding: 0 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; background: #111113; color: #7c7c86; font-size: 16px; }
+#uiux-board .tgt-input span { color: #ff7a45; font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#uiux-board .tgt-foot { margin-top: 10px; color: var(--bd-muted); font-size: 9.5px; line-height: 1.55; }
+#uiux-board .bp-row { display: grid; grid-template-columns: 62px minmax(0,1fr) auto; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--bd-muted); font-size: 10px; }
+#uiux-board .bp-row > span:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#uiux-board .bp-row b { color: var(--bd-fg); font-size: 10px; font-weight: 500; text-align: right; }
+#uiux-board .bp-bar { position: relative; height: 5px; overflow: hidden; border-radius: 99px; background: var(--bd-soft); }
+#uiux-board .bp-bar i { position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 99px; background: #ff7a45; }
+#uiux-board .state-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px 8px; }
+#uiux-board .st { display: inline-flex; align-items: center; gap: 5px; color: var(--bd-muted); font-size: 10px; white-space: nowrap; }
+#uiux-board .st .ic svg { width: 13px; height: 13px; }
+#uiux-board .st-select i { width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 2px #ff7a45; }
+#uiux-board .st-main { width: fit-content; height: 16px; padding: 0 4px; border-radius: 3px; background: #ff7a45; color: #1a0d07; font-size: 9px; font-weight: 800; }
+#uiux-board .cap-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--bd-line); }
+#uiux-board .cap-row:last-of-type { border-bottom: 0; }
+#uiux-board .cap-row .ic { margin-top: 1px; color: var(--bd-muted); }
+#uiux-board .cap-row .ic svg { width: 14px; height: 14px; }
+#uiux-board .cap-row b { display: block; color: var(--bd-fg); font-size: 10.5px; font-weight: 500; }
+#uiux-board .cap-row span { display: block; margin-top: 2px; color: var(--bd-muted); font-size: 9.5px; line-height: 1.45; }
+#uiux-board .bd-foot { display: flex; justify-content: space-between; gap: 8px 18px; flex-wrap: wrap; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--bd-line); color: var(--bd-muted); font-size: 10px; }
+
+@media (max-width: 1000px) {
+  #uiux-board .comp-grid { grid-template-columns: 1fr; }
+  #uiux-board .spec-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 620px) {
+  #uiux-board .bd-title-row h1 { font-size: 20px; }
+  #uiux-board .spec-grid { grid-template-columns: 1fr; }
+  #uiux-board .comp-stage { padding: 10px; }
+  #uiux-board .comp-settings { height: auto; min-height: 330px; }
+  #uiux-board .set-nav { width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #uiux-board *, #uiux-board *::before, #uiux-board *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<script>
+(() => {
+  const board = document.getElementById("uiux-board");
+  if (!board) return;
+
+  const ROOMS = [
+    { id: "baip",     name: "白天PS",        meta: "英雄联盟 · 房间号 123456", status: "直播中",     kind: "live", quality: "1080P", avatar: "白", feed: "g1", muted: false },
+    { id: "xiagu",    name: "峡谷双排",      meta: "英雄联盟 · 房间号 223344", status: "直播中",     kind: "live", quality: "1080P", avatar: "峡", feed: "g2", muted: false },
+    { id: "dianjing", name: "电竞实验室",    meta: "绝地求生 · 房间号 334455", status: "排队中",     kind: "queue", quality: "1080P", avatar: "电", feed: "g3", muted: false },
+    { id: "zhuji",    name: "主机游戏君",    meta: "主机游戏 · 房间号 445566", status: "直播中",     kind: "live", quality: "1080P", avatar: "主", feed: "g4", muted: true  },
+    { id: "shenye",   name: "深夜电台",      meta: "音乐 · 房间号 288016",     status: "直播中",     kind: "live", quality: "1080P", avatar: "夜", feed: "g5", muted: false },
+    { id: "cs2",      name: "CS2 训练营",    meta: "CS2 · 房间号 556677",      status: "未开播",     kind: "off",  quality: "—",     avatar: "C", feed: "g6", muted: false },
+    { id: "erci",     name: "二次元放映室",  meta: "二次元 · 房间号 667788",   status: "直播中",     kind: "live", quality: "1080P", avatar: "二", feed: "g7", muted: false },
+    { id: "zhuoyou",  name: "桌游夜话",      meta: "桌游 · 房间号 778899",     status: "播放异常",   kind: "err",  quality: "—",     avatar: "桌", feed: "g8", muted: false },
+    { id: "xinjin",   name: "新晋主播",      meta: "主机游戏 · 房间号 889900", status: "重连 2/5",   kind: "wait", quality: "1080P", avatar: "新", feed: "g9", muted: false }
+  ];
+  const ROOM_MAP = new Map(ROOMS.map((room) => [room.id, room]));
+  const LAYOUTS = {
+    pc: ["baip", "xiagu", "dianjing", "zhuji", "shenye", "cs2", "erci", "zhuoyou", "xinjin"],
+    "ipad-l": ["baip", "xiagu", "dianjing", "zhuji", "shenye", "cs2"],
+    "ipad-p": ["baip", "xiagu", "dianjing", "zhuji", "shenye", "cs2"]
+  };
+
+  const selection = { pc: "shenye", "ipad-l": "shenye", "ipad-p": "shenye" };
+  let activeView = "pc";
+  let activeSheetTrigger = null;
+
+  const icons = () => {
+    try {
+      if (window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons({ attrs: { width: 16, height: 16 } });
+      }
+    } catch (_) {}
+  };
+
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+
+  const stateChip = (room) => {
+    if (room.kind === "live") return "";
+    if (room.kind === "queue") return '<span class="state-chip wait"><span class="spinner"></span>排队中 · 前面 2 路</span>';
+    if (room.kind === "off") return '<span class="state-chip off"><i class="dot off"></i>未开播 · 每分钟检查</span>';
+    if (room.kind === "err") return '<span class="state-chip err"><i class="dot err"></i>播放异常</span><button class="chipbtn" type="button" data-act="retry">重试</button>';
+    if (room.kind === "wait") return '<span class="state-chip wait"><i class="dot wait"></i>重连 2/5 · 4 秒后</span>';
+    return "";
+  };
+
+  const tileHtml = (room, selected, touch) => `
+    <article class="tile${selected ? " is-selected" : ""}${room.muted ? " is-muted" : ""}" data-room-id="${room.id}" data-kind="${room.kind}" aria-label="${escapeHtml(room.name)}，${escapeHtml(room.status)}">
+      <div class="feed ${room.feed}"><span class="feed-num">${String(ROOMS.indexOf(room) + 1).padStart(2, "0")}</span><span class="feed-tag">SIGNAL ${String(ROOMS.indexOf(room) + 1).padStart(2, "0")} / ${room.quality}</span></div>
+      <div class="tile-top">
+        <span class="nameplate"><i class="dot ${room.kind === "err" ? "err" : room.kind === "off" ? "off" : room.kind === "queue" ? "queue" : room.kind === "wait" ? "wait" : "live"}"></i><b>${escapeHtml(room.name)}</b><span class="main-badge">主</span></span>
+        <span class="mute-mark"><span class="ic"><i data-lucide="volume-x"></i></span></span>
+      </div>
+      <div class="tile-bottom">${stateChip(room)}</div>
+      <button class="tile-hit" type="button" aria-label="选择 ${escapeHtml(room.name)}" aria-pressed="${selected ? "true" : "false"}"></button>
+      <div class="quick">
+        ${touch ? "" : '<button type="button" class="q-play" data-act="play" aria-label="播放或暂停"><span class="ic"><i data-lucide="pause"></i></span></button><button type="button" class="q-focus" data-act="focus" aria-label="放大该房间"><span class="ic"><i data-lucide="maximize-2"></i></span></button>'}
+        <button type="button" class="q-more" data-act="more" aria-label="更多房间操作"><span class="ic"><i data-lucide="ellipsis"></i></span></button>
+      </div>
+    </article>`;
+
+  const renderWalls = () => {
+    board.querySelectorAll("[data-wall]").forEach((wall) => {
+      const mock = wall.closest("[data-mock]");
+      const view = mock?.dataset.mock;
+      if (!view) return;
+      const touch = view !== "pc";
+      wall.innerHTML = (LAYOUTS[view] || []).map((id) => {
+        const room = ROOM_MAP.get(id);
+        return room ? tileHtml(room, selection[view] === id, touch) : "";
+      }).join("");
+    });
+    icons();
+  };
+
+  const renderLibraries = () => {
+    board.querySelectorAll("[data-pc-library]").forEach((list) => {
+      list.innerHTML = ROOMS.map((room) => `
+        <button class="lib-row${selection.pc === room.id ? " is-active" : ""}" type="button" data-pick-room="${room.id}">
+          <span class="lib-avatar">${escapeHtml(room.avatar)}</span>
+          <span class="lib-copy"><span class="lib-name">${escapeHtml(room.name)}</span><span class="lib-meta">${escapeHtml(room.meta)}</span></span>
+          <span class="lib-state"><i class="dot ${room.kind === "err" ? "err" : room.kind === "off" ? "off" : room.kind === "queue" ? "queue" : room.kind === "wait" ? "wait" : "live"}"></i>${escapeHtml(room.status)}</span>
+        </button>`).join("");
+    });
+  };
+
+  const setIcon = (root, name) => {
+    const holder = root?.querySelector(".ic");
+    if (!holder) return;
+    holder.innerHTML = '<i data-lucide="' + name + '"></i>';
+    icons();
+  };
+
+  const setText = (root, selector, text) => {
+    const el = root?.querySelector(selector);
+    if (el) el.textContent = text;
+  };
+
+  const selectedTile = (mock) => {
+    const id = selection[mock.dataset.mock];
+    return [...mock.querySelectorAll(".tile")].find((tile) => tile.dataset.roomId === id) || null;
+  };
+
+  const syncMockUI = (mock) => {
+    const tile = selectedTile(mock);
+    if (!tile) return;
+    const room = ROOM_MAP.get(tile.dataset.roomId);
+    if (!room) return;
+    const paused = tile.classList.contains("is-paused");
+    const muted = tile.classList.contains("is-muted");
+    const focused = tile.classList.contains("is-focused");
+    const kindClass = room.kind === "err" ? "err" : room.kind === "off" ? "off" : room.kind === "queue" ? "queue" : room.kind === "wait" ? "wait" : "live";
+
+    mock.querySelectorAll("[data-room-id]").forEach((item) => {
+      const on = item.dataset.roomId === room.id;
+      item.classList.toggle("is-selected", on);
+      const hit = item.querySelector(".tile-hit");
+      if (hit) hit.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+
+    mock.querySelectorAll(".js-room-name, .js-bar-name, .js-sheet-name").forEach((el) => { el.textContent = room.name; });
+    mock.querySelectorAll(".js-room-meta").forEach((el) => { el.textContent = room.meta; });
+    mock.querySelectorAll(".js-room-status, .js-bar-status, .js-sheet-status").forEach((el) => {
+      if (el.classList.contains("js-bar-status") || el.classList.contains("js-sheet-status")) el.textContent = room.status + " · " + room.quality;
+      else el.textContent = room.status;
+    });
+    mock.querySelectorAll(".js-room-quality").forEach((el) => { el.textContent = room.quality; });
+    mock.querySelectorAll(".js-room-avatar").forEach((el) => { el.textContent = room.avatar; });
+    mock.querySelectorAll(".js-room-dot, .js-bar-dot").forEach((el) => {
+      el.className = "dot " + kindClass + " " + (el.classList.contains("js-bar-dot") ? "js-bar-dot" : "js-room-dot");
+    });
+
+    mock.querySelectorAll("[data-act='play']").forEach((btn) => {
+      btn.classList.toggle("is-on", paused);
+      const label = btn.querySelector(".js-play-label");
+      if (label) label.textContent = paused ? "继续" : "暂停";
+      setIcon(btn, paused ? "play" : "pause");
+    });
+    mock.querySelectorAll("[data-act='mute']").forEach((btn) => {
+      btn.classList.toggle("is-on", muted);
+      const label = btn.querySelector(".js-mute-label");
+      if (label) label.textContent = muted ? "取消静音" : "静音";
+      setIcon(btn, muted ? "volume-x" : "volume-2");
+    });
+    mock.querySelectorAll("[data-act='focus']").forEach((btn) => {
+      btn.classList.toggle("is-on", focused);
+      const label = btn.querySelector(".js-focus-label");
+      if (label) label.textContent = focused ? "恢复平铺" : "放大";
+      setIcon(btn, focused ? "minimize-2" : "maximize-2");
+    });
+
+    mock.querySelectorAll("[data-pc-library] .lib-row").forEach((row) => {
+      row.classList.toggle("is-active", row.dataset.pickRoom === room.id);
+    });
+
+    const live = document.getElementById("uiux-live");
+    if (live) live.textContent = "已选择 " + room.name + "，" + room.status;
+  };
+
+  const switchInspectorTab = (mock, tab, { focus = false } = {}) => {
+    if (!mock || mock.dataset.mock !== "pc") return;
+    mock.querySelectorAll("[data-insp-tab]").forEach((btn) => {
+      const on = btn.dataset.inspTab === tab;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    mock.querySelectorAll("[data-insp-pane]").forEach((pane) => {
+      pane.hidden = pane.dataset.inspPane !== tab;
+    });
+    if (focus) {
+      const active = mock.querySelector("[data-insp-tab='" + tab + "']");
+      active?.focus();
+    }
+  };
+
+  const selectRoom = (mock, id, { openInspector = true } = {}) => {
+    const room = ROOM_MAP.get(id);
+    if (!room || !mock) return;
+    selection[mock.dataset.mock] = id;
+    syncMockUI(mock);
+    if (openInspector) switchInspectorTab(mock, "room");
+    persist();
+  };
+
+  const setFocus = (mock, tile, enabled) => {
+    mock.querySelectorAll(".tile").forEach((item) => item.classList.remove("is-focused"));
+    tile.classList.toggle("is-focused", enabled);
+    syncMockUI(mock);
+  };
+
+  const openSheet = (mock, trigger) => {
+    const sheet = mock.querySelector("[data-sheet]");
+    const scrim = mock.querySelector("[data-sheet-close]");
+    if (!sheet) return;
+    activeSheetTrigger = trigger || null;
+    const tile = selectedTile(mock);
+    if (tile) {
+      const room = ROOM_MAP.get(tile.dataset.roomId);
+      if (room) {
+        setText(mock, ".js-sheet-name", room.name);
+        setText(mock, ".js-sheet-status", room.status + " · " + room.quality);
+      }
+    }
+    sheet.hidden = false;
+    if (scrim) scrim.hidden = false;
+    const close = sheet.querySelector("[data-sheet-close]");
+    close?.focus();
+  };
+
+  const closeSheet = (mock) => {
+    const sheet = mock.querySelector("[data-sheet]");
+    const scrim = mock.querySelector("[data-sheet-close]");
+    if (sheet) sheet.hidden = true;
+    if (scrim) scrim.hidden = true;
+    activeSheetTrigger?.focus?.();
+    activeSheetTrigger = null;
+  };
+
+  const handleAction = (mock, act, tile) => {
+    if (!act) return;
+    const target = tile || selectedTile(mock);
+    if (act === "more") {
+      if (mock.dataset.mock === "pc") {
+        if (target) selectRoom(mock, target.dataset.roomId, { openInspector: true });
+        return;
+      }
+      openSheet(mock, mock.querySelector(".q-more"));
+      return;
+    }
+    if (!target) return;
+    if (act === "play" || act === "mute" || act === "focus") {
+      selectRoom(mock, target.dataset.roomId, { openInspector: true });
+      if (act === "play") target.classList.toggle("is-paused");
+      if (act === "mute") target.classList.toggle("is-muted");
+      if (act === "focus") {
+        const next = !target.classList.contains("is-focused");
+        setFocus(mock, target, next);
+        return;
+      }
+      syncMockUI(mock);
+      return;
+    }
+    if (act === "retry") {
+      const chip = target.querySelector(".state-chip.err");
+      if (chip) chip.textContent = "正在重试…";
+      return;
+    }
+    if (act === "danmaku") {
+      const btn = mock.querySelector(".cmd[data-act='danmaku']");
+      btn?.classList.toggle("is-on");
+      return;
+    }
+  };
+
+  const bindMock = (mock) => {
+    mock.addEventListener("click", (event) => {
+      const close = event.target.closest("[data-sheet-close]");
+      if (close) { closeSheet(mock); return; }
+
+      const pick = event.target.closest("[data-pick-room]");
+      if (pick) {
+        selectRoom(mock, pick.dataset.pickRoom, { openInspector: true });
+        return;
+      }
+
+      const inspTab = event.target.closest("[data-insp-tab]");
+      if (inspTab) { switchInspectorTab(mock, inspTab.dataset.inspTab); return; }
+
+      const more = event.target.closest("[data-pc-more]");
+      if (more) {
+        const menu = mock.querySelector("[data-pc-menu]");
+        if (menu) menu.hidden = !menu.hidden;
+        return;
+      }
+
+      const action = event.target.closest("[data-act]");
+      if (action) {
+        const tile = action.closest(".tile");
+        handleAction(mock, action.dataset.act, tile);
+        return;
+      }
+
+      const hit = event.target.closest(".tile-hit");
+      if (hit) {
+        const tile = hit.closest(".tile");
+        if (tile) selectRoom(mock, tile.dataset.roomId);
+      }
+    });
+
+    mock.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        const hit = event.target.closest(".tile-hit");
+        if (hit) {
+          event.preventDefault();
+          const tile = hit.closest(".tile");
+          if (tile) selectRoom(mock, tile.dataset.roomId);
+        }
+      }
+    });
+
+    mock.querySelector("[data-pc-menu]")?.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (button) mock.querySelector("[data-pc-menu]").hidden = true;
+    });
+  };
+
+  const fitAll = () => {
+    board.querySelectorAll("[data-frame-screen]").forEach((screen) => {
+      const device = screen.closest(".device");
+      if (device && device.hidden) return;
+      const canvas = screen.querySelector(".design-canvas");
+      if (!canvas) return;
+      const designWidth = Number(canvas.dataset.dw) || 1440;
+      const designHeight = Number(canvas.dataset.dh) || 900;
+      const width = screen.clientWidth;
+      if (!width) return;
+      const scale = width / designWidth;
+      canvas.style.transform = "scale(" + scale + ")";
+      screen.style.height = (designHeight * scale) + "px";
+    });
+  };
+
+  const showView = (view, { save = true } = {}) => {
+    if (!LAYOUTS[view]) return;
+    activeView = view;
+    board.querySelectorAll("[data-view]").forEach((tab) => {
+      const on = tab.dataset.view === view;
+      tab.classList.toggle("is-active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    board.querySelectorAll(".device").forEach((device) => {
+      device.hidden = device.dataset.device !== view;
+    });
+    const mock = board.querySelector("[data-mock='" + view + "']");
+    if (mock) {
+      syncMockUI(mock);
+      if (view === "pc") switchInspectorTab(mock, "room");
+    }
+    requestAnimationFrame(() => {
+      fitAll();
+      icons();
+    });
+    if (save) persist();
+  };
+
+  const persist = () => {
+    try {
+      const payload = { view: activeView, selection };
+      window.zcode?.setWidgetState?.({ modelContent: payload, privateContent: { view: activeView } })?.catch?.(() => {});
+    } catch (_) {}
+  };
+
+  const applyState = (state) => {
+    if (!state || typeof state !== "object") return;
+    const model = state.modelContent && typeof state.modelContent === "object" ? state.modelContent : state;
+    if (typeof model.view === "string" && LAYOUTS[model.view]) showView(model.view, { save: false });
+    if (model.selection && typeof model.selection === "object") {
+      Object.keys(LAYOUTS).forEach((view) => {
+        const id = model.selection[view];
+        if (ROOM_MAP.has(id)) {
+          selection[view] = id;
+          const mock = board.querySelector("[data-mock='" + view + "']");
+          if (mock) syncMockUI(mock);
+        }
+      });
+    }
+  };
+
+  board.querySelectorAll("[data-frame-screen]").forEach((screen) => {
+    const resetScroll = () => {
+      screen.scrollLeft = 0;
+      screen.scrollTop = 0;
+    };
+    screen.addEventListener("scroll", resetScroll, { passive: true });
+    screen.addEventListener("focusin", () => requestAnimationFrame(resetScroll));
+  });
+
+  board.querySelectorAll("[data-mock]").forEach(bindMock);
+  renderWalls();
+  renderLibraries();
+  icons();
+  fitAll();
+
+  const tabs = [...board.querySelectorAll(".bd-tab")];
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => showView(tab.dataset.view));
+    tab.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const index = tabs.indexOf(tab);
+      const next = tabs[(index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+      next?.focus();
+      if (next) showView(next.dataset.view);
+    });
+  });
+
+  try {
+    const saved = window.zcode?.widgetState;
+    if (saved) applyState(saved);
+  } catch (_) {}
+
+  window.addEventListener("zcode:set_globals", (event) => {
+    try {
+      const state = event?.detail?.globals?.widgetState;
+      if (state) applyState(state);
+    } catch (_) {}
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-pc-more]")) {
+      board.querySelectorAll("[data-pc-menu]").forEach((menu) => { menu.hidden = true; });
+    }
+  });
+
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(() => requestAnimationFrame(fitAll));
+    ro.observe(board);
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(fitAll));
+  setTimeout(() => { fitAll(); icons(); }, 120);
+  setTimeout(() => { fitAll(); icons(); }, 600);
+})();
+</script>
+
+</div>
+</body>
+</html>

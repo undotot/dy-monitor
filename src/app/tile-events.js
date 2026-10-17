@@ -1,6 +1,7 @@
 import { bindTileAudio } from "./tile-audio.js";
 import { bindTileTools, closeTileMore } from "./tile-tools.js";
 import { bindTileFullscreen, isTileFullscreen } from "./tile-fullscreen.js";
+import { setIconButton } from "../ui/icons.js";
 
 export const closeTileSettingsPanels = (scope, except = null) => {
   for (const panel of scope.querySelectorAll("[data-tile-settings]")) {
@@ -55,6 +56,20 @@ export function bindTileEvents(ctx, tile) {
 
   bindTileAudio(ctx, tile);
   bindTileTools(tile);
+  find("[data-t-quick='play']")?.addEventListener("click", () => {
+    find("[data-t-resume]")?.click();
+  });
+  find("[data-t-quick='focus']")?.addEventListener("click", () => {
+    ctx.select(tile);
+    ctx.toggleFocus(tile);
+  });
+  find("[data-t-quick='more']")?.addEventListener("click", () => {
+    if (ctx.openRoomFromTile) ctx.openRoomFromTile(tile);
+    else ctx.openRoomPanel?.(tile);
+  });
+  setIconButton(find("[data-t-quick='play']"), "play", "播放 / 暂停");
+  setIconButton(find("[data-t-quick='focus']"), "full", "放大或恢复平铺");
+  setIconButton(find("[data-t-quick='more']"), "more", "当前房间操作");
   tile.soloBtn?.addEventListener("click", () => ctx.toggleSolo(tile));
   for (const btn of root.querySelectorAll("[data-t-dm-settings], [data-t-dm-settings-bar], [data-t-dm-settings-sidebar]")) {
     btn.addEventListener("click", () => setTileDanmakuSettings(tile, tile.settingsEl.hidden));
@@ -70,7 +85,7 @@ export function bindTileEvents(ctx, tile) {
   });
 
   for (const btn of root.querySelectorAll("[data-t-remove], [data-t-remove-bar]")) {
-    btn.addEventListener("click", () => ctx.removeTile(tile));
+    btn.addEventListener("click", () => (ctx.removeTileWithUndo || ctx.removeTile)(tile));
   }
 
   tile.rateSel?.addEventListener("change", (event) => {
@@ -83,10 +98,6 @@ export function bindTileEvents(ctx, tile) {
   root.addEventListener("click", (event) => {
     if (event.target.closest("button, input, select, textarea, label, a")) return;
     ctx.select(tile);
-    // 移动端/触屏适配：轻点画格唤出控制条，3.5 秒后自动淡出
-    root.classList.add("tools-visible");
-    clearTimeout(tile.toolsTimer);
-    tile.toolsTimer = setTimeout(() => root.classList.remove("tools-visible"), 3500);
   });
 
   root.addEventListener("dblclick", (event) => {

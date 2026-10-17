@@ -17,33 +17,32 @@ export const resolveFocusLayout = ({ rooms, mainRoomId, ...options }, calculateL
   if (new Set(normalized.map((room) => room.id)).size !== normalized.length) return null;
   const requested = normalized.find((room) => room.id === String(mainRoomId));
   if (!requested) return null;
-  const calculateFor = (main) => {
+  const calculateFor = (main, extra = {}) => {
     const secondaries = normalized.filter((room) => room !== main);
-    const plan = calculateLayout({ ...options, mainRoomId: main.id, mainRatio: main.ratio,
+    const plan = calculateLayout({ ...options, ...extra, mainRoomId: main.id, mainRatio: main.ratio,
       secondaryRoomIds: secondaries.map((room) => room.id), secondaryRatios: secondaries.map((room) => room.ratio) });
     return { plan, mainRoomId: main.id, secondaryRoomIds: secondaries.map((room) => room.id),
       requestedMainRoomId: requested.id, mainChanged: main.id !== requested.id };
   };
   const preferred = calculateFor(requested);
-  // 尺寸尚未就绪或其他错误不应触发主窗跳转；这里只处理可通过换主窗消除的比例冲突。
-  if (preferred.plan?.status !== "infeasible" || preferred.plan.code !== "SECONDARY_RATIO_MISMATCH") return preferred;
-  for (const candidate of normalized) {
-    if (candidate === requested) continue;
-    const result = calculateFor(candidate);
-    if (result.plan?.status === "ready") return result;
+  // 用户点哪一路就放大哪一路：副窗比例冲突时不再偷偷换主窗，
+  // 而是保留指定主窗，让比例不同的副窗以 contain 黑边适配。
+  if (preferred.plan?.status === "infeasible" && preferred.plan.code === "SECONDARY_RATIO_MISMATCH") {
+    const contained = calculateFor(requested, { containSecondary: true });
+    if (contained.plan?.status === "ready") return contained;
   }
   return preferred;
 };
 
 /** 将共用拼接结果转换为播放器的绝对坐标；全部视频节点保持原身份。 */
 export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO, secondaryRatios = [],
-  mainRoomId = "main", secondaryRoomIds = [], mainWeight = DEFAULT_FOCUS_MAIN_WEIGHT, previous = null }) => {
+  mainRoomId = "main", secondaryRoomIds = [], mainWeight = DEFAULT_FOCUS_MAIN_WEIGHT, previous = null, containSecondary = false }) => {
   if (![width, height].every((value) => Number.isFinite(value) && value > 2)
     || !Array.isArray(secondaryRatios) || !Array.isArray(secondaryRoomIds) || secondaryRatios.length > 15) return null;
   const rooms = [{ id: String(mainRoomId), ratio: ratioOf(mainRatio) }, ...secondaryRatios.map((ratio, index) =>
     ({ id: String(secondaryRoomIds[index] ?? `secondary-${index}`), ratio: ratioOf(ratio) }))];
   const plan = calculateAutomaticLayout({ width, height, rooms, mainRoomId: String(mainRoomId), mainWeight,
-    priority: "compromise", previous: previous?.layoutPlan ?? null });
+    priority: "compromise", previous: previous?.layoutPlan ?? null, containSecondary: containSecondary === true });
   if (!plan || plan.status !== "ready") return plan;
   if (!auditRecursiveLayout(plan, rooms.length).valid) return { status: "infeasible", code: "LAYOUT_INVALID",
     reason: "无法生成满足源比例、小窗等大和完整矩形要求的放大布局。" };
@@ -55,6 +54,7 @@ export const calculateFocusLayout = ({ width, height, mainRatio = DEFAULT_RATIO,
     ratio: rect.ratio, video: { width: rect.width, height: rect.height }, visible: 1 }));
   const quality = Math.min(1, main.width / FOCUS_LIMITS.mainMin, main.height / FOCUS_LIMITS.mainMinHeight);
   return { status: "ready", absolute: true, family: "uniform", signature: plan.signature, layoutPlan: plan,
+    containSecondary: Boolean(plan.containSecondary), secondaryRatio: plan.secondaryRatio,
     layoutShape: plan.layoutShape, selection: plan.selection, fallback: plan.selection.fallback,
     main: boxOf(main), mainVideo: { width: main.width, height: main.height }, mainArea: areaOf(main), placements,
     cell: plan.metrics.secondarySize, cellRatio: small[0]?.ratio ?? main.ratio,

@@ -1,5 +1,7 @@
 export const paths = {
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  activity: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
   sliders: '<path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
@@ -32,6 +34,7 @@ export const paths = {
 export const iconMarkup = (name) => `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.sliders}</svg>`;
 
 export const setIconButton = (button, name, label) => {
+  if (!button) return;
   button.innerHTML = iconMarkup(name);
   button.setAttribute("aria-label", label);
   button.setAttribute("title", label);
